@@ -9,6 +9,9 @@ import '../../data/models/game_result.dart';
 import '../../data/models/game_state.dart';
 import '../../domain/engine/game_engine.dart';
 import '../../domain/engine/move_generator.dart';
+import '../../domain/engine/variants/game_variant.dart';
+import '../../domain/engine/variants/plakoto_engine.dart';
+import '../../domain/engine/variants/fevga_engine.dart';
 import '../../../ai/difficulty/difficulty_level.dart';
 
 /// Complete game state: board, phase, dice, legal moves, history, etc.
@@ -114,24 +117,95 @@ class GameNotifier extends StateNotifier<GameState> {
   final GameEngine _engine;
   final MoveGenerator _generator;
   final Random _rng;
+  GameVariant _variant;
+  final PlakotoEngine _plakotoEngine;
+  final FevgaEngine _fevgaEngine;
 
   GameNotifier({
     GameEngine? engine,
     MoveGenerator? generator,
     Random? rng,
     DifficultyLevel difficulty = DifficultyLevel.easy,
+    GameVariant variant = GameVariant.portes,
   })  : _engine = engine ?? const GameEngine(),
         _generator = generator ?? const MoveGenerator(),
         _rng = rng ?? Random(),
+        _variant = variant,
+        _plakotoEngine = const PlakotoEngine(),
+        _fevgaEngine = const FevgaEngine(),
         super(GameState(
           board: BoardState.initial(),
           difficulty: difficulty,
         ));
 
+  /// The initial board for the current variant.
+  BoardState _initialBoard({int activePlayer = 1}) {
+    return switch (_variant) {
+      GameVariant.portes => BoardState.initial(activePlayer: activePlayer),
+      GameVariant.plakoto => _plakotoEngine.initialState(activePlayer: activePlayer),
+      GameVariant.fevga => _fevgaEngine.initialState(activePlayer: activePlayer),
+    };
+  }
+
+  /// Generate legal turns for the current variant.
+  List<Turn> _generateTurns(BoardState board, DiceRoll roll) {
+    return switch (_variant) {
+      GameVariant.portes => _generator.generateAllLegalTurns(board, roll),
+      GameVariant.plakoto => _plakotoEngine.generateAllLegalTurns(board, roll),
+      GameVariant.fevga => _fevgaEngine.generateAllLegalTurns(board, roll),
+    };
+  }
+
+  /// Generate single-die moves for the current variant.
+  List<Move> _generateMovesForDie(BoardState board, int die) {
+    return switch (_variant) {
+      GameVariant.portes => _generator.generateMovesForDie(board, die),
+      GameVariant.plakoto => _plakotoEngine.generateMovesForDie(board, die),
+      GameVariant.fevga => _fevgaEngine.generateMovesForDie(board, die),
+    };
+  }
+
+  /// Apply a move for the current variant.
+  BoardState _applyMoveVariant(BoardState board, Move move) {
+    return switch (_variant) {
+      GameVariant.portes => _engine.applyMove(board, move),
+      GameVariant.plakoto => _plakotoEngine.applyMove(board, move),
+      GameVariant.fevga => _fevgaEngine.applyMove(board, move),
+    };
+  }
+
+  /// End turn for the current variant.
+  BoardState _endTurnVariant(BoardState board) {
+    return switch (_variant) {
+      GameVariant.portes => _engine.endTurn(board),
+      GameVariant.plakoto => _plakotoEngine.endTurn(board),
+      GameVariant.fevga => _fevgaEngine.endTurn(board),
+    };
+  }
+
+  /// Check game over for the current variant.
+  bool _isGameOverVariant(BoardState board) {
+    return switch (_variant) {
+      GameVariant.portes => _engine.isGameOver(board),
+      GameVariant.plakoto => _plakotoEngine.isGameOver(board),
+      GameVariant.fevga => _fevgaEngine.isGameOver(board),
+    };
+  }
+
+  /// Get result for the current variant.
+  GameResult? _getResultVariant(BoardState board) {
+    return switch (_variant) {
+      GameVariant.portes => _engine.getResult(board),
+      GameVariant.plakoto => _plakotoEngine.getResult(board),
+      GameVariant.fevga => _fevgaEngine.getResult(board),
+    };
+  }
+
   /// Start a new game with opening roll ceremony.
-  void newGame({DifficultyLevel? difficulty}) {
+  void newGame({DifficultyLevel? difficulty, GameVariant? variant}) {
+    if (variant != null) _variant = variant;
     state = GameState(
-      board: BoardState.initial(),
+      board: _initialBoard(),
       phase: GamePhase.waitingForFirstRoll,
       difficulty: difficulty ?? state.difficulty,
     );
@@ -155,8 +229,8 @@ class GameNotifier extends StateNotifier<GameState> {
       die2: playerDie > opponentDie ? opponentDie : playerDie,
     );
 
-    final board = BoardState.initial(activePlayer: firstPlayer);
-    final turns = _generator.generateAllLegalTurns(board, roll);
+    final board = _initialBoard(activePlayer: firstPlayer);
+    final turns = _generateTurns(board, roll);
 
     state = state.copyWith(
       board: board,
@@ -185,14 +259,16 @@ class GameNotifier extends StateNotifier<GameState> {
   /// Roll the dice for the active player.
   void rollDice() {
     if (state.phase != GamePhase.playerTurnStart &&
-        state.phase != GamePhase.rollingDice) return;
+        state.phase != GamePhase.rollingDice) {
+      return;
+    }
 
     final roll = DiceRoll.random(_rng);
-    final turns = _generator.generateAllLegalTurns(state.board, roll);
+    final turns = _generateTurns(state.board, roll);
 
     if (turns.isEmpty) {
       // No legal moves — skip turn.
-      final nextBoard = _engine.endTurn(state.board);
+      final nextBoard = _endTurnVariant(state.board);
       state = state.copyWith(
         board: nextBoard,
         currentRoll: roll,
@@ -238,7 +314,7 @@ class GameNotifier extends StateNotifier<GameState> {
       if (usedDice.contains(die)) continue;
       usedDice.add(die);
 
-      final singleMoves = _generator.generateMovesForDie(state.board, die);
+      final singleMoves = _generateMovesForDie(state.board, die);
       for (final m in singleMoves) {
         if (m.fromPoint == pointIndex) {
           moves.add(m);
@@ -273,7 +349,7 @@ class GameNotifier extends StateNotifier<GameState> {
   }
 
   void _applyMove(Move move) {
-    final newBoard = _engine.applyMove(state.board, move);
+    final newBoard = _applyMoveVariant(state.board, move);
     final newMoves = [...state.currentTurnMoves, move];
     final newRemaining = List<int>.from(state.remainingDice);
     newRemaining.remove(move.dieUsed);
@@ -282,11 +358,11 @@ class GameNotifier extends StateNotifier<GameState> {
     final newUndoStack = [...state.undoStack, state.board];
 
     // Check if game is over.
-    if (_engine.isGameOver(newBoard)) {
+    if (_isGameOverVariant(newBoard)) {
       state = state.copyWith(
         board: newBoard,
         phase: GamePhase.gameOver,
-        result: _engine.getResult(newBoard),
+        result: _getResultVariant(newBoard),
         currentTurnMoves: newMoves,
         remainingDice: newRemaining,
         undoStack: newUndoStack,
@@ -304,7 +380,7 @@ class GameNotifier extends StateNotifier<GameState> {
     // Check if any moves remain with remaining dice.
     bool hasLegalMoves = false;
     for (final die in newRemaining.toSet()) {
-      if (_generator.generateMovesForDie(newBoard, die).isNotEmpty) {
+      if (_generateMovesForDie(newBoard, die).isNotEmpty) {
         hasLegalMoves = true;
         break;
       }
@@ -325,7 +401,7 @@ class GameNotifier extends StateNotifier<GameState> {
   }
 
   void _finishTurn(BoardState board, List<Move> moves, List<BoardState> undoStack) {
-    final nextBoard = _engine.endTurn(board);
+    final nextBoard = _endTurnVariant(board);
     state = state.copyWith(
       board: nextBoard,
       phase: GamePhase.turnComplete,
@@ -405,11 +481,42 @@ class GameNotifier extends StateNotifier<GameState> {
     );
   }
 
+  /// Check if all checkers are in the home board for the current variant.
+  bool _allInHomeVariant(BoardState board, int player) {
+    return switch (_variant) {
+      GameVariant.portes => board.allInHome(player),
+      GameVariant.plakoto => _plakotoEngine.allInHome(board, player),
+      GameVariant.fevga => _fevgaEngine.allInHome(board, player),
+    };
+  }
+
+  /// Returns true when the remaining bear-off is trivial (only one legal turn).
+  bool isTrivialBearOff() {
+    if (state.phase != GamePhase.movingCheckers) return false;
+    if (state.remainingDice.isEmpty) return false;
+    if (state.legalTurns.length != 1) return false;
+    return _allInHomeVariant(state.board, state.board.activePlayer);
+  }
+
+  /// Auto-play all forced moves from the single legal turn.
+  /// Returns the list of moves applied.
+  List<Move> autoPlayForcedMoves() {
+    if (!isTrivialBearOff()) return const [];
+    final turn = state.legalTurns.first;
+    final moves = <Move>[];
+    for (final move in turn.moves) {
+      selectChecker(move.fromPoint);
+      makeMove(move.toPoint);
+      moves.add(move);
+    }
+    return moves;
+  }
+
   /// Peek at what the board would look like after applying a move
   /// (without actually changing state). Used for teaching mode evaluation.
   BoardState? peekApplyMove(Move move) {
     try {
-      return _engine.applyMove(state.board, move);
+      return _applyMoveVariant(state.board, move);
     } catch (_) {
       return null;
     }

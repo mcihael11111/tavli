@@ -6,15 +6,20 @@ import '../../game/data/models/turn.dart';
 import '../../game/domain/engine/board_evaluator.dart';
 import '../../game/domain/engine/game_engine.dart';
 import '../../game/domain/engine/move_generator.dart';
+import '../../game/domain/engine/variants/game_variant.dart';
+import '../../game/domain/engine/variants/plakoto_evaluator.dart';
+import '../../game/domain/engine/variants/fevga_evaluator.dart';
 import '../difficulty/difficulty_level.dart';
 
 /// AI player that selects moves based on difficulty level.
 ///
-/// Uses heuristic evaluation for MVP. Neural network (TFLite) comes later.
+/// Supports all three Tavli variants with variant-specific evaluators.
 class AiPlayer {
   final GameEngine _engine;
   final MoveGenerator _generator;
   final BoardEvaluator _evaluator;
+  final PlakotoEvaluator _plakotoEvaluator;
+  final FevgaEvaluator _fevgaEvaluator;
   final Random _rng;
 
   AiPlayer({
@@ -25,12 +30,28 @@ class AiPlayer {
   })  : _engine = engine ?? const GameEngine(),
         _generator = generator ?? const MoveGenerator(),
         _evaluator = evaluator ?? const BoardEvaluator(),
+        _plakotoEvaluator = const PlakotoEvaluator(),
+        _fevgaEvaluator = const FevgaEvaluator(),
         _rng = rng ?? Random();
+
+  /// Evaluate a position using the correct variant evaluator.
+  double _evaluateForVariant(BoardState state, int player, GameVariant variant) {
+    return switch (variant) {
+      GameVariant.portes => _evaluator.evaluate(state, player),
+      GameVariant.plakoto => _plakotoEvaluator.evaluate(state, player),
+      GameVariant.fevga => _fevgaEvaluator.evaluate(state, player),
+    };
+  }
 
   /// Select the best turn for the AI at the given difficulty.
   ///
   /// Returns null if no legal moves exist.
-  Turn? selectTurn(BoardState state, DiceRoll roll, DifficultyLevel difficulty) {
+  Turn? selectTurn(
+    BoardState state,
+    DiceRoll roll,
+    DifficultyLevel difficulty, {
+    GameVariant variant = GameVariant.portes,
+  }) {
     final turns = _generator.generateAllLegalTurns(state, roll);
     if (turns.isEmpty) return null;
     if (turns.length == 1) return turns.first;
@@ -43,6 +64,7 @@ class AiPlayer {
         resultBoard,
         state.activePlayer,
         difficulty.searchDepth,
+        variant: variant,
       );
       scored.add(_ScoredTurn(turn, equity));
     }
@@ -55,9 +77,14 @@ class AiPlayer {
   }
 
   /// Evaluate position at the given search depth.
-  double _evaluateAtDepth(BoardState state, int player, int depth) {
+  double _evaluateAtDepth(
+    BoardState state,
+    int player,
+    int depth, {
+    GameVariant variant = GameVariant.portes,
+  }) {
     if (depth <= 0) {
-      return _evaluator.evaluate(state, player);
+      return _evaluateForVariant(state, player, variant);
     }
 
     // N-ply: consider opponent's best response.
@@ -79,13 +106,13 @@ class AiPlayer {
         double bestOppEquity = double.negativeInfinity;
         if (oppTurns.isEmpty) {
           // Opponent can't move — evaluate current position.
-          bestOppEquity = -_evaluator.evaluate(state, opponent);
+          bestOppEquity = -_evaluateForVariant(state, opponent, variant);
         } else {
           for (final oppTurn in oppTurns) {
             final resultBoard = _engine.applyMoves(oppState, oppTurn.moves);
             final equity = depth > 1
-                ? _evaluateAtDepth(resultBoard, player, depth - 1)
-                : _evaluator.evaluate(resultBoard, player);
+                ? _evaluateAtDepth(resultBoard, player, depth - 1, variant: variant)
+                : _evaluateForVariant(resultBoard, player, variant);
             if (equity > bestOppEquity) bestOppEquity = equity;
           }
           // Opponent picks the move worst for us (best for them).
@@ -209,8 +236,10 @@ class AiPlayer {
   }
 
   /// Public position evaluation for teaching mode UI.
-  double evaluatePosition(BoardState state, int player) {
-    return _evaluator.evaluate(state, player);
+  double evaluatePosition(BoardState state, int player, {
+    GameVariant variant = GameVariant.portes,
+  }) {
+    return _evaluateForVariant(state, player, variant);
   }
 }
 

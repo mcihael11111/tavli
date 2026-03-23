@@ -2,20 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/services/progression_service.dart';
+import '../../../shared/services/settings_service.dart';
 import '../data/models/game_result.dart';
 import '../../ai/difficulty/difficulty_level.dart';
 import '../../ai/mikhail/dialogue_system.dart';
 import '../../ai/mikhail/dialogue_event.dart';
+import '../../profile/data/achievements.dart';
+import '../../profile/presentation/match_history_screen.dart';
 
-/// Victory/defeat screen with score breakdown and Mikhail's reaction.
+/// Victory/defeat screen with score breakdown and bot's reaction.
 class VictoryScreen extends StatefulWidget {
   final GameResult result;
   final DifficultyLevel difficulty;
+  final bool isOnline;
+  final String? opponentName;
+  final int? ratingDelta;
 
   const VictoryScreen({
     super.key,
     required this.result,
     required this.difficulty,
+    this.isOnline = false,
+    this.opponentName,
+    this.ratingDelta,
   });
 
   @override
@@ -47,10 +56,62 @@ class _VictoryScreenState extends State<VictoryScreen>
     _dialogue.trigger(
       _playerWon ? DialogueEvent.playerWin : DialogueEvent.mikhailWin,
       widget.difficulty,
+      personality: SettingsService.instance.botPersonality,
     );
 
     // Record result in progression tracking.
-    ProgressionService.instance.recordGame(widget.difficulty, widget.result);
+    if (!widget.isOnline) {
+      ProgressionService.instance.recordGame(widget.difficulty, widget.result);
+    }
+
+    // Record match in history.
+    MatchHistoryService.record(MatchRecord(
+      timestamp: DateTime.now(),
+      difficulty: widget.isOnline ? null : widget.difficulty,
+      opponentName: widget.isOnline
+          ? (widget.opponentName ?? 'Opponent')
+          : '${SettingsService.instance.botPersonality.greekName} (${widget.difficulty.greekName})',
+      playerWon: _playerWon,
+      resultType: widget.result.type,
+      cubeValue: widget.result.cubeValue,
+      mode: widget.isOnline ? 'online' : 'bot',
+    ));
+
+    // Check and unlock achievements.
+    if (!widget.isOnline) {
+      final newlyUnlocked = AchievementService.instance.checkAndUnlock(
+        result: widget.result,
+        difficulty: widget.difficulty,
+      );
+      if (newlyUnlocked.isNotEmpty) {
+        _showAchievementToast(newlyUnlocked.first);
+      }
+    }
+  }
+
+  void _showAchievementToast(Achievement achievement) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Text(achievement.icon, style: const TextStyle(fontSize: 21)),
+              const SizedBox(width: TavliSpacing.xs),
+              Expanded(
+                child: Text(
+                  'Achievement Unlocked: ${achievement.name}!',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: TavliColors.primary,
+        ),
+      );
+    });
   }
 
   @override
@@ -63,10 +124,10 @@ class _VictoryScreenState extends State<VictoryScreen>
   Widget build(BuildContext context) {
     // Victory screen always uses the dark palette for drama.
     final bgColor = _playerWon
-        ? TavliColors.kafeneioBrown
-        : const Color(0xFF2A1A0E);
-    const textColor = TavliColors.parchment;
-    final accentColor = _playerWon ? TavliColors.oliveGold : TavliColors.terracotta;
+        ? TavliColors.primary
+        : TavliColors.text;
+    const textColor = TavliColors.light;
+    final accentColor = _playerWon ? TavliColors.surface : TavliColors.error;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -84,17 +145,17 @@ class _VictoryScreenState extends State<VictoryScreen>
                   children: [
                     if (_playerWon)
                       const Text('🏆', style: TextStyle(fontSize: 60)),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: TavliSpacing.sm),
                     Text(
                       _playerWon ? 'ΝΙΚΗ!' : 'ΗΤΤΑ',
                       style: TextStyle(
                         color: accentColor,
-                        fontSize: 48,
+                        fontSize: 42,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 6,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: TavliSpacing.xxs),
                     Text(
                       _playerWon ? 'Victory!' : 'Defeat',
                       style: const TextStyle(color: textColor, fontSize: 18),
@@ -103,17 +164,17 @@ class _VictoryScreenState extends State<VictoryScreen>
                 ),
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: TavliSpacing.xl),
 
               // Score details.
               Opacity(
                 opacity: _detailsFade.value,
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.symmetric(horizontal: TavliSpacing.xl),
+                  padding: const EdgeInsets.all(TavliSpacing.md),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    color: TavliColors.light.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(TavliRadius.md),
                     border: Border.all(color: accentColor.withValues(alpha: 0.3)),
                   ),
                   child: Column(
@@ -122,35 +183,64 @@ class _VictoryScreenState extends State<VictoryScreen>
                       _scoreLine('Multiplier', '${_resultMul(widget.result.type)}x', textColor),
                       if (widget.result.cubeValue > 1)
                         _scoreLine('Cube', '${widget.result.cubeValue}x', textColor),
-                      Divider(color: accentColor.withValues(alpha: 0.3), height: 24),
+                      Divider(color: accentColor.withValues(alpha: 0.3), height: TavliSpacing.lg),
                       _scoreLine('Total Points', '${widget.result.points}', textColor, bold: true),
                     ],
                   ),
                 ),
               ),
 
-              const SizedBox(height: 24),
+              // Online rating change.
+              if (widget.isOnline && widget.ratingDelta != null)
+                Opacity(
+                  opacity: _detailsFade.value,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: TavliSpacing.sm, bottom: TavliSpacing.sm),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (widget.opponentName != null)
+                          Text(
+                            'vs ${widget.opponentName}  ·  ',
+                            style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 14),
+                          ),
+                        Text(
+                          'Rating: ${widget.ratingDelta! >= 0 ? '+' : ''}${widget.ratingDelta}',
+                          style: TextStyle(
+                            color: widget.ratingDelta! >= 0
+                                ? TavliColors.success
+                                : TavliColors.error,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
 
-              // Mikhail reaction.
-              Opacity(
+              const SizedBox(height: TavliSpacing.sm),
+
+              // Mikhail reaction (AI games only).
+              if (!widget.isOnline) Opacity(
                 opacity: _detailsFade.value,
                 child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.symmetric(horizontal: TavliSpacing.xl),
+                  padding: const EdgeInsets.all(TavliSpacing.sm),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(8),
+                    color: TavliColors.light.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(TavliRadius.sm),
                   ),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      const CircleAvatar(
                         radius: 18,
-                        backgroundColor: TavliColors.kafeneioBrown,
-                        child: const Text('Μ', style: TextStyle(
-                          color: textColor, fontSize: 18, fontWeight: FontWeight.bold,
+                        backgroundColor: TavliColors.surface,
+                        child: Text('Μ', style: TextStyle(
+                          color: TavliColors.primary, fontSize: 18, fontWeight: FontWeight.bold,
                         )),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: TavliSpacing.sm),
                       Expanded(
                         child: Text(
                           _dialogue.currentLine ?? (_playerWon
@@ -172,53 +262,83 @@ class _VictoryScreenState extends State<VictoryScreen>
               Opacity(
                 opacity: _detailsFade.value,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: () => context.go('/game', extra: widget.difficulty),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: accentColor,
-                            foregroundColor: bgColor,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                          child: const Text('PLAY AGAIN',
-                            style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 2)),
+                  padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xl),
+                  child: widget.isOnline
+                      ? Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => context.go('/online-lobby'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: accentColor,
+                                  foregroundColor: bgColor,
+                                  padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
+                                ),
+                                child: const Text('BACK TO LOBBY',
+                                    style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 2)),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton(
+                                onPressed: () => context.go('/home'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: textColor,
+                                  side: const BorderSide(color: textColor, width: 1.5),
+                                ),
+                                child: const Text('Home'),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Column(
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: () => context.go('/game', extra: widget.difficulty),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: accentColor,
+                                  foregroundColor: bgColor,
+                                  padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
+                                ),
+                                child: const Text('PLAY AGAIN',
+                                    style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 2)),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => context.go('/difficulty'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: textColor,
+                                      side: const BorderSide(color: textColor, width: 1.5),
+                                    ),
+                                    child: const Text('Difficulty'),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: () => context.go('/home'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: textColor,
+                                      side: const BorderSide(color: textColor, width: 1.5),
+                                    ),
+                                    child: const Text('Home'),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => context.go('/difficulty'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: textColor,
-                                side: const BorderSide(color: textColor, width: 1.5),
-                              ),
-                              child: const Text('Difficulty'),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () => context.go('/home'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: textColor,
-                                side: const BorderSide(color: textColor, width: 1.5),
-                              ),
-                              child: const Text('Home'),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: TavliSpacing.xl),
             ],
           ),
         ),
@@ -228,13 +348,13 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   Widget _scoreLine(String label, String value, Color textColor, {bool bold = false}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TavliSpacing.xxs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: TextStyle(color: textColor, fontSize: 14)),
           Text(value, style: TextStyle(
-            color: textColor, fontSize: bold ? 20 : 16,
+            color: textColor, fontSize: bold ? 21 : 16,
             fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
           )),
         ],

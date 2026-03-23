@@ -1,0 +1,1418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tavli — Interactive Prototype</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #D4C2A8;
+    --surface: #A67F5B;
+    --primary: #6B4F3A;
+    --text: #1A1A1A;
+    --light: #F3F0EB;
+    --error: #A0442C;
+    --success: #6B8E4E;
+    --warning: #D4A03C;
+    --info: #4A7B8C;
+    --surface-dark: #3D2E20;
+    --bg-hover: #C4B298;
+    --surface-hover: #997353;
+    --primary-hover: #7A5E49;
+    --checker-light: #F0E4C8;
+    --checker-dark: #2C1810;
+    --hit-effect: #C67B5C;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Poppins', sans-serif;
+    background: #1a1a1a;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh;
+  }
+
+  /* Phone frame */
+  .phone-frame {
+    width: 430px; height: 932px; border-radius: 48px; overflow: hidden;
+    position: relative; box-shadow: 0 0 0 8px #333, 0 16px 64px rgba(0,0,0,0.6);
+    background: var(--background);
+  }
+
+  /* Screen management */
+  .screen {
+    position: absolute; inset: 0;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    transform: translateX(20px);
+    display: flex; flex-direction: column; height: 100%;
+  }
+  .screen.active {
+    opacity: 1; pointer-events: auto;
+    transform: translateX(0);
+  }
+  .screen.exit-left {
+    opacity: 0; transform: translateX(-20px);
+  }
+
+  /* Clickable elements */
+  [data-goto] { cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  [data-goto]:hover { filter: brightness(1.05); }
+  [data-goto]:active { transform: scale(0.97); }
+
+  /* Breadcrumb / current screen label */
+  .screen-indicator {
+    position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+    color: #666; font-size: 12px; font-family: Poppins, sans-serif;
+    background: #222; padding: 6px 16px; border-radius: 20px;
+    z-index: 100; letter-spacing: 1px;
+  }
+
+  /* Shared back button */
+  .back-arrow {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 48px 24px 0; color: var(--primary); font-size: 14px;
+    font-weight: 500; cursor: pointer;
+  }
+  .back-arrow:hover { opacity: 0.8; }
+  .back-arrow svg { flex-shrink: 0; }
+
+  /* Shared bottom nav */
+  .bottom-nav {
+    margin: 16px 16px 24px; background: var(--primary); border: 1px solid var(--light);
+    border-radius: 100px; padding: 10px; display: flex; justify-content: space-around;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .nav-item {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary); color: var(--light);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .nav-item:hover { background: var(--surface-dark); }
+  .nav-item.active { background: var(--background); color: var(--primary); }
+  .nav-item.active:hover { background: var(--bg-hover); }
+
+  /* ═══════════════ SPLASH ═══════════════ */
+  .splash {
+    background: var(--primary); align-items: center; justify-content: center;
+  }
+  .splash .logo {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--surface), rgba(166,127,91,0.7));
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  }
+  .splash .logo span { font-size: 36px; font-weight: 700; color: var(--primary); }
+  .splash h1 { color: var(--light); font-size: 42px; font-weight: 700; letter-spacing: 8px; margin-top: 24px; }
+  .splash .greek { color: rgba(166,127,91,0.7); font-size: 16px; letter-spacing: 10px; margin-top: 4px; }
+  .splash .spinner {
+    width: 24px; height: 24px; border: 2px solid rgba(166,127,91,0.3);
+    border-top-color: rgba(166,127,91,0.7); border-radius: 50%; margin-top: 40px;
+    animation: spin 1s linear infinite;
+  }
+  .splash .tap-hint {
+    position: absolute; bottom: 80px; color: rgba(243,240,235,0.4);
+    font-size: 13px; animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+
+  /* ═══════════════ ONBOARDING ═══════════════ */
+  .onboarding { background: var(--primary); }
+  .onboarding .skip {
+    color: var(--light); font-size: 14px; text-align: right;
+    padding: 48px 24px 0; opacity: 0.7;
+  }
+  .onboarding .content {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 0 48px;
+  }
+  .onboarding .avatar {
+    width: 100px; height: 100px; border-radius: 50%;
+    background: var(--surface); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+    border: 2px solid var(--primary);
+  }
+  .onboarding .avatar span { font-size: 48px; font-weight: 700; color: var(--primary); }
+  .onboarding .greeting { color: var(--surface); font-size: 31px; font-weight: 700; margin-top: 32px; }
+  .onboarding .subtitle { color: var(--light); font-size: 21px; font-weight: 500; margin-top: 8px; text-align: center; }
+  .onboarding .body-text { color: rgba(243,240,235,0.8); font-size: 16px; line-height: 1.6; text-align: center; margin-top: 16px; }
+  .onboarding .footer {
+    display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 40px;
+  }
+  .onboarding .dots { display: flex; gap: 6px; align-items: center; }
+  .onboarding .dot { width: 8px; height: 8px; border-radius: 4px; background: rgba(243,240,235,0.3); transition: all 0.3s; }
+  .onboarding .dot.active { width: 24px; background: var(--surface); }
+  .onboarding .next-btn {
+    background: var(--surface); color: var(--primary); border: none; border-radius: 8px;
+    padding: 12px 32px; font-size: 16px; font-weight: 600; font-family: Poppins, sans-serif;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .onboarding .next-btn:hover { background: var(--surface-hover); }
+
+  /* ═══════════════ HOME ═══════════════ */
+  .home { background: var(--background); }
+  .home .scroll { flex: 1; overflow-y: auto; padding: 0 24px; -webkit-overflow-scrolling: touch; }
+  .home h1 { text-align: center; font-size: 42px; font-weight: 700; color: var(--text); letter-spacing: 6px; margin-top: 40px; }
+  .home .greek-sub { text-align: center; font-size: 14px; color: var(--primary); letter-spacing: 8px; margin-top: 4px; }
+  .home .greeting-card {
+    background: var(--background); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 16px; display: flex; align-items: center; gap: 12px; margin-top: 32px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3); transition: background 0.2s;
+  }
+  .home .greeting-card:hover { background: var(--bg-hover); }
+  .home .greeting-card .av {
+    width: 48px; height: 48px; border-radius: 50%; background: var(--primary);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .home .greeting-card .av span { color: var(--light); font-size: 24px; font-weight: 700; }
+  .home .greeting-card p { font-size: 16px; color: var(--text); font-style: italic; }
+
+  .home .tabs { display: flex; gap: 12px; margin-top: 32px; }
+  .home .tab {
+    flex: 1; background: var(--surface); border: 1px solid var(--primary);
+    border-radius: 16px; padding: 16px; text-align: center;
+    color: var(--light); font-size: 14px; font-weight: 500;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .home .tab:hover { background: var(--surface-hover); }
+  .home .tab.selected { background: var(--primary); color: var(--light); font-weight: 600; }
+  .home .tab.selected:hover { background: var(--primary-hover); }
+
+  .home .card {
+    background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 16px; display: flex; align-items: center; gap: 16px; margin-top: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    cursor: pointer; transition: all 0.2s;
+  }
+  .home .card:hover { background: var(--surface-hover); transform: translateY(-1px); box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
+  .home .card:active { transform: scale(0.98); }
+  .home .card .icon-box {
+    width: 40px; height: 40px; border-radius: 12px;
+    background: rgba(107,79,58,0.2); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .home .card .icon-box svg { stroke: var(--light); }
+  .home .card .card-title { font-size: 16px; font-weight: 600; color: var(--light); }
+  .home .card .card-sub { font-size: 13px; color: var(--light); opacity: 0.75; margin-top: 2px; }
+  .home .card .chevron { color: var(--light); font-size: 22px; margin-left: auto; flex-shrink: 0; opacity: 0.6; }
+
+  /* ═══════════════ DIFFICULTY ═══════════════ */
+  .difficulty { background: var(--background); }
+  .difficulty .scroll { flex: 1; overflow-y: auto; padding: 0 24px; }
+  .difficulty .bot-portrait {
+    margin-top: 16px; background: var(--surface); border: 1px solid var(--primary);
+    border-radius: 16px; padding: 20px; text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .difficulty .bot-name { font-size: 21px; font-weight: 600; color: var(--light); }
+  .difficulty .bot-stats { font-size: 13px; color: var(--light); opacity: 0.75; margin-top: 4px; }
+  .difficulty .section-title {
+    font-size: 14px; font-weight: 600; color: var(--text); opacity: 0.6;
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 24px; margin-bottom: 12px;
+  }
+  .difficulty .diff-card {
+    background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 16px; display: flex; align-items: center; gap: 14px; margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; transition: all 0.2s;
+  }
+  .difficulty .diff-card:hover { background: var(--surface-hover); }
+  .difficulty .diff-card.locked { opacity: 0.5; cursor: not-allowed; }
+  .difficulty .diff-card .diff-icon {
+    width: 48px; height: 48px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-size: 22px;
+  }
+  .difficulty .diff-card .diff-name { font-size: 16px; font-weight: 600; color: var(--light); }
+  .difficulty .diff-card .diff-desc { font-size: 13px; color: var(--light); opacity: 0.7; margin-top: 2px; }
+  .difficulty .diff-card .diff-lock { font-size: 12px; color: var(--error); margin-top: 4px; }
+  .difficulty .diff-card .play-icon { margin-left: auto; color: var(--light); opacity: 0.6; font-size: 20px; }
+
+  /* ═══════════════ PROFILE ═══════════════ */
+  .profile { background: var(--background); }
+  .profile .scroll { flex: 1; overflow-y: auto; padding: 0 24px; }
+  .profile .header { margin-top: 48px; text-align: center; }
+  .profile .avatar-lg {
+    width: 80px; height: 80px; border-radius: 50%; background: var(--primary);
+    display: flex; align-items: center; justify-content: center; margin: 0 auto;
+  }
+  .profile .avatar-lg svg { color: var(--light); }
+  .profile .name { font-size: 24px; font-weight: 600; color: var(--text); margin-top: 16px; }
+  .profile .rank-badge {
+    display: inline-block; margin-top: 8px; padding: 4px 16px;
+    background: rgba(107,79,58,0.15); border-radius: 100px;
+    font-size: 13px; color: var(--primary); font-weight: 500;
+  }
+  .profile .rating-card {
+    margin-top: 24px; background: var(--surface); border: 1px solid var(--primary);
+    border-radius: 16px; padding: 20px; text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .profile .rating-val { font-size: 48px; font-weight: 700; color: var(--light); }
+  .profile .rating-label { font-size: 12px; color: var(--light); opacity: 0.75; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px; }
+  .profile .stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 16px;
+  }
+  .profile .stat-card {
+    background: var(--surface); border: 1px solid var(--primary);
+    border-radius: 16px; padding: 14px 10px; text-align: center;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .profile .stat-val { font-size: 24px; font-weight: 700; color: var(--light); }
+  .profile .stat-label { font-size: 11px; color: var(--light); opacity: 0.75; margin-top: 2px; }
+  .profile .quick-links { display: flex; gap: 10px; margin-top: 16px; }
+  .profile .quick-link {
+    flex: 1; padding: 12px; background: var(--background); border: 1.5px solid var(--primary);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 14px; font-weight: 500; color: var(--primary); cursor: pointer; transition: all 0.2s;
+  }
+  .profile .quick-link:hover { background: var(--bg-hover); }
+  .profile .section-title {
+    font-size: 14px; font-weight: 600; color: var(--text); opacity: 0.6;
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 24px; margin-bottom: 12px;
+  }
+  .profile .diff-record {
+    background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 14px 16px; display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .profile .diff-record .dr-name { font-size: 15px; font-weight: 500; color: var(--light); }
+  .profile .diff-record .dr-stats { font-size: 13px; color: var(--light); opacity: 0.75; }
+
+  /* ═══════════════ CUSTOMIZATION ═══════════════ */
+  .customize { background: var(--background); }
+  .customize .scroll { flex: 1; overflow-y: auto; padding: 0 24px; }
+  .customize .page-title { font-size: 24px; font-weight: 600; color: var(--primary); margin-top: 16px; text-align: center; }
+  .customize .section-title {
+    font-size: 14px; font-weight: 600; color: var(--text); opacity: 0.6;
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 28px; margin-bottom: 12px;
+  }
+  .customize .options { display: flex; gap: 10px; }
+  .customize .option {
+    flex: 1; background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 12px; text-align: center; cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .customize .option:hover { background: var(--surface-hover); }
+  .customize .option.selected { border: 2px solid var(--primary); }
+  .customize .option .preview {
+    height: 50px; border-radius: 8px; margin-bottom: 8px;
+  }
+  .customize .option .opt-name { font-size: 12px; font-weight: 600; color: var(--light); }
+  .customize .option .opt-sub { font-size: 10px; color: var(--light); opacity: 0.7; margin-top: 2px; }
+  .customize .option .check { color: var(--light); font-size: 16px; margin-top: 6px; }
+  .customize .checker-pair {
+    display: flex; gap: 6px; justify-content: center; margin-bottom: 8px;
+  }
+  .customize .checker-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid rgba(243,240,235,0.3);
+  }
+  .customize .dice-preview {
+    width: 36px; height: 36px; border-radius: 6px; margin: 0 auto 8px;
+    display: flex; align-items: center; justify-content: center; font-weight: 700;
+  }
+  .customize .info-note {
+    margin-top: 24px; padding: 14px 16px; background: rgba(74,123,140,0.1);
+    border-radius: 12px; display: flex; align-items: center; gap: 10px;
+    font-size: 13px; color: var(--text); opacity: 0.8;
+  }
+
+  /* ═══════════════ SETTINGS ═══════════════ */
+  .settings { background: var(--background); }
+  .settings .scroll { flex: 1; overflow-y: auto; padding: 0 24px; }
+  .settings .page-title { font-size: 24px; font-weight: 600; color: var(--primary); margin-top: 16px; text-align: center; }
+  .settings .section-title {
+    font-size: 12px; font-weight: 600; color: var(--text); opacity: 0.5;
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 24px; margin-bottom: 10px;
+  }
+  .settings .setting-row {
+    background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 14px 18px; display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .settings .setting-info { flex: 1; }
+  .settings .setting-label { font-size: 15px; color: var(--light); font-weight: 500; }
+  .settings .setting-sub { font-size: 12px; color: var(--light); opacity: 0.6; margin-top: 2px; }
+  .settings .setting-value { font-size: 14px; color: var(--light); opacity: 0.7; }
+  .settings .toggle {
+    width: 48px; height: 28px; border-radius: 14px;
+    background: var(--bg-hover); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0;
+  }
+  .settings .toggle.on { background: var(--surface-hover); }
+  .settings .toggle::after {
+    content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--light); top: 3px; left: 3px; transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .settings .toggle.on::after { transform: translateX(20px); }
+  .settings .bot-row {
+    background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+    margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer;
+  }
+  .settings .bot-row:hover { background: var(--surface-hover); }
+  .settings .bot-av {
+    width: 40px; height: 40px; border-radius: 50%; background: var(--surface-hover);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-weight: 700; color: var(--primary); font-size: 18px;
+  }
+  .settings .theme-toggle {
+    display: flex; gap: 0; background: var(--surface); border: 1px solid var(--primary);
+    border-radius: 8px; overflow: hidden; margin-bottom: 8px;
+  }
+  .settings .theme-btn {
+    flex: 1; padding: 12px; text-align: center; font-size: 14px; font-weight: 500;
+    color: var(--light); cursor: pointer; transition: all 0.2s; border: none;
+    background: transparent; font-family: Poppins, sans-serif;
+  }
+  .settings .theme-btn.active { background: var(--primary); color: var(--light); }
+  .settings .slider-row {
+    background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 14px 18px; margin-bottom: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .settings .slider-row .setting-label { margin-bottom: 8px; }
+  .settings .slider-track {
+    width: 100%; height: 12px; border-radius: 6px; background: var(--surface-hover);
+    position: relative; cursor: pointer;
+  }
+  .settings .slider-fill {
+    height: 100%; border-radius: 6px; background: var(--surface-hover);
+    position: relative;
+  }
+  .settings .slider-thumb {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--surface-hover);
+    position: absolute; right: -14px; top: -8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25); border: 2px solid var(--light);
+  }
+
+  /* ═══════════════ GAME ═══════════════ */
+  .game-screen { background: var(--primary); }
+  .game-screen .bar {
+    padding: 8px 16px; display: flex; align-items: center; gap: 8px;
+  }
+  .game-screen .bar .av {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--surface-dark);
+    display: flex; align-items: center; justify-content: center;
+    border: 2px solid var(--surface);
+  }
+  .game-screen .bar .av.inactive { border-color: rgba(166,127,91,0.3); }
+  .game-screen .bar .av span { color: var(--light); font-size: 16px; font-weight: 700; }
+  .game-screen .bar .bar-name { color: var(--light); font-size: 14px; font-weight: 500; }
+  .game-screen .bar .pips { color: rgba(243,240,235,0.85); font-size: 12px; margin-left: auto; }
+  .game-screen .board-area {
+    flex: 1; margin: 0 4px; position: relative; overflow: hidden;
+    border-radius: 4px;
+  }
+  .game-screen .board-canvas {
+    width: 100%; height: 100%; position: relative;
+    background: #5a3a20;
+  }
+  .game-screen .board-frame {
+    position: absolute; inset: 6px;
+    border: 3px solid #8B4513;
+    border-radius: 4px;
+    display: flex;
+  }
+  .game-screen .board-half {
+    flex: 1; display: flex; flex-direction: column; justify-content: space-between;
+    padding: 4px 2px;
+  }
+  .game-screen .board-bar {
+    width: 16px; background: #6B4226;
+    border-left: 1px solid rgba(139,69,19,0.5);
+    border-right: 1px solid rgba(139,69,19,0.5);
+  }
+  .game-screen .points-row {
+    display: flex; justify-content: space-around; height: 42%;
+  }
+  .game-screen .point {
+    width: 0; height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+  }
+  .game-screen .point.up { border-bottom: 80px solid; }
+  .game-screen .point.down { border-top: 80px solid; }
+  .game-screen .point.dark-pt { border-bottom-color: #8B4513; border-top-color: #8B4513; }
+  .game-screen .point.light-pt { border-bottom-color: #D4C06A; border-top-color: #D4C06A; }
+  .game-screen .board-center {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .game-screen .dice-area {
+    display: flex; gap: 10px;
+  }
+  .game-screen .die {
+    width: 36px; height: 36px; border-radius: 6px; background: #FAF8F0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; font-weight: 700; color: var(--checker-dark);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+  .game-screen .dialogue {
+    padding: 10px 16px; background: rgba(107,79,58,0.9);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .game-screen .dialogue .m-label { color: var(--surface); font-weight: 700; font-size: 14px; }
+  .game-screen .dialogue .line { color: var(--light); font-size: 14px; font-style: italic; }
+  .game-screen .back-btn {
+    position: absolute; top: 12px; right: 16px;
+    background: rgba(243,240,235,0.1); border: 1px solid rgba(243,240,235,0.2);
+    border-radius: 8px; color: var(--light); font-size: 12px;
+    padding: 6px 12px; cursor: pointer; font-family: Poppins, sans-serif;
+    z-index: 10;
+  }
+  .game-screen .back-btn:hover { background: rgba(243,240,235,0.2); }
+
+  /* ═══════════════ VICTORY ═══════════════ */
+  .victory { background: var(--primary); align-items: center; }
+  .victory .banner { margin-top: 160px; text-align: center; }
+  .victory .trophy-icon { width: 72px; height: 72px; margin: 0 auto; }
+  .victory .title { color: var(--surface); font-size: 42px; font-weight: 700; letter-spacing: 6px; margin-top: 16px; }
+  .victory .subtitle { color: var(--light); font-size: 18px; margin-top: 4px; }
+  .victory .mikhail-react {
+    margin: 24px 32px 0; padding: 14px 16px; display: flex; align-items: center; gap: 10px;
+    background: rgba(243,240,235,0.06); border-radius: 12px; border: 1px solid rgba(166,127,91,0.2);
+  }
+  .victory .mikhail-react .mr-av {
+    width: 36px; height: 36px; border-radius: 50%; background: var(--surface);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-weight: 700; color: var(--primary); font-size: 16px;
+  }
+  .victory .mikhail-react .mr-text { color: var(--light); font-size: 14px; font-style: italic; }
+  .victory .score-box {
+    margin: 24px 32px 0; padding: 20px; background: rgba(243,240,235,0.06);
+    border-radius: 16px; border: 1px solid rgba(166,127,91,0.3); width: calc(100% - 64px);
+  }
+  .victory .score-row { display: flex; justify-content: space-between; padding: 6px 0; color: var(--light); font-size: 14px; }
+  .victory .score-row.total { font-size: 22px; font-weight: 700; padding-top: 12px; }
+  .victory .divider { height: 1px; background: rgba(166,127,91,0.3); margin: 8px 0; }
+  .victory .buttons { margin-top: auto; padding: 32px; width: 100%; }
+  .victory .play-again {
+    width: 100%; padding: 14px; background: var(--surface); color: var(--primary);
+    border: none; border-radius: 8px; font-size: 16px; font-weight: 700; letter-spacing: 2px;
+    font-family: Poppins, sans-serif; cursor: pointer; transition: background 0.2s;
+  }
+  .victory .play-again:hover { background: var(--surface-hover); }
+  .victory .secondary-btns { display: flex; gap: 10px; margin-top: 10px; }
+  .victory .secondary-btns button {
+    flex: 1; padding: 12px; background: transparent; color: var(--light);
+    border: 1.5px solid rgba(243,240,235,0.3); border-radius: 8px; font-size: 14px;
+    font-family: Poppins, sans-serif; cursor: pointer; transition: all 0.2s;
+  }
+  .victory .secondary-btns button:hover { background: rgba(243,240,235,0.08); border-color: var(--light); }
+
+  /* ═══════════════ TUTORIAL ═══════════════ */
+  .tutorial { background: var(--background); }
+  .tutorial .progress-bar {
+    height: 3px; background: var(--bg-hover);
+  }
+  .tutorial .progress-fill {
+    height: 100%; background: var(--surface); transition: width 0.3s;
+  }
+  .tutorial .scroll { flex: 1; overflow-y: auto; padding: 24px; }
+  .tutorial .lesson-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  }
+  .tutorial .lesson-icon {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: rgba(107,79,58,0.1); display: flex; align-items: center; justify-content: center;
+    color: var(--primary); font-size: 22px; flex-shrink: 0;
+  }
+  .tutorial .lesson-title { font-size: 22px; font-weight: 700; color: var(--primary); }
+  .tutorial .mikhail-box {
+    background: var(--primary); border-radius: 12px; padding: 14px 16px;
+    display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px;
+  }
+  .tutorial .mikhail-box .mb-av {
+    width: 32px; height: 32px; border-radius: 50%; background: var(--surface);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-weight: 700; color: var(--primary); font-size: 14px;
+  }
+  .tutorial .mikhail-box .mb-text { color: var(--light); font-size: 14px; font-style: italic; line-height: 1.5; }
+  .tutorial .mini-board {
+    height: 180px; border: 1px solid rgba(107,79,58,0.3); border-radius: 8px;
+    background: #5a3a20; margin-bottom: 20px; position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tutorial .mini-board .mb-label {
+    color: rgba(243,240,235,0.3); font-size: 13px; font-weight: 500;
+  }
+  .tutorial .body-text { font-size: 15px; line-height: 1.7; color: var(--text); }
+  .tutorial .body-text strong { color: var(--primary); }
+  .tutorial .bullet-list { list-style: none; padding: 0; margin-top: 12px; }
+  .tutorial .bullet-list li {
+    padding: 6px 0 6px 20px; position: relative; font-size: 14px; color: var(--text); line-height: 1.5;
+  }
+  .tutorial .bullet-list li::before {
+    content: '•'; position: absolute; left: 0; color: var(--primary); font-weight: 700;
+  }
+  .tutorial .nav-btns {
+    padding: 16px 24px 32px; display: flex; gap: 10px;
+  }
+  .tutorial .nav-btn {
+    padding: 14px 24px; border-radius: 8px; font-size: 15px; font-weight: 600;
+    font-family: Poppins, sans-serif; cursor: pointer; transition: all 0.2s; border: none;
+  }
+  .tutorial .nav-btn.primary { flex: 2; background: var(--primary); color: var(--light); }
+  .tutorial .nav-btn.primary:hover { background: var(--primary-hover); }
+  .tutorial .nav-btn.secondary { flex: 1; background: var(--background); color: var(--primary); border: 1.5px solid var(--primary); }
+  .tutorial .nav-btn.secondary:hover { background: var(--bg-hover); }
+
+  /* ═══════════════ ONLINE LOBBY ═══════════════ */
+  .lobby { background: var(--background); }
+  .lobby .scroll { flex: 1; overflow-y: auto; padding: 0 24px; }
+  .lobby .page-title { font-size: 24px; font-weight: 600; color: var(--primary); margin-top: 16px; text-align: center; }
+  .lobby .player-card {
+    margin-top: 20px; background: var(--surface); border: 1px solid var(--primary);
+    border-radius: 16px; padding: 18px; display: flex; align-items: center; gap: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .lobby .player-card .pl-av {
+    width: 48px; height: 48px; border-radius: 50%; background: var(--primary);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    font-weight: 700; color: var(--light); font-size: 22px;
+  }
+  .lobby .player-card .pl-name { font-size: 16px; font-weight: 600; color: var(--light); }
+  .lobby .player-card .pl-info { font-size: 13px; color: var(--light); opacity: 0.7; margin-top: 2px; }
+  .lobby .player-card .pl-record { margin-top: 4px; font-size: 13px; font-weight: 600; }
+  .lobby .player-card .pl-record .w { color: var(--success); }
+  .lobby .player-card .pl-record .l { color: var(--error); }
+  .lobby .lobby-card {
+    background: var(--surface); border: 1px solid var(--primary); border-radius: 16px;
+    padding: 18px; display: flex; align-items: center; gap: 14px; margin-top: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3); cursor: pointer; transition: all 0.2s;
+  }
+  .lobby .lobby-card:hover { background: var(--surface-hover); }
+  .lobby .lobby-card .lc-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    background: rgba(107,79,58,0.1); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; color: var(--primary); font-size: 22px;
+  }
+  .lobby .lobby-card .lc-title { font-size: 16px; font-weight: 600; color: var(--light); }
+  .lobby .lobby-card .lc-sub { font-size: 13px; color: var(--light); opacity: 0.7; margin-top: 2px; }
+  .lobby .lobby-card .lc-chev { margin-left: auto; color: var(--light); opacity: 0.5; font-size: 20px; }
+  .lobby .section-title {
+    font-size: 14px; font-weight: 600; color: var(--text); opacity: 0.6;
+    text-transform: uppercase; letter-spacing: 1px; margin-top: 28px; margin-bottom: 4px;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 460px) {
+    body { padding: 0; align-items: stretch; justify-content: stretch; }
+    .phone-frame { width: 100%; height: 100vh; border-radius: 0; box-shadow: none; }
+    .screen-indicator { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+
+  <!-- ═══ SPLASH ═══ -->
+  <div class="screen splash active" id="splash" data-goto="onboarding">
+    <div class="logo"><span>T</span></div>
+    <h1>TAVLI</h1>
+    <div class="greek">Τ Α Β Λ Ι</div>
+    <div class="spinner"></div>
+    <div class="tap-hint">Tap anywhere to continue</div>
+  </div>
+
+  <!-- ═══ ONBOARDING ═══ -->
+  <div class="screen onboarding" id="onboarding">
+    <div class="skip" data-goto="home">Skip</div>
+    <div class="content">
+      <div class="avatar"><span>T</span></div>
+      <div class="greeting">Γεια σου!</div>
+      <div class="subtitle">Welcome to Tavli.</div>
+      <div class="body-text">The Greek way to play backgammon.<br>Beautiful boards. Real strategy.<br>No ads. No nonsense.</div>
+    </div>
+    <div class="footer">
+      <div class="dots">
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+      <button class="next-btn" data-goto="home">Next</button>
+    </div>
+  </div>
+
+  <!-- ═══ HOME ═══ -->
+  <div class="screen home" id="home">
+    <div class="scroll">
+      <h1>TAVLI</h1>
+      <div class="greek-sub">Τ Α Β Λ Ι</div>
+
+      <div class="greeting-card">
+        <div class="av"><span>Μ</span></div>
+        <p>Καλημέρα! Ready for coffee and tavli?</p>
+      </div>
+
+      <div class="tabs" id="tabs">
+        <div class="tab selected" data-variant="portes">Πόρτες</div>
+        <div class="tab" data-variant="plakoto">Πλακωτό</div>
+        <div class="tab" data-variant="fevga">Φεύγα</div>
+      </div>
+
+      <div class="card" data-goto="difficulty">
+        <div class="icon-box"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="8.5" cy="16" r="1.5"/><circle cx="15.5" cy="16" r="1.5"/><path d="M12 2v4"/><path d="M8 7h8a4 4 0 014 4"/><path d="M4 11a4 4 0 014-4"/></svg></div>
+        <div><div class="card-title">Play vs Mikhail</div><div class="card-sub">Challenge the AI opponent</div></div>
+        <div class="chevron">›</div>
+      </div>
+      <div class="card" data-goto="lobby">
+        <div class="icon-box"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10A15.3 15.3 0 0112 2z"/></svg></div>
+        <div><div class="card-title">Play Online</div><div class="card-sub">Quick match or invite a friend</div></div>
+        <div class="chevron">›</div>
+      </div>
+      <div class="card" data-goto="game">
+        <div class="icon-box"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+        <div><div class="card-title">Pass & Play</div><div class="card-sub">Two players, one device</div></div>
+        <div class="chevron">›</div>
+      </div>
+      <div class="card" data-goto="tutorial">
+        <div class="icon-box"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg></div>
+        <div><div class="card-title">Learn to Play</div><div class="card-sub">Interactive tutorial with Mikhail</div></div>
+        <div class="chevron">›</div>
+      </div>
+      <div style="height: 24px;"></div>
+    </div>
+
+    <div class="bottom-nav" id="nav-home">
+      <div class="nav-item active" data-goto="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></div>
+      <div class="nav-item" data-goto="profile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <div class="nav-item" data-goto="customize"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><circle cx="8.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/></svg></div>
+      <div class="nav-item" data-goto="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+    </div>
+  </div>
+
+  <!-- ═══ DIFFICULTY ═══ -->
+  <div class="screen difficulty" id="difficulty">
+    <div class="back-arrow" data-goto="home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back
+    </div>
+    <div class="scroll">
+      <div class="bot-portrait">
+        <div class="bot-name">Mikhail</div>
+        <div class="bot-stats">Choose your difficulty</div>
+      </div>
+
+      <div class="section-title">Difficulty</div>
+
+      <div class="diff-card" data-goto="game">
+        <div class="diff-icon" style="background: rgba(107,142,78,0.15); color: var(--success);">☺</div>
+        <div>
+          <div class="diff-name">Εύκολο (Easy)</div>
+          <div class="diff-desc">Novice player</div>
+        </div>
+        <div class="play-icon">▶</div>
+      </div>
+
+      <div class="diff-card" data-goto="game">
+        <div class="diff-icon" style="background: rgba(107,79,58,0.15); color: var(--primary);">🎓</div>
+        <div>
+          <div class="diff-name">Με Βοήθεια (Easy + Help)</div>
+          <div class="diff-desc">Guided moves</div>
+        </div>
+        <div class="play-icon">▶</div>
+      </div>
+
+      <div class="diff-card" data-goto="game">
+        <div class="diff-icon" style="background: rgba(166,127,91,0.15); color: var(--surface);">🥋</div>
+        <div>
+          <div class="diff-name">Μέτριο (Medium)</div>
+          <div class="diff-desc">Challenging opponent</div>
+        </div>
+        <div class="play-icon">▶</div>
+      </div>
+
+      <div class="diff-card locked">
+        <div class="diff-icon" style="background: rgba(198,123,92,0.15); color: var(--hit-effect);">🔥</div>
+        <div>
+          <div class="diff-name">Δύσκολο (Hard)</div>
+          <div class="diff-desc">Expert play</div>
+          <div class="diff-lock">🔒 Win 3 Medium games to unlock</div>
+        </div>
+      </div>
+
+      <div class="diff-card locked">
+        <div class="diff-icon" style="background: rgba(160,68,44,0.15); color: var(--error);">👴</div>
+        <div>
+          <div class="diff-name">Παππούς (Pappous)</div>
+          <div class="diff-desc">Legendary</div>
+          <div class="diff-lock">🔒 Win 3 Hard games to unlock</div>
+        </div>
+      </div>
+      <div style="height: 24px;"></div>
+    </div>
+  </div>
+
+  <!-- ═══ PROFILE ═══ -->
+  <div class="screen profile" id="profile">
+    <div class="scroll">
+      <div class="header">
+        <div class="avatar-lg">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="var(--light)"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        </div>
+        <div class="name">Player</div>
+        <div class="rank-badge">Αρχάριος (Beginner)</div>
+      </div>
+
+      <div class="rating-card">
+        <div class="rating-val">1045</div>
+        <div class="rating-label">Rating</div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-val">12</div>
+          <div class="stat-label">Games</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">7</div>
+          <div class="stat-label">Wins</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">58%</div>
+          <div class="stat-label">Win Rate</div>
+        </div>
+      </div>
+      <div class="stats" style="margin-top: 10px;">
+        <div class="stat-card">
+          <div class="stat-val">5</div>
+          <div class="stat-label">Losses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">2</div>
+          <div class="stat-label">Gammons</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val">4</div>
+          <div class="stat-label">Best Streak</div>
+        </div>
+      </div>
+
+      <div class="quick-links">
+        <div class="quick-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+          History
+        </div>
+        <div class="quick-link">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9l6 6 6-6"/></svg>
+          Achievements
+        </div>
+      </div>
+
+      <div class="section-title">Record by Difficulty</div>
+      <div class="diff-record">
+        <span class="dr-name">Εύκολο</span>
+        <span class="dr-stats">5W – 2L · Streak: 3</span>
+      </div>
+      <div class="diff-record">
+        <span class="dr-name">Μέτριο</span>
+        <span class="dr-stats">2W – 3L</span>
+      </div>
+      <div class="diff-record" style="opacity: 0.5;">
+        <span class="dr-name">🔒 Δύσκολο</span>
+        <span class="dr-stats" style="opacity: 0.6;">Locked</span>
+      </div>
+      <div style="height: 24px;"></div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item" data-goto="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg></div>
+      <div class="nav-item active" data-goto="profile"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg></div>
+      <div class="nav-item" data-goto="customize"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><circle cx="8.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/></svg></div>
+      <div class="nav-item" data-goto="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+    </div>
+  </div>
+
+  <!-- ═══ CUSTOMIZATION ═══ -->
+  <div class="screen customize" id="customize">
+    <div class="scroll">
+      <div class="page-title">Customize</div>
+
+      <div class="section-title">Board</div>
+      <div class="options" id="board-options">
+        <div class="option selected" data-board="0">
+          <div class="preview" style="background: linear-gradient(135deg, #8B4513, #D4C06A);"></div>
+          <div class="opt-name">Μαόνι</div>
+          <div class="opt-sub">Mahogany</div>
+          <div class="check">✓</div>
+        </div>
+        <div class="option" data-board="1">
+          <div class="preview" style="background: linear-gradient(135deg, #6F3024, #1A5C5C);"></div>
+          <div class="opt-name">Σμαραγδί</div>
+          <div class="opt-sub">Teal</div>
+          <div class="check" style="opacity:0;">✓</div>
+        </div>
+        <div class="option" data-board="2">
+          <div class="preview" style="background: linear-gradient(135deg, #2A1A0E, #1C2833);"></div>
+          <div class="opt-name">Νυχτερινό</div>
+          <div class="opt-sub">Walnut</div>
+          <div class="check" style="opacity:0;">✓</div>
+        </div>
+      </div>
+
+      <div class="section-title">Checkers</div>
+      <div class="options" id="checker-options">
+        <div class="option selected" data-checker="0">
+          <div class="checker-pair">
+            <div class="checker-dot" style="background: #2C1810;"></div>
+            <div class="checker-dot" style="background: #F5ECD7;"></div>
+          </div>
+          <div class="opt-name">Κλασικό</div>
+          <div class="opt-sub">Classic</div>
+          <div class="check">✓</div>
+        </div>
+        <div class="option" data-checker="1">
+          <div class="checker-pair">
+            <div class="checker-dot" style="background: #8B1A1A;"></div>
+            <div class="checker-dot" style="background: #F5ECD7;"></div>
+          </div>
+          <div class="opt-name">Ρουμπίνι</div>
+          <div class="opt-sub">Ruby</div>
+          <div class="check" style="opacity:0;">✓</div>
+        </div>
+        <div class="option" data-checker="2">
+          <div class="checker-pair">
+            <div class="checker-dot" style="background: #4A4A4A;"></div>
+            <div class="checker-dot" style="background: #8B9A6B;"></div>
+          </div>
+          <div class="opt-name">Ελιά</div>
+          <div class="opt-sub">Olive</div>
+          <div class="check" style="opacity:0;">✓</div>
+        </div>
+      </div>
+
+      <div class="section-title">Dice</div>
+      <div class="options" id="dice-options">
+        <div class="option selected" data-dice="0">
+          <div class="dice-preview" style="background: #FAF8F0; color: #2C1810;">⚄</div>
+          <div class="opt-name">Classic</div>
+          <div class="check">✓</div>
+        </div>
+        <div class="option" data-dice="1">
+          <div class="dice-preview" style="background: #FAF8F0; color: #8B1A1A;">⚄</div>
+          <div class="opt-name">Ruby</div>
+          <div class="check" style="opacity:0;">✓</div>
+        </div>
+        <div class="option" data-dice="2">
+          <div class="dice-preview" style="background: #F0EDE0; color: #4A4A4A;">⚄</div>
+          <div class="opt-name">Olive</div>
+          <div class="check" style="opacity:0;">✓</div>
+        </div>
+      </div>
+
+      <div class="info-note">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        Your selections will be applied in the next game.
+      </div>
+      <div style="height: 24px;"></div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item" data-goto="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg></div>
+      <div class="nav-item" data-goto="profile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <div class="nav-item active" data-goto="customize"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10c1.38 0 2.5-1.12 2.5-2.5 0-.61-.23-1.2-.64-1.67-.08-.1-.13-.21-.13-.33 0-.28.22-.5.5-.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm-5.5 9c-.83 0-1.5-.67-1.5-1.5S5.67 8 6.5 8 8 8.67 8 9.5 7.33 11 6.5 11zm3-4C8.67 7 8 6.33 8 5.5S8.67 4 9.5 4s1.5.67 1.5 1.5S10.33 7 9.5 7zm5 0c-.83 0-1.5-.67-1.5-1.5S13.67 4 14.5 4s1.5.67 1.5 1.5S15.33 7 14.5 7zm3 4c-.83 0-1.5-.67-1.5-1.5S16.67 8 17.5 8s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg></div>
+      <div class="nav-item" data-goto="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+    </div>
+  </div>
+
+  <!-- ═══ SETTINGS ═══ -->
+  <div class="screen settings" id="settings">
+    <div class="scroll">
+      <div class="page-title">Settings</div>
+
+      <div class="section-title">Game</div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Show Pip Count</div>
+          <div class="setting-sub">Display remaining pip count during games</div>
+        </div>
+        <div class="toggle on" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Move Confirmation</div>
+          <div class="setting-sub">Require tap to confirm each move</div>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+
+      <div class="section-title">Optional Rules</div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Auto Doubles</div>
+          <div class="setting-sub">Matching first rolls double the stakes</div>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Beavers</div>
+          <div class="setting-sub">Immediate redouble after being doubled</div>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+      <div class="setting-row">
+        <div class="setting-info">
+          <div class="setting-label">Jacoby Rule</div>
+          <div class="setting-sub">Gammons only count if cube was offered</div>
+        </div>
+        <div class="toggle" onclick="this.classList.toggle('on')"></div>
+      </div>
+
+      <div class="section-title">Bot Personality</div>
+      <div class="bot-row">
+        <div class="bot-av">Μ</div>
+        <div>
+          <div class="setting-label">Mikhail</div>
+          <div class="setting-sub">The friendly Greek uncle</div>
+        </div>
+        <span style="margin-left: auto; color: var(--light); opacity: 0.5;">›</span>
+      </div>
+
+      <div class="section-title">Audio</div>
+      <div class="slider-row">
+        <div class="setting-label">Music Volume</div>
+        <div class="slider-track">
+          <div class="slider-fill" style="width: 70%; background: var(--surface);">
+            <div class="slider-thumb"></div>
+          </div>
+        </div>
+      </div>
+      <div class="slider-row">
+        <div class="setting-label">Sound Effects</div>
+        <div class="slider-track">
+          <div class="slider-fill" style="width: 85%; background: var(--surface);">
+            <div class="slider-thumb"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-title">Display</div>
+      <div class="theme-toggle" id="theme-toggle">
+        <button class="theme-btn active" data-theme="light">Day</button>
+        <button class="theme-btn" data-theme="dark">Night</button>
+        <button class="theme-btn" data-theme="system">Auto</button>
+      </div>
+
+      <div class="section-title">About</div>
+      <div class="setting-row">
+        <div class="setting-label">Version</div>
+        <span class="setting-value">1.0.0 (1)</span>
+      </div>
+      <div class="setting-row" style="cursor: pointer;">
+        <div class="setting-label">Privacy Policy</div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--light)" stroke-width="1.8" style="opacity:0.6;"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </div>
+      <div style="height: 24px;"></div>
+    </div>
+
+    <div class="bottom-nav">
+      <div class="nav-item" data-goto="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l9-9 9 9"/><path d="M5 10v10h14V10"/></svg></div>
+      <div class="nav-item" data-goto="profile"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+      <div class="nav-item" data-goto="customize"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="15.5" r="2.5"/><circle cx="8.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2z"/></svg></div>
+      <div class="nav-item active" data-goto="settings"><svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 00.12-.61l-1.92-3.32a.49.49 0 00-.59-.22l-2.39.96c-.5-.38-1.03-.69-1.62-.94l-.36-2.54a.484.484 0 00-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.25-1.13.57-1.62.94l-2.39-.96a.49.49 0 00-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 00-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.69 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.25 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1115.6 12 3.6 3.6 0 0112 15.6z"/></svg></div>
+    </div>
+  </div>
+
+  <!-- ═══ GAME ═══ -->
+  <div class="screen game-screen" id="game">
+    <button class="back-btn" data-goto="home">✕ Exit</button>
+    <div class="bar">
+      <div class="av"><span>Μ</span></div>
+      <span class="bar-name">Mikhail — Easy</span>
+      <span class="pips">Pips: 167</span>
+    </div>
+    <div class="board-area">
+      <div class="board-canvas">
+        <div class="board-frame">
+          <div class="board-half">
+            <div class="points-row">
+              <div class="point up dark-pt"></div>
+              <div class="point up light-pt"></div>
+              <div class="point up dark-pt"></div>
+              <div class="point up light-pt"></div>
+              <div class="point up dark-pt"></div>
+              <div class="point up light-pt"></div>
+            </div>
+            <div class="board-center">
+              <div class="dice-area">
+                <div class="die">4</div>
+                <div class="die">2</div>
+              </div>
+            </div>
+            <div class="points-row">
+              <div class="point down light-pt"></div>
+              <div class="point down dark-pt"></div>
+              <div class="point down light-pt"></div>
+              <div class="point down dark-pt"></div>
+              <div class="point down light-pt"></div>
+              <div class="point down dark-pt"></div>
+            </div>
+          </div>
+          <div class="board-bar"></div>
+          <div class="board-half">
+            <div class="points-row">
+              <div class="point up light-pt"></div>
+              <div class="point up dark-pt"></div>
+              <div class="point up light-pt"></div>
+              <div class="point up dark-pt"></div>
+              <div class="point up light-pt"></div>
+              <div class="point up dark-pt"></div>
+            </div>
+            <div class="board-center"></div>
+            <div class="points-row">
+              <div class="point down dark-pt"></div>
+              <div class="point down light-pt"></div>
+              <div class="point down dark-pt"></div>
+              <div class="point down light-pt"></div>
+              <div class="point down dark-pt"></div>
+              <div class="point down light-pt"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="dialogue">
+      <span class="m-label">Μ </span>
+      <span class="line">Let's see what the dice have for us.</span>
+    </div>
+    <div class="bar">
+      <div class="av inactive"><span>P</span></div>
+      <span class="bar-name">You</span>
+      <span class="pips">Pips: 167</span>
+    </div>
+    <div style="padding: 12px 16px; text-align: center;">
+      <button style="background: var(--surface); color: var(--primary); border: none; border-radius: 8px; padding: 12px 40px; font-family: Poppins,sans-serif; font-weight: 600; font-size: 14px; cursor: pointer;" data-goto="victory">Simulate Win →</button>
+    </div>
+  </div>
+
+  <!-- ═══ VICTORY ═══ -->
+  <div class="screen victory" id="victory">
+    <div class="banner">
+      <div class="trophy-icon">
+        <svg width="72" height="72" viewBox="0 0 24 24" fill="var(--surface)" stroke="none">
+          <path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/>
+        </svg>
+      </div>
+      <div class="title">ΝΙΚΗ!</div>
+      <div class="subtitle">Victory!</div>
+    </div>
+    <div class="mikhail-react">
+      <div class="mr-av">Μ</div>
+      <div class="mr-text">Μπράβο, ρε! You played like a true Greek today.</div>
+    </div>
+    <div class="score-box">
+      <div class="score-row"><span>Result</span><span>Gammon!</span></div>
+      <div class="score-row"><span>Multiplier</span><span>2×</span></div>
+      <div class="score-row"><span>Cube</span><span>2×</span></div>
+      <div class="divider"></div>
+      <div class="score-row total"><span>Total Points</span><span>4</span></div>
+    </div>
+    <div class="buttons">
+      <button class="play-again" data-goto="difficulty">PLAY AGAIN</button>
+      <div class="secondary-btns">
+        <button data-goto="difficulty">Difficulty</button>
+        <button data-goto="home">Home</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TUTORIAL ═══ -->
+  <div class="screen tutorial" id="tutorial">
+    <div class="back-arrow" data-goto="home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="tutorial-progress" style="width: 16.6%;"></div>
+    </div>
+    <div class="scroll" id="tutorial-content">
+      <!-- Populated by JS -->
+    </div>
+    <div class="nav-btns" id="tutorial-nav">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- ═══ ONLINE LOBBY ═══ -->
+  <div class="screen lobby" id="lobby">
+    <div class="back-arrow" data-goto="home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back
+    </div>
+    <div class="scroll">
+      <div class="page-title">Play Online</div>
+
+      <div class="player-card">
+        <div class="pl-av">P</div>
+        <div>
+          <div class="pl-name">Player</div>
+          <div class="pl-info">Rating: 1045 · 12 games</div>
+          <div class="pl-record"><span class="w">7W</span> &nbsp; <span class="l">5L</span></div>
+        </div>
+      </div>
+
+      <div class="section-title">Find a game</div>
+
+      <div class="lobby-card" data-goto="game">
+        <div class="lc-icon">⚡</div>
+        <div>
+          <div class="lc-title">Quick Match</div>
+          <div class="lc-sub">Find an opponent near your rating</div>
+        </div>
+        <div class="lc-chev">›</div>
+      </div>
+
+      <div class="lobby-card">
+        <div class="lc-icon">➕</div>
+        <div>
+          <div class="lc-title">Create Room</div>
+          <div class="lc-sub">Invite a friend with a code or QR</div>
+        </div>
+        <div class="lc-chev">›</div>
+      </div>
+
+      <div class="lobby-card">
+        <div class="lc-icon">🔑</div>
+        <div>
+          <div class="lc-title">Join Room</div>
+          <div class="lc-sub">Enter a room code or scan QR</div>
+        </div>
+        <div class="lc-chev">›</div>
+      </div>
+      <div style="height: 24px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="screen-indicator" id="indicator">Splash</div>
+
+<script>
+  const screens = {
+    splash: 'Splash',
+    onboarding: 'Onboarding',
+    home: 'Home',
+    difficulty: 'Difficulty',
+    profile: 'Profile',
+    customize: 'Customize',
+    settings: 'Settings',
+    game: 'Game',
+    victory: 'Victory',
+    tutorial: 'Tutorial',
+    lobby: 'Online Lobby'
+  };
+
+  let current = 'splash';
+
+  function navigate(target) {
+    if (target === current || !document.getElementById(target)) return;
+
+    const prev = document.getElementById(current);
+    const next = document.getElementById(target);
+
+    prev.classList.remove('active');
+    prev.classList.add('exit-left');
+    setTimeout(() => prev.classList.remove('exit-left'), 300);
+
+    next.classList.add('active');
+    current = target;
+
+    document.getElementById('indicator').textContent = screens[target] || target;
+
+    // Init tutorial when navigating to it
+    if (target === 'tutorial') renderTutorialLesson();
+  }
+
+  // Delegate all clicks to data-goto
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-goto]');
+    if (el) {
+      e.stopPropagation();
+      navigate(el.dataset.goto);
+    }
+  });
+
+  // Tab switching
+  document.getElementById('tabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('.tab');
+    if (tab) {
+      document.querySelectorAll('#tabs .tab').forEach(t => t.classList.remove('selected'));
+      tab.classList.add('selected');
+    }
+  });
+
+  // Theme toggle
+  document.getElementById('theme-toggle').addEventListener('click', (e) => {
+    const btn = e.target.closest('.theme-btn');
+    if (btn) {
+      document.querySelectorAll('#theme-toggle .theme-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+  });
+
+  // Customization selection helpers
+  function initOptionGroup(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.addEventListener('click', (e) => {
+      const opt = e.target.closest('.option');
+      if (opt) {
+        container.querySelectorAll('.option').forEach(o => {
+          o.classList.remove('selected');
+          o.querySelector('.check').style.opacity = '0';
+        });
+        opt.classList.add('selected');
+        opt.querySelector('.check').style.opacity = '1';
+      }
+    });
+  }
+  initOptionGroup('board-options');
+  initOptionGroup('checker-options');
+  initOptionGroup('dice-options');
+
+  // ═══ TUTORIAL SYSTEM ═══
+  const lessons = [
+    {
+      icon: '⊞', title: 'The Board',
+      dialogue: "Welcome! Let me show you the tavli board. It's simpler than it looks, trust me.",
+      hasBoard: true,
+      body: "A backgammon board has <strong>24 narrow triangles</strong> called points. They alternate in color and are grouped into four quadrants of six points each.",
+      bullets: [
+        "Your <strong>home board</strong> is where you'll bear off checkers",
+        "The <strong>bar</strong> divides the board in half",
+        "Each player starts with <strong>15 checkers</strong>",
+        "Move your checkers toward your home board, then bear them off"
+      ]
+    },
+    {
+      icon: '🎲', title: 'Moving Checkers',
+      dialogue: "Roll the dice, move your checkers. Easy! But there are rules, of course.",
+      hasBoard: true,
+      body: "Roll two dice at the start of each turn. Each die gives you a <strong>separate move</strong> — you can move one checker twice or two checkers once each.",
+      bullets: [
+        "You <strong>must</strong> use both dice if possible",
+        "Doubles let you move <strong>four times</strong> instead of two",
+        "You can only land on open points, your own points, or single opponents"
+      ]
+    },
+    {
+      icon: '⚔', title: 'Hitting & The Bar',
+      dialogue: "A single checker alone on a point? That's a blot — vulnerable!",
+      hasBoard: true,
+      body: "A single checker on a point is called a <strong>blot</strong>. If your opponent lands on it, your checker gets sent to the <strong>bar</strong>.",
+      bullets: [
+        "A hit checker must <strong>re-enter</strong> from the bar",
+        "Re-entry is into your opponent's home board",
+        "You <strong>cannot</strong> make other moves until all bar checkers re-enter",
+        "Build <strong>points</strong> (2+ checkers) to protect against hits"
+      ]
+    },
+    {
+      icon: '🏆', title: 'Bearing Off',
+      dialogue: "This is the final stretch! Get all your checkers home, then start removing them.",
+      hasBoard: true,
+      body: "Once <strong>all 15 of your checkers</strong> are in your home board, you can begin bearing off — removing checkers from the board.",
+      bullets: [
+        "Roll a number matching a point with a checker to bear it off",
+        "If no checker is on the rolled point, move from a higher point",
+        "First player to bear off all checkers <strong>wins</strong>",
+        "If the loser hasn't borne off any: that's a <strong>gammon</strong> (2× points)"
+      ]
+    },
+    {
+      icon: '💡', title: 'Strategy Tips',
+      dialogue: "Now you know the rules. Let me share some kafeneio wisdom...",
+      hasBoard: true,
+      body: "Good backgammon is about <strong>balance</strong> — offense and defense, risk and safety.",
+      bullets: [
+        "<strong>Make points:</strong> Two or more checkers on a point block your opponent",
+        "<strong>Build a prime:</strong> 6 consecutive points = an impassable wall",
+        "<strong>Anchor:</strong> Hold a point in your opponent's home board as insurance",
+        "Don't leave blots in front of your opponent's checkers",
+        "When ahead in the race, <strong>avoid contact</strong>; when behind, <strong>seek it</strong>"
+      ]
+    },
+    {
+      icon: '🎲', title: 'The Doubling Cube',
+      dialogue: "The cube adds a whole layer of strategy. It's what separates beginners from masters.",
+      hasBoard: false,
+      body: "The doubling cube starts at <strong>1</strong> in the center. Before rolling, a player may propose to double the stakes.",
+      bullets: [
+        "Your opponent can <strong>accept</strong> (take) or <strong>refuse</strong> (drop)",
+        "If they drop, they lose the current stake immediately",
+        "If they take, the cube moves to their side at double value",
+        "Only the player holding the cube can <strong>redouble</strong>",
+        "Cube values: 2 → 4 → 8 → 16 → 32 → 64"
+      ]
+    }
+  ];
+
+  let currentLesson = 0;
+
+  function renderTutorialLesson() {
+    const lesson = lessons[currentLesson];
+    const content = document.getElementById('tutorial-content');
+    const nav = document.getElementById('tutorial-nav');
+    const progress = document.getElementById('tutorial-progress');
+
+    progress.style.width = ((currentLesson + 1) / lessons.length * 100) + '%';
+
+    let html = `
+      <div class="lesson-header">
+        <div class="lesson-icon">${lesson.icon}</div>
+        <div class="lesson-title">${lesson.title}</div>
+      </div>
+      <div class="mikhail-box">
+        <div class="mb-av">Μ</div>
+        <div class="mb-text">${lesson.dialogue}</div>
+      </div>
+    `;
+
+    if (lesson.hasBoard) {
+      html += `<div class="mini-board"><span class="mb-label">[ Board Diagram ]</span></div>`;
+    }
+
+    html += `<div class="body-text">${lesson.body}</div>`;
+
+    if (lesson.bullets) {
+      html += '<ul class="bullet-list">';
+      lesson.bullets.forEach(b => html += `<li>${b}</li>`);
+      html += '</ul>';
+    }
+
+    content.innerHTML = html;
+    content.scrollTop = 0;
+
+    let navHtml = '';
+    if (currentLesson > 0) {
+      navHtml += `<button class="nav-btn secondary" onclick="changeTutorialLesson(-1)">Previous</button>`;
+    }
+    if (currentLesson < lessons.length - 1) {
+      navHtml += `<button class="nav-btn primary" onclick="changeTutorialLesson(1)">Next</button>`;
+    } else {
+      navHtml += `<button class="nav-btn primary" data-goto="home">Start Playing!</button>`;
+    }
+    nav.innerHTML = navHtml;
+  }
+
+  function changeTutorialLesson(delta) {
+    currentLesson = Math.max(0, Math.min(lessons.length - 1, currentLesson + delta));
+    renderTutorialLesson();
+  }
+
+  // Auto-advance splash after 2.5s
+  setTimeout(() => {
+    if (current === 'splash') navigate('onboarding');
+  }, 2500);
+</script>
+
+</body>
+</html>

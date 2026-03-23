@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/colors.dart';
 import '../../ai/difficulty/difficulty_level.dart';
 import '../../../shared/services/progression_service.dart';
+import '../../../shared/services/settings_service.dart';
+import '../domain/engine/variants/game_variant.dart';
 
-/// Difficulty selection screen — pick which Mikhail to face.
+/// Difficulty selection screen — pick which difficulty to face.
 class DifficultyScreen extends StatefulWidget {
-  const DifficultyScreen({super.key});
+  final GameVariant variant;
+
+  const DifficultyScreen({super.key, this.variant = GameVariant.portes});
 
   @override
   State<DifficultyScreen> createState() => _DifficultyScreenState();
@@ -23,7 +28,6 @@ class _DifficultyScreenState extends State<DifficultyScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     final overall = _progression.overallStats;
 
     return Scaffold(
@@ -35,34 +39,36 @@ class _DifficultyScreenState extends State<DifficultyScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(TavliSpacing.md),
         children: [
           // Mikhail portrait area with overall stats.
           Container(
             height: 100,
-            margin: const EdgeInsets.only(bottom: 20),
+            margin: const EdgeInsets.only(bottom: TavliSpacing.md),
             decoration: BoxDecoration(
-              color: colors.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(12),
+              color: TavliColors.primary,
+              border: Border.all(color: TavliColors.background),
+              borderRadius: BorderRadius.circular(TavliRadius.md),
             ),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Μιχαήλ', style: theme.textTheme.headlineLarge),
+                  Text(SettingsService.instance.botPersonality.greekName,
+                      style: theme.textTheme.headlineLarge),
                   const SizedBox(height: 4),
                   if (overall.totalGames > 0)
                     Text(
                       '${overall.wins}W – ${overall.losses}L · Best streak: ${overall.bestStreak}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.secondary,
+                        color: TavliColors.primary,
                       ),
                     )
                   else
                     Text(
                       'Choose your opponent',
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colors.secondary,
+                        color: TavliColors.primary,
                       ),
                     ),
                 ],
@@ -75,7 +81,10 @@ class _DifficultyScreenState extends State<DifficultyScreen> {
               level: level,
               stats: _progression.statsFor(level),
               isLocked: !_progression.isUnlocked(level),
-              onTap: () => context.push('/game', extra: level),
+              onTap: () => context.push('/game', extra: {
+                'difficulty': level,
+                'variant': widget.variant,
+              }),
             ),
         ],
       ),
@@ -105,10 +114,10 @@ class _DifficultyCard extends StatelessWidget {
       };
 
   Color _accent(ColorScheme colors) => switch (level) {
-        DifficultyLevel.easy => const Color(0xFF6B8E4E),
+        DifficultyLevel.easy => TavliColors.success,
         DifficultyLevel.easyWithHelp => colors.secondary,
         DifficultyLevel.medium => colors.tertiary,
-        DifficultyLevel.hard => const Color(0xFFC67B5C),
+        DifficultyLevel.hard => TavliColors.hitEffect,
         DifficultyLevel.pappous => colors.error,
       };
 
@@ -120,13 +129,19 @@ class _DifficultyCard extends StatelessWidget {
 
     return Opacity(
       opacity: isLocked ? 0.5 : 1.0,
-      child: Card(
+      child: Container(
         margin: const EdgeInsets.only(bottom: 10),
+        decoration: BoxDecoration(
+          color: TavliColors.primary,
+          border: Border.all(color: TavliColors.background),
+          borderRadius: BorderRadius.circular(TavliRadius.lg),
+          boxShadow: TavliShadows.xsmall,
+        ),
         child: InkWell(
           onTap: isLocked ? null : onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(TavliRadius.lg),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(TavliSpacing.md),
             child: Row(
               children: [
                 Container(
@@ -149,13 +164,14 @@ class _DifficultyCard extends StatelessWidget {
                             level.greekName,
                             style: theme.textTheme.bodyLarge?.copyWith(
                               fontWeight: FontWeight.w600,
+                              color: TavliColors.light,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
                             '(${level.englishName})',
                             style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colors.onSurface.withValues(alpha: 0.6),
+                              color: TavliColors.light,
                               fontSize: 13,
                             ),
                           ),
@@ -165,7 +181,7 @@ class _DifficultyCard extends StatelessWidget {
                       Text(
                         level.description,
                         style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurface.withValues(alpha: 0.7),
+                          color: TavliColors.light,
                           fontSize: 13,
                         ),
                       ),
@@ -212,7 +228,7 @@ class _DifficultyCard extends StatelessWidget {
                   ),
                 ),
                 if (!isLocked)
-                  Icon(Icons.play_arrow, color: colors.secondary, size: 28),
+                  const Icon(Icons.play_arrow, color: TavliColors.light, size: 28),
               ],
             ),
           ),
@@ -221,3 +237,4 @@ class _DifficultyCard extends StatelessWidget {
     );
   }
 }
+

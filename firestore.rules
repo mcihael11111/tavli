@@ -1,0 +1,165 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helpers ──────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── Players ──────────────────────────────────────────────────────────
+    // Each player can only read and write their own profile.
+
+    match /players/{uid} {
+      allow read:  if isOwner(uid);
+      allow create: if isOwner(uid)
+                    && request.resource.data.uid == uid
+                    && request.resource.data.displayName is string
+                    && request.resource.data.rating is int
+                    && request.resource.data.gamesPlayed is int
+                    && request.resource.data.wins is int
+                    && request.resource.data.losses is int
+                    && request.resource.data.createdAt is string;
+      allow update: if isOwner(uid)
+                    && request.resource.data.uid == uid;
+    }
+
+    // ── Game Rooms ───────────────────────────────────────────────────────
+    // Both players can read the room.
+    // Only the creator can create a room.
+    // Only a participant whose turn it is (or who is responding to a double /
+    // updating heartbeat) can write.
+
+    match /gameRooms/{gameId} {
+      // True if the authenticated user is player1 or player2 in this room.
+      function isParticipant() {
+        return isSignedIn() && (
+          request.auth.uid == resource.data.players.player1.uid ||
+          (resource.data.players.keys().hasAny(['player2']) &&
+           request.auth.uid == resource.data.players.player2.uid)
+        );
+      }
+
+      // True if the authenticated user is player1 or player2 in the
+      // *incoming* data (used for create where resource.data is the new doc).
+      function isParticipantIncoming() {
+        return isSignedIn() && (
+          request.auth.uid == request.resource.data.players.player1.uid ||
+          (request.resource.data.players.keys().hasAny(['player2']) &&
+           request.auth.uid == request.resource.data.players.player2.uid)
+        );
+      }
+
+      // The player key ('player1' or 'player2') for the current user.
+      function myPlayerKey() {
+        return request.auth.uid == resource.data.players.player1.uid
+          ? 'player1'
+          : 'player2';
+      }
+
+      // True if it is the authenticated user's turn.
+      function isMyTurn() {
+        return resource.data.currentTurn == myPlayerKey();
+      }
+
+      allow read: if isSignedIn() && isParticipant();
+
+      // Only the creator (player1) can create a room; it must start in
+      // 'waiting' status with the creator as player1.
+      allow create: if isSignedIn()
+                    && request.resource.data.players.player1.uid == request.auth.uid
+                    && request.resource.data.status == 'waiting'
+                    && request.resource.data.gameId is string
+                    && request.resource.data.currentTurn is string
+                    && request.resource.data.variant is string;
+
+      // Participants can update: joining, submitting moves on their turn,
+      // doubling actions, heartbeats, ending/abandoning.
+      allow update: if isSignedIn() && (
+        // Player 2 joining (room transitions from waiting to inProgress)
+        (resource.data.status == 'waiting' &&
+         request.resource.data.status == 'inProgress' &&
+         request.resource.data.players.keys().hasAny(['player2']) &&
+         request.resource.data.players.player2.uid == request.auth.uid) ||
+
+        // Active participant updating during play
+        isParticipant()
+      );
+
+      // Chat subcollection — participants can read; only a participant can
+      // create a message, and only under their own UID.
+      match /chat/{messageId} {
+        allow read: if isSignedIn() && (
+          request.auth.uid == get(/databases/$(database)/documents/gameRooms/$(gameId)).data.players.player1.uid ||
+          (get(/databases/$(database)/documents/gameRooms/$(gameId)).data.players.keys().hasAny(['player2']) &&
+           request.auth.uid == get(/databases/$(database)/documents/gameRooms/$(gameId)).data.players.player2.uid)
+        );
+
+        allow create: if isSignedIn()
+                      && request.resource.data.senderUid == request.auth.uid
+                      && request.resource.data.senderName is string
+                      && request.resource.data.messageIndex is int;
+      }
+    }
+
+    // ── Matchmaking Queue ────────────────────────────────────────────────
+    // Players can add/remove/update themselves. Everyone in the queue can
+    // read entries to find opponents.
+
+    match /matchmakingQueue/{uid} {
+      allow read:   if isSignedIn();
+      allow create: if isOwner(uid)
+                    && request.resource.data.uid == uid
+                    && request.resource.data.name is string
+                    && request.resource.data.rating is int
+                    && request.resource.data.status is string;
+      allow update: if isSignedIn()
+                    && (isOwner(uid) || request.resource.data.status == 'matched');
+      allow delete: if isOwner(uid);
+    }
+
+    // ── Friend Requests ──────────────────────────────────────────────────
+    // Document ID: auto-generated.
+    // Fields: fromUid, toUid, fromName, status ('pending'|'accepted'|'rejected'),
+    //         createdAt.
+    // Sender can create. Recipient can update status. Either party can read.
+
+    match /friendRequests/{requestId} {
+      function isSender() {
+        return isSignedIn() && request.auth.uid == resource.data.fromUid;
+      }
+      function isRecipient() {
+        return isSignedIn() && request.auth.uid == resource.data.toUid;
+      }
+
+      allow read: if isSignedIn() && (isSender() || isRecipient());
+
+      allow create: if isSignedIn()
+                    && request.resource.data.fromUid == request.auth.uid
+                    && request.resource.data.toUid is string
+                    && request.resource.data.fromName is string
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.createdAt is string;
+
+      // Only the recipient can accept or reject.
+      allow update: if isRecipient()
+                    && request.resource.data.status in ['accepted', 'rejected']
+                    && request.resource.data.fromUid == resource.data.fromUid
+                    && request.resource.data.toUid == resource.data.toUid;
+
+      // Either party can delete (e.g. cancel or clean up).
+      allow delete: if isSender() || isRecipient();
+    }
+
+    // ── Deny everything else ─────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

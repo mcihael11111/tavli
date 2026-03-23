@@ -1,4 +1,6 @@
-# Tavli Design Standards
+> **DEPRECATED** — This document has been superseded by [`design/06_UNIFORM_DESIGN.md`](design/06_UNIFORM_DESIGN.md) and [`design/02_COMPONENTS.md`](design/02_COMPONENTS.md).
+
+# Tavli Design Standards (Deprecated)
 
 ## Overview
 

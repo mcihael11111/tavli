@@ -1,0 +1,45 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# macOS
+.DS_Store
+*.xcworkspace
+*.xcuserdata
+
+# Android
+android/.gradle/
+android/local.properties
+android/app/debug/
+android/app/profile/
+android/app/release/
+*.jks
+*.keystore
+key.properties
+
+# iOS
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+
+# Secrets
+.env
+*.env
+google-services.json
+GoogleService-Info.plist
+firebase_app_id_file.json
+
+# Generated
+*.g.dart
+*.freezed.dart
+*.mocks.dart

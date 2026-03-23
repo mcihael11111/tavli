@@ -1,43 +1,72 @@
-import 'dart:ui';
+import 'package:flutter/painting.dart';
 
-/// Tavli color palette — warm, modern, accessibility-checked.
+/// Tavli color palette — 5 core colors with WCAG-compliant state shades.
 ///
-/// Core palette: 6 warm browns from the brand identity.
-/// Extended palette: derived shades for WCAG AA/AAA compliance.
-/// Game colors: separate set for Flame board rendering.
+/// Design system: docs/design/01_DESIGN_SYSTEM.md
+/// Accessibility: docs/design/05_ACCESSIBILITY.md
 abstract final class TavliColors {
-  // ── Core Palette ───────────────────────────────────────────
-  /// Lightest — primary background (light theme).
-  static const cream = Color(0xFFEDE0D4);
+  // ── Core Palette (5 colors) ──────────────────────────────────
+  /// Warm beige — page backgrounds, scaffold.
+  static const background = Color(0xFFD4C2A8);
 
-  /// Light warm — cards, surfaces, secondary background.
-  static const tan = Color(0xFFE6CCB2);
+  /// Warm brown — cards, elevated surfaces, slider tracks.
+  static const surface = Color(0xFFA67F5B);
 
-  /// Medium — outlines, borders, dividers, inactive states.
-  static const sand = Color(0xFFDDB892);
+  /// Dark brown — primary buttons, borders, interactive emphasis.
+  static const primary = Color(0xFF6B4F3A);
 
-  /// Warm brown — decorative elements, icons (dark mode), accent.
-  static const mocha = Color(0xFFB08968);
+  /// Near-black — body text on light backgrounds.
+  static const text = Color(0xFF1A1A1A);
 
-  /// Dark accent — interactive highlights, secondary CTA.
-  static const sienna = Color(0xFF9C6644);
+  /// Off-white — text on dark surfaces, button labels on primary.
+  static const light = Color(0xFFF3F0EB);
 
-  /// Darkest core — primary buttons, app bar, heading text.
-  static const chocolate = Color(0xFF7F5539);
+  // ── State Shades (derived from core, for interaction states only) ─
+  /// Background hover: darken 8%.
+  static const backgroundHover = Color(0xFFC4B298);
 
-  // ── Extended Palette (accessibility-derived) ───────────────
-  /// Near-black warm — body text (light theme), dark-mode background.
-  /// Contrast: 12.86:1 on cream (AAA), 10.82:1 on tan (AAA).
-  static const espresso = Color(0xFF2C1A0E);
+  /// Background active/pressed: darken 12%.
+  static const backgroundActive = Color(0xFFBAA88E);
 
-  /// Dark warm — dark-mode card/surface.
-  static const darkRoast = Color(0xFF362117);
+  /// Surface hover: darken 8%.
+  static const surfaceHover = Color(0xFF997353);
 
-  /// Dark warm elevated — dark-mode elevated surfaces.
-  static const darkSurface = Color(0xFF4A3020);
+  /// Surface active/pressed: darken 12%.
+  static const surfaceActive = Color(0xFF906A4A);
 
-  /// Near-white warm — text on dark primary buttons.
-  static const latte = Color(0xFFF5EFE8);
+  /// Primary hover: lighten 8%.
+  static const primaryHover = Color(0xFF7A5E49);
+
+  /// Primary active/pressed: lighten 12%.
+  static const primaryActive = Color(0xFF846852);
+
+  /// Light hover: darken 4%.
+  static const lightHover = Color(0xFFE9E6E1);
+
+  /// Light active/pressed: darken 8%.
+  static const lightActive = Color(0xFFDFDCD7);
+
+  /// Text hover: lighten 8%.
+  static const textHover = Color(0xFF333333);
+
+  /// Text active/pressed: lighten 12%.
+  static const textActive = Color(0xFF4D4D4D);
+
+  // ── Dark Mode Core ───────────────────────────────────────────
+  /// Dark mode background.
+  static const backgroundDark = Color(0xFF1A1A1A);
+
+  /// Dark mode surface.
+  static const surfaceDark = Color(0xFF3D2E20);
+
+  /// Dark mode primary (inverted to warm beige).
+  static const primaryDark = Color(0xFFD4C2A8);
+
+  /// Dark mode text.
+  static const textDark = Color(0xFFF3F0EB);
+
+  /// Dark mode light (inverted to dark brown).
+  static const lightDark = Color(0xFF2C2218);
 
   // ── Semantic Colors (shared across themes) ─────────────────
   static const success = Color(0xFF6B8E4E);
@@ -56,11 +85,29 @@ abstract final class TavliColors {
   static const selectionGlow = Color(0xFF9C6644);
   static const hitEffect = Color(0xFFC67B5C);
 
+  /// Bot thinking background — cool blue-grey (contrast with warm primary).
+  static const botThinkingBg = Color(0xFF4A6B7C);
+
+  /// Bot thinking banner background.
+  static const botThinkingBanner = Color(0xFF3D5A6E);
+
+  /// Move highlight — bright green for valid destinations.
+  static const moveHighlight = Color(0xFF4CAF50);
+
+  /// Move highlight for hit destinations — red-tinted.
+  static const moveHighlightHit = Color(0xFFE57373);
+
+  /// Selection green — for selected checker ring.
+  static const selectionGreen = Color(0xFF66BB6A);
+
+  /// Complete button — green.
+  static const completeButton = Color(0xFF4CAF50);
+
   // Board Set 1: Μαόνι (Mahogany & Olive Wood)
-  static const mahoganyLight = Color(0xFFA0522D);
+  static const mahoganyLight = Color(0xFFB86B3A);
   static const mahoganyDark = Color(0xFF8B4513);
-  static const oliveWoodLight = Color(0xFFC8B560);
-  static const oliveWoodDark = Color(0xFF9A8B3C);
+  static const oliveWoodLight = Color(0xFFD4C06A);
+  static const oliveWoodDark = Color(0xFF7A6B2C);
 
   // Board Set 2: Σμαραγδί (Mahogany & Teal)
   static const tealFrameLight = Color(0xFF8B4226);
@@ -80,19 +127,61 @@ abstract final class TavliColors {
   static const ashLight = Color(0xFFC4B28E);
   static const ashDark = Color(0xFFA89970);
 
-  // ── Legacy aliases (for backward compatibility in game screens) ─
+  // ── Legacy Aliases (backward compatibility for existing code) ──
+  static const cream = light;
+  static const tan = Color(0xFFE6CCB2);
+  static const sand = Color(0xFFDDB892);
+  static const mocha = Color(0xFFB08968);
+  static const sienna = Color(0xFF9C6644);
+  static const chocolate = primary;
+  static const espresso = text;
+  static const darkRoast = surfaceDark;
+  static const darkSurface = Color(0xFF4A3020);
+  static const latte = light;
   static const aegeanBlue = Color(0xFF1A5C5C);
   static const warmLamplight = Color(0xFFFFF5E0);
   static const successBestMove = success;
   static const warningCaution = warning;
   static const errorBadMove = error;
-  static const kafeneioBrown = chocolate;
-  static const parchment = cream;
+  static const kafeneioBrown = primary;
+  static const parchment = light;
   static const oliveGold = sienna;
-  static const marbleWhite = latte;
+  static const marbleWhite = light;
   static const terracotta = hitEffect;
-  static const nightWood = espresso;
-  static const brightText = cream;
+  static const nightWood = text;
+  static const brightText = light;
   static const dimText = sand;
-  static const fadedParchment = darkRoast;
+  static const fadedParchment = surfaceDark;
+}
+
+/// Spacing tokens — 4px base unit.
+/// Design system: docs/design/01_DESIGN_SYSTEM.md#spacing-system
+abstract final class TavliSpacing {
+  static const double xxs = 4;
+  static const double xs = 8;
+  static const double sm = 12;
+  static const double md = 16;
+  static const double lg = 24;
+  static const double xl = 32;
+  static const double xxl = 48;
+}
+
+/// Border radius tokens.
+/// Design system: docs/design/01_DESIGN_SYSTEM.md#border-radius
+abstract final class TavliRadius {
+  static const double xs = 4;
+  static const double sm = 8;
+  static const double md = 12;
+  static const double lg = 16;
+  static const double xl = 24;
+  static const double full = 100;
+}
+
+/// Shadow/elevation tokens.
+/// Design system: docs/design/01_DESIGN_SYSTEM.md#elevation--shadows
+abstract final class TavliShadows {
+  static const xsmall = [BoxShadow(offset: Offset(0, 1), blurRadius: 2, color: Color(0x4D000000))];
+  static const small = [BoxShadow(blurRadius: 8, color: Color(0x1A000000))];
+  static const medium = [BoxShadow(offset: Offset(0, 4), blurRadius: 16, color: Color(0x26000000))];
+  static const large = [BoxShadow(blurRadius: 48, color: Color(0x33000000))];
 }

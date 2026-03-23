@@ -7,21 +7,27 @@ import '../../../core/constants/colors.dart';
 import '../../../flame_game/tavli_game.dart';
 import '../../../shared/services/audio_service.dart';
 import '../../../shared/services/settings_service.dart';
+import '../../ai/personality/bot_personality.dart';
 import 'package:flutter/semantics.dart';
 import '../data/models/board_state.dart';
 import '../data/models/game_state.dart';
-import '../domain/engine/move_quality.dart';
 import '../../ai/difficulty/difficulty_level.dart';
 import '../../ai/engine/ai_player.dart';
 import '../../ai/mikhail/dialogue_event.dart';
 import '../../ai/mikhail/dialogue_system.dart';
+import '../domain/engine/variants/game_variant.dart';
 import 'providers/game_provider.dart';
 
 /// Main game screen: hosts the Flame board + Flutter UI overlay.
 class GameScreen extends ConsumerStatefulWidget {
   final DifficultyLevel difficulty;
+  final GameVariant variant;
 
-  const GameScreen({super.key, required this.difficulty});
+  const GameScreen({
+    super.key,
+    required this.difficulty,
+    this.variant = GameVariant.portes,
+  });
 
   @override
   ConsumerState<GameScreen> createState() => _GameScreenState();
@@ -35,6 +41,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   bool _aiThinking = false;
   bool _navigatingToVictory = false;
 
+  BotPersonality get _personality => SettingsService.instance.botPersonality;
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +51,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _audio = AudioService();
 
     final boardSet = SettingsService.instance.boardSet;
+    final checkerSet = SettingsService.instance.checkerSet;
 
     _game = TavliGame(
       boardState: BoardState.initial(),
@@ -50,6 +59,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       onDestinationTapped: _onDestinationTapped,
       onDiceRollRequested: _onDiceRoll,
       boardSet: boardSet,
+      checkerSet: checkerSet,
     );
 
     // Allow landscape for gameplay.
@@ -60,8 +70,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     ]);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(gameProvider.notifier).newGame(difficulty: widget.difficulty);
-      _dialogue.trigger(DialogueEvent.gameStart, widget.difficulty);
+      ref.read(gameProvider.notifier).newGame(
+        difficulty: widget.difficulty,
+        variant: widget.variant,
+      );
+      _dialogue.trigger(DialogueEvent.gameStart, widget.difficulty, personality: _personality);
       _announce('Game starting. Tap to roll for first move.');
       if (mounted) setState(() {});
     });
@@ -78,7 +91,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   /// Announce to screen readers.
   void _announce(String message) {
-    SemanticsService.announce(message, TextDirection.ltr);
+    SemanticsService.sendAnnouncement(View.of(context), message, TextDirection.ltr);
   }
 
   void _onCheckerTapped(int pointIndex) {
@@ -138,8 +151,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       final after = ref.read(gameProvider);
       final p = after.openingRollPlayer ?? 0;
       final o = after.openingRollOpponent ?? 0;
-      final who = p > o ? 'You go' : 'Mikhail goes';
-      _announce('You rolled $p, Mikhail rolled $o. $who first.');
+      final botName = _personality.displayName;
+      final who = p > o ? 'You go' : '$botName goes';
+      _announce('You rolled $p, $botName rolled $o. $who first.');
       return;
     }
 
@@ -153,7 +167,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     if (afterRoll.currentRoll != null) {
       _announce('You rolled ${afterRoll.currentRoll!.die1} and ${afterRoll.currentRoll!.die2}.');
       if (afterRoll.currentRoll!.isDoubles) {
-        _dialogue.trigger(DialogueEvent.playerRollDoubles, widget.difficulty);
+        _dialogue.trigger(DialogueEvent.playerRollDoubles, widget.difficulty, personality: _personality);
         if (mounted) setState(() {});
         _audio.playSfx(SfxType.diceDoublesChime);
         HapticFeedback.heavyImpact();
@@ -176,11 +190,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
 
     if (equityLoss > 0.06) {
-      _dialogue.trigger(DialogueEvent.teachingMistakeExplain, widget.difficulty);
+      _dialogue.trigger(DialogueEvent.teachingMistakeExplain, widget.difficulty, personality: _personality);
     } else if (equityLoss > 0.02) {
-      _dialogue.trigger(DialogueEvent.playerBadMove, widget.difficulty);
+      _dialogue.trigger(DialogueEvent.playerBadMove, widget.difficulty, personality: _personality);
     } else {
-      _dialogue.trigger(DialogueEvent.playerGoodMove, widget.difficulty);
+      _dialogue.trigger(DialogueEvent.playerGoodMove, widget.difficulty, personality: _personality);
     }
     if (mounted) setState(() {});
   }
@@ -257,6 +271,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Future<void> _handleAiTurn() async {
     if (_aiThinking) return;
     _aiThinking = true;
+    if (mounted) setState(() {});
 
     await Future.delayed(const Duration(milliseconds: 600));
     if (!mounted) { _aiThinking = false; return; }
@@ -271,6 +286,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         // AI offers double — wait for player response via UI.
         notifier.aiOfferDouble();
         _aiThinking = false;
+        if (mounted) setState(() {});
         return;
       }
     }
@@ -294,7 +310,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     // Dialogue for doubles.
     if (afterRoll.currentRoll!.isDoubles) {
-      _dialogue.trigger(DialogueEvent.mikhailRollDoubles, widget.difficulty);
+      _dialogue.trigger(DialogueEvent.mikhailRollDoubles, widget.difficulty, personality: _personality);
       if (mounted) setState(() {});
     }
 
@@ -312,7 +328,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
         if (move.isHit) {
           _audio.playSfx(SfxType.checkerHit);
-          _dialogue.trigger(DialogueEvent.mikhailHit, widget.difficulty);
+          _dialogue.trigger(DialogueEvent.mikhailHit, widget.difficulty, personality: _personality);
           if (mounted) setState(() {});
         } else if (move.isBearOff) {
           _audio.playSfx(SfxType.checkerBearOff);
@@ -326,10 +342,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
         final current = ref.read(gameProvider);
         if (current.phase == GamePhase.gameOver) {
-          _dialogue.trigger(DialogueEvent.mikhailWin, widget.difficulty);
+          _dialogue.trigger(DialogueEvent.mikhailWin, widget.difficulty, personality: _personality);
           if (mounted) setState(() {});
           _navigateToVictory(current);
           _aiThinking = false;
+          if (mounted) setState(() {});
           return;
         }
       }
@@ -346,11 +363,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
 
     _aiThinking = false;
+    if (mounted) setState(() {});
   }
 
   Future<void> _handleAiDoubleResponse() async {
     if (_aiThinking) return;
     _aiThinking = true;
+    if (mounted) setState(() {});
 
     await Future.delayed(const Duration(milliseconds: 800));
     if (!mounted) { _aiThinking = false; return; }
@@ -359,13 +378,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final notifier = ref.read(gameProvider.notifier);
 
     if (_aiPlayer.shouldAcceptDouble(gs.board, widget.difficulty)) {
-      _dialogue.trigger(DialogueEvent.gameStart, widget.difficulty); // placeholder
+      _dialogue.trigger(DialogueEvent.gameStart, widget.difficulty, personality: _personality); // placeholder
       notifier.acceptDouble();
     } else {
       notifier.declineDouble();
     }
 
     _aiThinking = false;
+    if (mounted) setState(() {});
   }
 
   void _playerAcceptsDouble() {
@@ -409,11 +429,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       if (gs.result?.winner == 1) {
         _audio.playSfx(SfxType.gameWin);
         HapticFeedback.heavyImpact();
-        _dialogue.trigger(DialogueEvent.playerWin, widget.difficulty);
+        _dialogue.trigger(DialogueEvent.playerWin, widget.difficulty, personality: _personality);
         _announce('You win!');
       } else {
         _audio.playSfx(SfxType.gameLose);
-        _announce('You lose. Mikhail wins.');
+        _announce('You lose. ${_personality.displayName} wins.');
       }
       WidgetsBinding.instance.addPostFrameCallback((_) => _navigateToVictory(gs));
     }
@@ -435,70 +455,191 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _handleAiDoubleResponse());
     }
 
-    return Scaffold(
-      backgroundColor: TavliColors.kafeneioBrown,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                _buildTopBar(gs),
-                Expanded(child: GameWidget(game: _game)),
-                _buildDialogueBar(),
-                _buildBottomBar(gs),
-              ],
-            ),
-            // Opening roll overlay.
-            if (gs.phase == GamePhase.waitingForFirstRoll)
-              _buildOpeningRollOverlay(),
-            // Doubling cube offer overlay.
-            if (gs.phase == GamePhase.doubleOffered && gs.doubleOfferedBy == 2)
-              _buildDoubleOfferOverlay(gs),
-          ],
+    final bgColor = (_aiThinking || gs.isAiTurn)
+        ? TavliColors.botThinkingBg
+        : TavliColors.primary;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      color: bgColor,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  _buildTopBar(gs),
+                  if (_aiThinking) _buildBotThinkingBanner(),
+                  Expanded(child: GameWidget(game: _game)),
+                  _buildDialogueBar(),
+                  _buildActionArea(gs),
+                  _buildBottomBar(gs),
+                ],
+              ),
+              // Opening roll overlay.
+              if (gs.phase == GamePhase.waitingForFirstRoll)
+                _buildOpeningRollOverlay(),
+              // Doubling cube offer overlay.
+              if (gs.phase == GamePhase.doubleOffered && gs.doubleOfferedBy == 2)
+                _buildDoubleOfferOverlay(gs),
+            ],
+          ),
         ),
       ),
     );
   }
 
+  Widget _buildBotThinkingBanner() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
+      color: TavliColors.botThinkingBanner,
+      child: const Center(
+        child: Text('Bot thinking',
+          style: TextStyle(
+            color: TavliColors.light,
+            fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.5,
+          )),
+      ),
+    );
+  }
+
+  Widget _buildActionArea(GameState gs) {
+    if (_aiThinking || gs.isAiTurn) return const SizedBox.shrink();
+
+    // Ready to roll → big ROLL button.
+    if (gs.phase == GamePhase.playerTurnStart && gs.isPlayerTurn) {
+      return _buildRollButton();
+    }
+
+    // Moving checkers → undo + optional COMPLETE.
+    if (gs.phase == GamePhase.movingCheckers && gs.isPlayerTurn) {
+      return _buildMoveControls(gs);
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildRollButton() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: TavliSpacing.xs),
+      child: SizedBox(
+        width: double.infinity,
+        height: 56,
+        child: ElevatedButton(
+          onPressed: _onDiceRoll,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: TavliColors.surface,
+            foregroundColor: TavliColors.light,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(TavliRadius.md),
+            ),
+          ),
+          child: const Text('ROLL',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 2)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMoveControls(GameState gs) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: TavliSpacing.xs),
+      child: Row(
+        children: [
+          const Spacer(),
+          // COMPLETE button for trivial bear-off.
+          if (ref.read(gameProvider.notifier).isTrivialBearOff())
+            Padding(
+              padding: const EdgeInsets.only(right: TavliSpacing.xs),
+              child: SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _onCompleteBearOff,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: TavliColors.completeButton,
+                    foregroundColor: TavliColors.light,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(TavliRadius.sm)),
+                  ),
+                  child: const Text('COMPLETE',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ),
+          // Large undo button.
+          if (gs.currentTurnMoves.isNotEmpty)
+            SizedBox(
+              width: 48, height: 48,
+              child: ElevatedButton(
+                onPressed: () => ref.read(gameProvider.notifier).undoMove(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: TavliColors.surface,
+                  foregroundColor: TavliColors.light,
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(TavliRadius.sm)),
+                ),
+                child: const Icon(Icons.undo, size: 24),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _onCompleteBearOff() {
+    final notifier = ref.read(gameProvider.notifier);
+    final moves = notifier.autoPlayForcedMoves();
+    for (final move in moves) {
+      if (move.isBearOff) {
+        _audio.playSfx(SfxType.checkerBearOff);
+      } else {
+        _audio.playSfx(SfxType.checkerPlace);
+      }
+    }
+    HapticFeedback.mediumImpact();
+  }
+
   Widget _buildTopBar(GameState gs) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: TavliColors.kafeneioBrown,
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: 6),
       child: Row(
         children: [
           Container(
             width: 36, height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF3D2614), // dark brown for contrast
+              color: TavliColors.surfaceDark,
               border: Border.all(
-                color: gs.isAiTurn ? TavliColors.oliveGold : TavliColors.kafeneioBrown,
+                color: gs.isAiTurn ? TavliColors.surface : TavliColors.primary,
                 width: 2,
               ),
             ),
             child: const Center(child: Text('Μ', style: TextStyle(
-              color: TavliColors.parchment, fontSize: 18, fontWeight: FontWeight.bold,
+              color: TavliColors.light, fontSize: 18, fontWeight: FontWeight.bold,
             ))),
           ),
-          const SizedBox(width: 8),
-          Text('Μιχαήλ — ${widget.difficulty.greekName}',
-            style: const TextStyle(color: TavliColors.parchment, fontSize: 14, fontWeight: FontWeight.w500)),
+          const SizedBox(width: TavliSpacing.xs),
+          Text('${_personality.greekName} — ${widget.difficulty.greekName}',
+            style: const TextStyle(color: TavliColors.light, fontSize: 14, fontWeight: FontWeight.w500)),
           const Spacer(),
           if (_aiThinking)
             const SizedBox(
               width: 16, height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(TavliColors.oliveGold),
+                valueColor: AlwaysStoppedAnimation(TavliColors.surface),
               ),
             ),
-          const SizedBox(width: 8),
+          const SizedBox(width: TavliSpacing.xs),
           if (widget.difficulty.usesDoublingCube) ...[
             _buildCubeIndicator(gs),
-            const SizedBox(width: 8),
+            const SizedBox(width: TavliSpacing.xs),
           ],
           Text('Pips: ${gs.board.pipCount(2)}',
-            style: TextStyle(color: TavliColors.parchment.withValues(alpha: 0.85), fontSize: 12)),
+            style: TextStyle(color: TavliColors.light.withValues(alpha: 0.85), fontSize: 12)),
         ],
       ),
     );
@@ -514,14 +655,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: TavliColors.oliveGold.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: TavliColors.oliveGold.withValues(alpha: 0.5)),
+        color: TavliColors.surface.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(TavliRadius.xs),
+        border: Border.all(color: TavliColors.surface.withValues(alpha: 0.5)),
       ),
       child: Text(
         '${cubeValue}x$ownerText',
         style: const TextStyle(
-          color: TavliColors.oliveGold,
+          color: TavliColors.surface,
           fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
@@ -535,14 +676,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: TavliColors.kafeneioBrown.withValues(alpha: 0.9),
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: TavliSpacing.xs),
+      color: TavliColors.primary.withValues(alpha: 0.9),
       child: Row(
         children: [
-          const Text('Μ ', style: TextStyle(fontSize: 14, color: TavliColors.oliveGold, fontWeight: FontWeight.bold)),
+          const Text('Μ ', style: TextStyle(fontSize: 14, color: TavliColors.surface, fontWeight: FontWeight.bold)),
           Expanded(
             child: Text(line,
-              style: const TextStyle(color: TavliColors.parchment, fontSize: 13, fontStyle: FontStyle.italic),
+              style: const TextStyle(color: TavliColors.light, fontSize: 14, fontStyle: FontStyle.italic),
               maxLines: 2, overflow: TextOverflow.ellipsis),
           ),
         ],
@@ -552,49 +693,50 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   Widget _buildBottomBar(GameState gs) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: TavliColors.kafeneioBrown,
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: 6),
       child: Row(
         children: [
           Container(
             width: 36, height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: const Color(0xFF3D2614), // dark brown for contrast
+              color: TavliColors.surfaceDark,
               border: Border.all(
-                color: gs.isPlayerTurn ? TavliColors.oliveGold : TavliColors.kafeneioBrown,
+                color: gs.isPlayerTurn ? TavliColors.surface : TavliColors.primary,
                 width: 2,
               ),
             ),
             child: const Center(child: Text('P', style: TextStyle(
-              color: TavliColors.parchment, fontSize: 18, fontWeight: FontWeight.bold,
+              color: TavliColors.light, fontSize: 18, fontWeight: FontWeight.bold,
             ))),
           ),
-          const SizedBox(width: 8),
-          const Text('You', style: TextStyle(color: TavliColors.parchment, fontSize: 14)),
-          const SizedBox(width: 8),
+          const SizedBox(width: TavliSpacing.xs),
+          const Text('You', style: TextStyle(color: TavliColors.light, fontSize: 14)),
+          const SizedBox(width: TavliSpacing.xs),
           Text('Pips: ${gs.board.pipCount(1)}',
-            style: TextStyle(color: TavliColors.parchment.withValues(alpha: 0.85), fontSize: 12)),
+            style: TextStyle(color: TavliColors.light.withValues(alpha: 0.85), fontSize: 12)),
           const Spacer(),
           if (gs.canPlayerDouble)
-            TextButton.icon(
-              onPressed: () => ref.read(gameProvider.notifier).offerDouble(),
-              icon: const Icon(Icons.casino, size: 16),
-              label: const Text('Double', style: TextStyle(fontSize: 12)),
-              style: TextButton.styleFrom(
-                foregroundColor: TavliColors.oliveGold,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                minimumSize: const Size(0, 32),
+            SizedBox(
+              height: 44,
+              child: ElevatedButton.icon(
+                onPressed: () => ref.read(gameProvider.notifier).offerDouble(),
+                icon: const Icon(Icons.casino, size: 20),
+                label: const Text('Double', style: TextStyle(fontSize: 14)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: TavliColors.surface,
+                  foregroundColor: TavliColors.light,
+                  minimumSize: const Size(44, 44),
+                ),
               ),
             ),
-          if (gs.currentTurnMoves.isNotEmpty && gs.isPlayerTurn)
-            IconButton(
-              onPressed: () => ref.read(gameProvider.notifier).undoMove(),
-              icon: const Icon(Icons.undo, color: TavliColors.parchment), iconSize: 20,
+          const SizedBox(width: TavliSpacing.xs),
+          SizedBox(
+            width: 44, height: 44,
+            child: IconButton(
+              onPressed: () => _showPauseMenu(context),
+              icon: const Icon(Icons.menu, color: TavliColors.light), iconSize: 24,
             ),
-          IconButton(
-            onPressed: () => _showPauseMenu(context),
-            icon: const Icon(Icons.menu, color: TavliColors.parchment), iconSize: 20,
           ),
         ],
       ),
@@ -604,18 +746,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   void _showPauseMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: TavliColors.kafeneioBrown,
+      backgroundColor: TavliColors.primary,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(TavliRadius.lg)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(TavliSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text('PAUSE', style: TextStyle(
-              color: TavliColors.parchment, fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
-            const SizedBox(height: 16),
+              color: TavliColors.light, fontSize: 21, fontWeight: FontWeight.bold, letterSpacing: 2)),
+            const SizedBox(height: TavliSpacing.md),
             _menuBtn('Resume', () => Navigator.pop(ctx)),
             _menuBtn('Resign', () {
               Navigator.pop(ctx);
@@ -623,9 +765,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             }),
             _menuBtn('New Game', () {
               Navigator.pop(ctx);
-              ref.read(gameProvider.notifier).newGame(difficulty: widget.difficulty);
+              ref.read(gameProvider.notifier).newGame(
+                difficulty: widget.difficulty,
+                variant: widget.variant,
+              );
               _dialogue.reset();
-              _dialogue.trigger(DialogueEvent.gameStart, widget.difficulty);
+              _dialogue.trigger(DialogueEvent.gameStart, widget.difficulty, personality: _personality);
               _navigatingToVictory = false;
               setState(() {});
             }),
@@ -645,59 +790,59 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       color: Colors.black54,
       child: Center(
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 40),
-          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.symmetric(horizontal: TavliSpacing.xxl),
+          padding: const EdgeInsets.all(TavliSpacing.lg),
           decoration: BoxDecoration(
-            color: const Color(0xFF3D2614),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: TavliColors.oliveGold.withValues(alpha: 0.5), width: 2),
+            color: TavliColors.surfaceDark,
+            borderRadius: BorderRadius.circular(TavliRadius.lg),
+            border: Border.all(color: TavliColors.surface.withValues(alpha: 0.5), width: 2),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Μ', style: TextStyle(
-                color: TavliColors.oliveGold, fontSize: 28, fontWeight: FontWeight.bold,
+                color: TavliColors.surface, fontSize: 27, fontWeight: FontWeight.bold,
               )),
-              const SizedBox(height: 8),
-              const Text('Mikhail offers a double!', style: TextStyle(
-                color: TavliColors.parchment, fontSize: 18, fontWeight: FontWeight.w600,
+              const SizedBox(height: TavliSpacing.xs),
+              Text('${_personality.displayName} offers a double!', style: const TextStyle(
+                color: TavliColors.light, fontSize: 18, fontWeight: FontWeight.w600,
               )),
-              const SizedBox(height: 6),
+              const SizedBox(height: TavliSpacing.xxs),
               Text(
                 'Cube goes to ${newValue}x',
                 style: TextStyle(
-                  color: TavliColors.parchment.withValues(alpha: 0.7), fontSize: 14,
+                  color: TavliColors.light.withValues(alpha: 0.7), fontSize: 14,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: TavliSpacing.xxs),
               Text(
                 'If you decline, you lose ${gs.board.doublingCubeValue} point${gs.board.doublingCubeValue > 1 ? 's' : ''}.',
                 style: TextStyle(
-                  color: TavliColors.terracotta.withValues(alpha: 0.9), fontSize: 12,
+                  color: TavliColors.error.withValues(alpha: 0.9), fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: TavliSpacing.md),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _playerDeclinesDouble,
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: TavliColors.terracotta,
-                        side: const BorderSide(color: TavliColors.terracotta),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: TavliColors.error,
+                        side: const BorderSide(color: TavliColors.error),
+                        padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
                       ),
                       child: const Text('Decline'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: TavliSpacing.sm),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: _playerAcceptsDouble,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: TavliColors.oliveGold,
-                        foregroundColor: const Color(0xFF3D2614),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: TavliColors.surface,
+                        foregroundColor: TavliColors.surfaceDark,
+                        padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
                       ),
                       child: const Text('Accept'),
                     ),
@@ -718,12 +863,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         color: Colors.black54,
         child: Center(
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 40),
-            padding: const EdgeInsets.all(32),
+            margin: const EdgeInsets.symmetric(horizontal: TavliSpacing.xxl),
+            padding: const EdgeInsets.all(TavliSpacing.xl),
             decoration: BoxDecoration(
-              color: const Color(0xFF3D2614),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: TavliColors.oliveGold.withValues(alpha: 0.4), width: 2),
+              color: TavliColors.surfaceDark,
+              borderRadius: BorderRadius.circular(TavliRadius.lg),
+              border: Border.all(color: TavliColors.surface.withValues(alpha: 0.4), width: 2),
             ),
             child: Semantics(
               label: 'Tap to roll dice and determine who goes first',
@@ -732,32 +877,32 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text('🎲', style: TextStyle(fontSize: 48)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: TavliSpacing.md),
                   const Text(
                     'Roll for First Move',
                     style: TextStyle(
-                      color: TavliColors.parchment,
-                      fontSize: 22,
+                      color: TavliColors.light,
+                      fontSize: 21,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: TavliSpacing.xs),
                   Text(
                     'Both players roll one die.\nHigher number goes first.',
                     style: TextStyle(
-                      color: TavliColors.parchment.withValues(alpha: 0.8),
+                      color: TavliColors.light.withValues(alpha: 0.8),
                       fontSize: 14,
                       height: 1.4,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: TavliSpacing.lg),
                   ElevatedButton(
                     onPressed: _onDiceRoll,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: TavliColors.oliveGold,
-                      foregroundColor: TavliColors.kafeneioBrown,
-                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 14),
+                      backgroundColor: TavliColors.surface,
+                      foregroundColor: TavliColors.primary,
+                      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xxl, vertical: TavliSpacing.sm),
                     ),
                     child: const Text('Roll!', style: TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w700,
@@ -774,14 +919,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   Widget _menuBtn(String label, VoidCallback onPressed) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TavliSpacing.xxs),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(
           onPressed: onPressed,
           style: ElevatedButton.styleFrom(
-            backgroundColor: TavliColors.oliveGold,
-            foregroundColor: TavliColors.kafeneioBrown,
+            backgroundColor: TavliColors.primary,
+            foregroundColor: TavliColors.light,
           ),
           child: Text(label),
         ),

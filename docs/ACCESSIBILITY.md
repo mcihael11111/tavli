@@ -1,4 +1,6 @@
-# Tavli Accessibility Standards
+> **DEPRECATED** — This document has been superseded by [`design/05_ACCESSIBILITY.md`](design/05_ACCESSIBILITY.md).
+
+# Tavli Accessibility Standards (Deprecated)
 
 ## Overview
 

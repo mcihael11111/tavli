@@ -1,4 +1,7 @@
-# Tavli Design System v2
+> **DEPRECATED** — This document has been superseded by the new design system in [`docs/design/`](design/).
+> See [`design/01_DESIGN_SYSTEM.md`](design/01_DESIGN_SYSTEM.md) for the current specification.
+
+# Tavli Design System v2 (Deprecated)
 
 **Updated**: March 2026
 **Stack**: Flutter + Flame + Material 3
