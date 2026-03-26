@@ -5,29 +5,34 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../ai/personality/bot_personality.dart';
 
-/// First-launch onboarding — 5 screens, skippable.
+/// First-launch onboarding — 6 screens, skippable.
 ///
-/// Screen 1: Welcome
-/// Screen 2: Choose your board style (card carousel)
-/// Screen 3: Choose your opponent (personality)
-/// Screen 4: How Greek should I be (language level slider)
-/// Screen 5: Ready to play
+/// Screen 1: Welcome to Tables
+/// Screen 2: Choose your tradition
+/// Screen 3: Choose your board style (card carousel)
+/// Screen 4: Choose your opponent (personality)
+/// Screen 5: How [tradition] should I be (language level slider)
+/// Screen 6: Ready to play
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
   /// Check if onboarding has been completed.
   static Future<bool> isCompleted() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('tavli_onboarding_done') ?? false;
+    // Check both old and new keys for backward compat.
+    return prefs.getBool('tables_onboarding_done') ??
+        prefs.getBool('tavli_onboarding_done') ??
+        false;
   }
 
   /// Mark onboarding as completed.
   static Future<void> markCompleted() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('tavli_onboarding_done', true);
+    await prefs.setBool('tables_onboarding_done', true);
   }
 
   @override
@@ -37,7 +42,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _currentPage = 0;
-  static const _pageCount = 5;
+  static const _pageCount = 6;
 
   @override
   void dispose() {
@@ -85,9 +90,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 children: [
                   _WelcomePage(),
+                  _TraditionPickPage(onChanged: () => setState(() {})),
                   _BoardPickPage(),
                   _PersonalityPickPage(),
-                  _GreekLevelPage(),
+                  _LanguageLevelPage(),
                   _ReadyPage(onLearn: () {
                     _finish();
                     context.push('/tutorial');
@@ -169,7 +175,7 @@ class _WelcomePage extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Avatar with border.
+          // Geometric logo placeholder.
           Container(
             width: 90,
             height: 90,
@@ -179,21 +185,22 @@ class _WelcomePage extends StatelessWidget {
               border: Border.all(color: TavliColors.primary),
             ),
             child: Center(
-              child: Text(
-                SettingsService.instance.botPersonality.avatarInitial,
-                style: TextStyle(
-                  fontSize: 44,
-                  fontFamily: TavliTheme.serifFamily,
-                  fontWeight: FontWeight.w400,
-                  color: TavliColors.primary,
-                  letterSpacing: -0.88,
+              child: Transform.rotate(
+                angle: math.pi / 4,
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: TavliColors.primary, width: 2),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               ),
             ),
           ),
           const SizedBox(height: TavliSpacing.xl),
           Text(
-            'Γειά σου',
+            'Tables',
             style: TextStyle(
               color: TavliColors.light,
               fontSize: 32,
@@ -204,9 +211,9 @@ class _WelcomePage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: TavliSpacing.sm),
-          Text(
-            "I'm ${SettingsService.instance.botPersonality.displayName}. Welcome to Tavli.",
-            style: const TextStyle(
+          const Text(
+            'Backgammon Traditions',
+            style: TextStyle(
               color: TavliColors.light,
               fontSize: 20,
               fontWeight: FontWeight.w400,
@@ -216,8 +223,9 @@ class _WelcomePage extends StatelessWidget {
           ),
           const SizedBox(height: TavliSpacing.xxs),
           const Text(
-            'Beautiful boards. Real strategy.\n'
-            'Family and Friends.',
+            'One game. Many cultures.\n'
+            'Choose your tradition and play the way\n'
+            'your family taught you.',
             style: TextStyle(
               color: TavliColors.light,
               fontSize: 16,
@@ -231,7 +239,143 @@ class _WelcomePage extends StatelessWidget {
   }
 }
 
-// ─── Screen 2: Board Selection (Card Carousel) ─────────────────
+// ─── Screen 2: Tradition Selection ──────────────────────────────
+
+class _TraditionPickPage extends StatefulWidget {
+  final VoidCallback onChanged;
+  const _TraditionPickPage({required this.onChanged});
+
+  @override
+  State<_TraditionPickPage> createState() => _TraditionPickPageState();
+}
+
+class _TraditionPickPageState extends State<_TraditionPickPage> {
+  Tradition _selected = SettingsService.instance.tradition;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: TavliSpacing.lg),
+          Text(
+            'Where Do You Play?',
+            style: TextStyle(
+              color: TavliColors.light,
+              fontSize: 32,
+              fontFamily: TavliTheme.serifFamily,
+              fontWeight: FontWeight.w400,
+              letterSpacing: -0.64,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: TavliSpacing.sm),
+          const Text(
+            'Each tradition has its own variants,\nopponents, and atmosphere.',
+            style: TextStyle(
+              color: TavliColors.light,
+              fontSize: 18,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: TavliSpacing.xl),
+
+          // Tradition list.
+          Expanded(
+            child: ListView(
+              children: [
+                for (final tradition in Tradition.values) ...[
+                  _TraditionChoice(
+                    tradition: tradition,
+                    selected: _selected == tradition,
+                    onTap: () {
+                      setState(() => _selected = tradition);
+                      SettingsService.instance.tradition = tradition;
+                      // Reset personality to tradition default.
+                      SettingsService.instance.botPersonality =
+                          BotPersonality.defaultFor(tradition);
+                      widget.onChanged();
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TraditionChoice extends StatelessWidget {
+  final Tradition tradition;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _TraditionChoice({
+    required this.tradition,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(TavliSpacing.md),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(TavliRadius.lg),
+          color: TavliColors.background,
+          border: Border.all(color: TavliColors.primary),
+          boxShadow: TavliShadows.xsmall,
+        ),
+        child: Row(
+          children: [
+            Text(tradition.flagEmoji, style: const TextStyle(fontSize: 28)),
+            const SizedBox(width: TavliSpacing.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(tradition.displayName, style: TextStyle(
+                        color: TavliColors.primary, fontSize: 18,
+                        fontFamily: TavliTheme.serifFamily, fontWeight: FontWeight.w500,
+                      )),
+                      const SizedBox(width: TavliSpacing.xs),
+                      Text(tradition.nativeName, style: const TextStyle(
+                        color: TavliColors.primary, fontSize: 14,
+                      )),
+                    ],
+                  ),
+                  const SizedBox(height: TavliSpacing.xxs),
+                  Text(
+                    '${tradition.regionLabel} · ${tradition.variants.length} games',
+                    style: const TextStyle(color: TavliColors.primary, fontSize: 12),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    tradition.variants.map((v) => v.displayName).join(' · '),
+                    style: const TextStyle(color: TavliColors.primary, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle, color: TavliColors.primary, size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Screen 3: Board Selection (Card Carousel) ─────────────────
 
 class _BoardPickPage extends StatefulWidget {
   @override
@@ -254,13 +398,39 @@ class _BoardPickPageState extends State<_BoardPickPage> {
     super.dispose();
   }
 
+  List<_BoardInfo> get _boards {
+    final tradition = SettingsService.instance.tradition;
+    return switch (tradition) {
+      Tradition.tavli => const [
+        _BoardInfo(1, 'Μαόνι', 'Mahogany & Olive Wood', [Color(0xFF8B4513), Color(0xFFC8B560)]),
+        _BoardInfo(2, 'Σμαραγδί', 'Mahogany & Teal', [Color(0xFF6F3024), Color(0xFF1A5C5C)]),
+        _BoardInfo(3, 'Νυχτερινό', 'Dark Walnut & Navy', [Color(0xFF2A1A0E), Color(0xFF2C3E50)]),
+      ],
+      Tradition.tavla => const [
+        _BoardInfo(1, 'Sultanahmet', 'Warm Cedar & Crimson', [Color(0xFF8B4513), Color(0xFF8B2500)]),
+        _BoardInfo(2, 'Anadolu', 'Light Ash & Turquoise', [Color(0xFFA0856C), Color(0xFF1A8B8B)]),
+        _BoardInfo(3, 'İstanbuli', 'Dark Walnut & Gold', [Color(0xFF2A1A0E), Color(0xFFB8860B)]),
+      ],
+      Tradition.nardy => const [
+        _BoardInfo(1, 'Кавказ', 'Light Birch & Burgundy', [Color(0xFFC4A882), Color(0xFF722F37)]),
+        _BoardInfo(2, 'Москва', 'Dark Oak & Forest Green', [Color(0xFF4A3728), Color(0xFF2E5A3E)]),
+        _BoardInfo(3, 'Баку', 'Rosewood & Copper', [Color(0xFF65000B), Color(0xFFB87333)]),
+      ],
+      Tradition.sheshBesh => const [
+        _BoardInfo(1, 'ירושלים', 'Olive Wood & Sandstone', [Color(0xFF808000), Color(0xFFD2B48C)]),
+        _BoardInfo(2, 'السوق', 'Mother-of-Pearl Inlay', [Color(0xFF3B2F2F), Color(0xFFD4C5B5)]),
+        _BoardInfo(3, 'صحراء', 'Light Cedar & Amber', [Color(0xFFC4A882), Color(0xFFFFBF00)]),
+      ],
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
+    final boards = _boards;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: TavliSpacing.lg),
-        // Header — production copy.
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
           child: Text(
@@ -279,11 +449,11 @@ class _BoardPickPageState extends State<_BoardPickPage> {
         const SizedBox(height: TavliSpacing.sm),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
-          child: Text(
+          child: const Text(
             'You can change this anytime in Customize.',
             style: TextStyle(
-              color: TavliColors.light.withValues(alpha: 0.7),
-              fontSize: 20,
+              color: TavliColors.light,
+              fontSize: 18,
               height: 1.4,
             ),
             textAlign: TextAlign.center,
@@ -295,10 +465,10 @@ class _BoardPickPageState extends State<_BoardPickPage> {
         Expanded(
           child: PageView.builder(
             controller: _carouselController,
-            itemCount: _boards.length,
+            itemCount: boards.length,
             onPageChanged: (i) {
-              setState(() => _selected = _boards[i].index);
-              SettingsService.instance.boardSet = _boards[i].index;
+              setState(() => _selected = boards[i].index);
+              SettingsService.instance.boardSet = boards[i].index;
             },
             itemBuilder: (context, index) {
               return ListenableBuilder(
@@ -322,11 +492,11 @@ class _BoardPickPageState extends State<_BoardPickPage> {
                   );
                 },
                 child: _BoardCard(
-                  board: _boards[index],
-                  selected: _selected == _boards[index].index,
+                  board: boards[index],
+                  selected: _selected == boards[index].index,
                   onTap: () {
-                    setState(() => _selected = _boards[index].index);
-                    SettingsService.instance.boardSet = _boards[index].index;
+                    setState(() => _selected = boards[index].index);
+                    SettingsService.instance.boardSet = boards[index].index;
                     _carouselController.animateToPage(
                       index,
                       duration: const Duration(milliseconds: 300),
@@ -365,19 +535,18 @@ class _BoardCard extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: TavliColors.background,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(TavliRadius.lg),
           border: Border.all(color: TavliColors.primary),
           boxShadow: TavliShadows.large,
         ),
         child: Column(
           children: [
-            // Board preview area.
             Expanded(
               child: Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(14),
+                    top: Radius.circular(TavliRadius.lg),
                   ),
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -416,9 +585,8 @@ class _BoardCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Board label area.
             Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(TavliSpacing.sm),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -449,12 +617,6 @@ class _BoardCard extends StatelessWidget {
   }
 }
 
-const _boards = [
-  _BoardInfo(1, 'Μαόνι', 'Mahogany & Olive Wood', [Color(0xFF8B4513), Color(0xFFC8B560)]),
-  _BoardInfo(2, 'Σμαραγδί', 'Mahogany & Teal', [Color(0xFF6F3024), Color(0xFF1A5C5C)]),
-  _BoardInfo(3, 'Νυχτερινό', 'Dark Walnut & Navy', [Color(0xFF2A1A0E), Color(0xFF2C3E50)]),
-];
-
 class _BoardInfo {
   final int index;
   final String name;
@@ -463,7 +625,7 @@ class _BoardInfo {
   const _BoardInfo(this.index, this.name, this.subtitle, this.colors);
 }
 
-// ─── Screen 3: Personality Selection ────────────────────────────
+// ─── Screen 4: Personality Selection ────────────────────────────
 
 class _PersonalityPickPage extends StatefulWidget {
   @override
@@ -471,17 +633,25 @@ class _PersonalityPickPage extends StatefulWidget {
 }
 
 class _PersonalityPickPageState extends State<_PersonalityPickPage> {
-  BotPersonality _selected = BotPersonality.mikhail;
+  BotPersonality _selected = SettingsService.instance.botPersonality;
 
   @override
   Widget build(BuildContext context) {
+    final tradition = SettingsService.instance.tradition;
+    final personalities = BotPersonality.forTradition(tradition);
+
+    // If current selection doesn't match tradition, reset.
+    if (_selected.tradition != tradition) {
+      _selected = BotPersonality.defaultFor(tradition);
+      SettingsService.instance.botPersonality = _selected;
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: TavliSpacing.lg),
-          // Header — production copy.
           Text(
             'Choose Your Opponent',
             style: TextStyle(
@@ -495,22 +665,21 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: TavliSpacing.sm),
-          Text(
+          const Text(
             'You can change this anytime in Settings.',
             style: TextStyle(
-              color: TavliColors.light.withValues(alpha: 0.7),
-              fontSize: 20,
+              color: TavliColors.light,
+              fontSize: 18,
               height: 1.4,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: TavliSpacing.xl),
 
-          // Personality list.
           Expanded(
             child: ListView(
               children: [
-                for (final personality in BotPersonality.values) ...[
+                for (final personality in personalities) ...[
                   _PersonalityChoice(
                     personality: personality,
                     selected: _selected == personality,
@@ -593,26 +762,81 @@ class _PersonalityChoice extends StatelessWidget {
   }
 }
 
-// ─── Screen 4: How Greek Should I Be ────────────────────────────
+// ─── Screen 5: Language Level (Tradition-Adapted) ────────────────
 
-class _GreekLevelPage extends StatefulWidget {
+class _LanguageLevelPage extends StatefulWidget {
   @override
-  State<_GreekLevelPage> createState() => _GreekLevelPageState();
+  State<_LanguageLevelPage> createState() => _LanguageLevelPageState();
 }
 
-class _GreekLevelPageState extends State<_GreekLevelPage> {
-  double _level = SettingsService.instance.greekLevel;
+class _LanguageLevelPageState extends State<_LanguageLevelPage> {
+  double _level = SettingsService.instance.languageLevel;
 
-  // Example phrases at different Greek levels.
-  static const _examples = [
-    _GreekExample('Ready to play', 'Michael will lose'),
-    _GreekExample('Έτοιμο to play', 'Michael θα lose'),
-    _GreekExample('Έτοιμο να παίξει', 'Ο Michael θα χάσει'),
-    _GreekExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
-    _GreekExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
-  ];
+  String get _title {
+    final tradition = SettingsService.instance.tradition;
+    return switch (tradition) {
+      Tradition.tavli => 'How Greek Should I Be?',
+      Tradition.tavla => 'How Turkish Should I Be?',
+      Tradition.nardy => 'How Russian Should I Be?',
+      Tradition.sheshBesh => 'How Much Local Flavor?',
+    };
+  }
 
-  _GreekExample get _currentExample {
+  String get _subtitle {
+    final tradition = SettingsService.instance.tradition;
+    return switch (tradition) {
+      Tradition.tavli => 'Adjust the amount of Greek I use.',
+      Tradition.tavla => 'Adjust the amount of Turkish I use.',
+      Tradition.nardy => 'Adjust the amount of Russian I use.',
+      Tradition.sheshBesh => 'Adjust the mix of Hebrew and Arabic.',
+    };
+  }
+
+  String get _fluentLabel {
+    final tradition = SettingsService.instance.tradition;
+    return switch (tradition) {
+      Tradition.tavli => 'Fluent Greek',
+      Tradition.tavla => 'Fluent Turkish',
+      Tradition.nardy => 'Fluent Russian',
+      Tradition.sheshBesh => 'Full Immersion',
+    };
+  }
+
+  List<_LangExample> get _examples {
+    final tradition = SettingsService.instance.tradition;
+    return switch (tradition) {
+      Tradition.tavli => const [
+        _LangExample('Ready to play', 'Michael will lose'),
+        _LangExample('Έτοιμο to play', 'Michael θα lose'),
+        _LangExample('Έτοιμο να παίξει', 'Ο Michael θα χάσει'),
+        _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
+        _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
+      ],
+      Tradition.tavla => const [
+        _LangExample('Ready to play', 'Good roll!'),
+        _LangExample('Hazır to play', 'Güzel roll!'),
+        _LangExample('Hazır oynamaya', 'Güzel atış!'),
+        _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
+        _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
+      ],
+      Tradition.nardy => const [
+        _LangExample('Ready to play', 'Nice move!'),
+        _LangExample('Готов to play', 'Хороший move!'),
+        _LangExample('Готов играть', 'Хороший ход!'),
+        _LangExample('Готов играть', 'Отличный ход, молодец!'),
+        _LangExample('Готов играть', 'Отличный ход, молодец!'),
+      ],
+      Tradition.sheshBesh => const [
+        _LangExample('Ready to play', 'Good move!'),
+        _LangExample('מוכן to play', 'Good move, yalla!'),
+        _LangExample('מוכן לשחק', '!יאללה, מהלך טוב'),
+        _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
+        _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
+      ],
+    };
+  }
+
+  _LangExample get _currentExample {
     final idx = (_level * (_examples.length - 1)).round();
     return _examples[idx];
   }
@@ -625,9 +849,8 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: TavliSpacing.lg),
-          // Header.
           Text(
-            'How Greek Should I Be?',
+            _title,
             style: TextStyle(
               color: TavliColors.light,
               fontSize: 32,
@@ -640,10 +863,10 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
           ),
           const SizedBox(height: TavliSpacing.sm),
           Text(
-            'We can adjust the amount of Greek I use depending on your comfort level.',
-            style: TextStyle(
-              color: TavliColors.light.withValues(alpha: 0.7),
-              fontSize: 20,
+            _subtitle,
+            style: const TextStyle(
+              color: TavliColors.light,
+              fontSize: 18,
               height: 1.4,
             ),
             textAlign: TextAlign.center,
@@ -654,7 +877,6 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
           // Slider with endpoint labels.
           Column(
             children: [
-              // Slider.
               SliderTheme(
                 data: SliderTheme.of(context).copyWith(
                   activeTrackColor: TavliColors.background,
@@ -662,14 +884,14 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
                   thumbColor: TavliColors.background,
                   overlayColor: TavliColors.background.withValues(alpha: 0.2),
                   trackHeight: 4,
-                  thumbShape: _GreekSliderThumb(),
+                  thumbShape: _LangSliderThumb(),
                 ),
                 child: Slider(
                   value: _level,
                   divisions: 4,
                   onChanged: (v) {
                     setState(() => _level = v);
-                    SettingsService.instance.greekLevel = v;
+                    SettingsService.instance.languageLevel = v;
                   },
                 ),
               ),
@@ -679,11 +901,11 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
+                  const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'English Only',
                           style: TextStyle(
                             color: TavliColors.light,
@@ -691,11 +913,11 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
                             fontWeight: FontWeight.w500,
                           ),
                         ),
-                        const SizedBox(height: TavliSpacing.xxs),
+                        SizedBox(height: TavliSpacing.xxs),
                         Text(
-                          "Can't read Greek",
+                          "Can't read the script",
                           style: TextStyle(
-                            color: TavliColors.light.withValues(alpha: 0.7),
+                            color: TavliColors.background,
                             fontSize: 12,
                           ),
                         ),
@@ -706,9 +928,9 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text(
-                          'Fluent',
-                          style: TextStyle(
+                        Text(
+                          _fluentLabel,
+                          style: const TextStyle(
                             color: TavliColors.light,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -716,10 +938,10 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
                           textAlign: TextAlign.right,
                         ),
                         const SizedBox(height: TavliSpacing.xxs),
-                        Text(
+                        const Text(
                           'Can read and write',
                           style: TextStyle(
-                            color: TavliColors.light.withValues(alpha: 0.7),
+                            color: TavliColors.background,
                             fontSize: 12,
                           ),
                           textAlign: TextAlign.right,
@@ -783,7 +1005,7 @@ class _GreekLevelPageState extends State<_GreekLevelPage> {
   }
 }
 
-class _GreekSliderThumb extends SliderComponentShape {
+class _LangSliderThumb extends SliderComponentShape {
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(28, 28);
 
@@ -804,7 +1026,6 @@ class _GreekSliderThumb extends SliderComponentShape {
   }) {
     final canvas = context.canvas;
 
-    // Outer circle.
     canvas.drawCircle(
       center,
       14,
@@ -820,8 +1041,6 @@ class _GreekSliderThumb extends SliderComponentShape {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
-
-    // Inner dot.
     canvas.drawCircle(
       center,
       6,
@@ -830,13 +1049,13 @@ class _GreekSliderThumb extends SliderComponentShape {
   }
 }
 
-class _GreekExample {
+class _LangExample {
   final String line1;
   final String line2;
-  const _GreekExample(this.line1, this.line2);
+  const _LangExample(this.line1, this.line2);
 }
 
-// ─── Screen 5: Ready to Play ────────────────────────────────────
+// ─── Screen 6: Ready to Play ────────────────────────────────────
 
 class _ReadyPage extends StatelessWidget {
   final VoidCallback onLearn;
@@ -844,6 +1063,9 @@ class _ReadyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final personality = SettingsService.instance.botPersonality;
+    final tradition = SettingsService.instance.tradition;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Column(
@@ -860,7 +1082,7 @@ class _ReadyPage extends StatelessWidget {
             ),
             child: Center(
               child: Text(
-                SettingsService.instance.botPersonality.avatarInitial,
+                personality.avatarInitial,
                 style: TextStyle(
                   fontSize: 44,
                   fontFamily: TavliTheme.serifFamily,
@@ -885,7 +1107,7 @@ class _ReadyPage extends StatelessWidget {
           ),
           const SizedBox(height: TavliSpacing.sm),
           Text(
-            'Play against ${SettingsService.instance.botPersonality.displayName}, '
+            'Play ${tradition.displayName} against ${personality.displayName}, '
             'challenge friends online or learn the game with an interactive tool',
             style: const TextStyle(
               color: TavliColors.light,
@@ -909,7 +1131,7 @@ class _ReadyPage extends StatelessWidget {
               ),
               alignment: Alignment.centerLeft,
               child: Text(
-                'Next',
+                'Learn to Play',
                 style: TextStyle(
                   color: TavliColors.primary,
                   fontFamily: TavliTheme.serifFamily,

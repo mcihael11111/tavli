@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../../shared/services/app_info.dart';
 import '../../ai/personality/bot_personality.dart';
@@ -73,6 +74,21 @@ class SettingsScreen extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: TavliSpacing.lg),
+
+            // ── Tradition Switcher ──────────────────────────
+            const _SectionHeader('Tradition'),
+            ListTile(
+              leading: Text(
+                SettingsService.instance.tradition.flagEmoji,
+                style: const TextStyle(fontSize: 28),
+              ),
+              title: Text(SettingsService.instance.tradition.displayName),
+              subtitle: Text(SettingsService.instance.tradition.regionLabel),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showTraditionPicker(context, ref),
+            ),
+            const Divider(),
+
             const _SectionHeader('Game Settings'),
           SwitchListTile(
             title: const Text('Show Pip Count'),
@@ -214,6 +230,45 @@ class SettingsScreen extends ConsumerWidget {
         _ => 'Mix of Greek and English',
       };
 
+  void _showTraditionPicker(BuildContext context, WidgetRef ref) {
+    final current = SettingsService.instance.tradition;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                'Choose Your Tradition',
+                style: Theme.of(ctx).textTheme.titleLarge,
+              ),
+            ),
+            for (final t in Tradition.values)
+              ListTile(
+                leading: Text(t.flagEmoji, style: const TextStyle(fontSize: 28)),
+                title: Text('${t.displayName} — ${t.nativeName}'),
+                subtitle: Text('${t.regionLabel} · ${t.variants.length} games'),
+                trailing: t == current
+                    ? const Icon(Icons.check_circle, color: TavliColors.primary)
+                    : null,
+                onTap: () {
+                  SettingsService.instance.tradition = t;
+                  // Reset personality to new tradition's default.
+                  final newDefault = BotPersonality.defaultFor(t);
+                  _update(ref, botPersonalityProvider, newDefault,
+                      (s, val) => s.botPersonality = val);
+                  Navigator.pop(ctx);
+                },
+              ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showPersonalityPicker(BuildContext context, WidgetRef ref) {
     final current = ref.read(botPersonalityProvider);
     showModalBottomSheet<void>(
@@ -229,7 +284,8 @@ class SettingsScreen extends ConsumerWidget {
                 style: Theme.of(ctx).textTheme.titleLarge,
               ),
             ),
-            for (final p in BotPersonality.values)
+            for (final p in BotPersonality.forTradition(
+                SettingsService.instance.tradition))
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: TavliColors.surface,

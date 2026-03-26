@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
+import '../../../core/constants/tradition.dart';
+import '../../../shared/services/settings_service.dart';
 import 'mini_board_painter.dart';
 
-/// Interactive tutorial — 6 lessons guided by Mikhail with board diagrams.
+/// Interactive tutorial — lessons guided by the tradition's bot with board diagrams.
+/// Content adapts based on the player's selected tradition.
 class TutorialScreen extends StatefulWidget {
   const TutorialScreen({super.key});
 
@@ -13,10 +16,106 @@ class TutorialScreen extends StatefulWidget {
 class _TutorialScreenState extends State<TutorialScreen> {
   int _currentLesson = 0;
 
-  static final _lessons = [
+  Tradition get _tradition => SettingsService.instance.tradition;
+
+  List<_Lesson> get _lessons => _lessonsForTradition(_tradition);
+
+  static List<_Lesson> _lessonsForTradition(Tradition tradition) {
+    final base = _baseLessons;
+    final extra = _traditionSpecificLessons(tradition);
+    return [...base, ...extra];
+  }
+
+  static List<_Lesson> _traditionSpecificLessons(Tradition tradition) {
+    return switch (tradition) {
+      Tradition.tavli => [
+        const _Lesson(
+          title: 'Plakoto — Pinning',
+          botSays: 'In Plakoto, you don\'t hit — you PIN! Land on a single '
+              'opponent checker and trap it. And watch out for the μάνα!',
+          body: 'Plakoto rules:\n'
+              '• All 15 checkers start on your 1-point\n'
+              '• Landing on a single opponent checker pins it in place\n'
+              '• Pinned checkers cannot move until freed\n'
+              '• Mother piece (μάνα): if your last checker on start is pinned, you lose double!',
+          icon: Icons.push_pin,
+          diagram: null,
+        ),
+        const _Lesson(
+          title: 'Fevga — Running',
+          botSays: 'Fevga is the race! No hitting, no pinning. '
+              'Just block your opponent and run for the finish!',
+          body: 'Fevga rules:\n'
+              '• All 15 checkers start on one point\n'
+              '• Both players move in the same direction\n'
+              '• A single checker blocks the point entirely\n'
+              '• You cannot block all 6 points in your starting quadrant\n'
+              '• Must advance past opponent\'s start before spreading out',
+          icon: Icons.directions_run,
+          diagram: null,
+        ),
+      ],
+      Tradition.tavla => [
+        const _Lesson(
+          title: 'Tapa — Turkish Pinning',
+          botSays: 'Tapa is like Plakoto — you pin instead of hit. '
+              'Land on a lone opponent piece to trap it!',
+          body: 'Tapa rules:\n'
+              '• All 15 checkers start on one point\n'
+              '• Pin single opponent checkers instead of hitting\n'
+              '• Mother piece rule applies\n'
+              '• Strategy: control key points early',
+          icon: Icons.push_pin,
+          diagram: null,
+        ),
+        const _Lesson(
+          title: 'Moultezim — Turkish Running',
+          botSays: 'Moultezim is pure racing with blocking. '
+              'No captures, just outrun your opponent!',
+          body: 'Moultezim rules:\n'
+              '• Same as Fevga — same-direction, blocking game\n'
+              '• Single checker controls a point\n'
+              '• Cannot block all 6 starting quadrant points',
+          icon: Icons.directions_run,
+          diagram: null,
+        ),
+      ],
+      Tradition.nardy => [
+        const _Lesson(
+          title: 'Long Nard — The Head Rule',
+          botSays: 'In Long Nard, all pieces start on one point — the "head." '
+              'You can only move one piece off the head per turn!',
+          body: 'Long Nard rules:\n'
+              '• All 15 checkers on the "head" point\n'
+              '• Only ONE checker may leave the head per turn\n'
+              '• Exception: first turn with 3-3, 4-4, or 6-6 allows two\n'
+              '• No hitting — single checker blocks\n'
+              '• Cannot build a 6-prime if opponent is fully trapped behind it',
+          icon: Icons.looks_one,
+          diagram: null,
+        ),
+      ],
+      Tradition.sheshBesh => [
+        const _Lesson(
+          title: 'Mahbusa — Arabic Pinning',
+          botSays: 'Mahbusa means "imprisoned" — and that\'s what you do! '
+              'Pin your opponent\'s lone checkers to trap them.',
+          body: 'Mahbusa rules:\n'
+              '• All 15 checkers start on one point\n'
+              '• Pin single opponent checkers\n'
+              '• Mother piece rule applies\n'
+              '• Similar to Plakoto but from the Arabic tradition',
+          icon: Icons.push_pin,
+          diagram: null,
+        ),
+      ],
+    };
+  }
+
+  static final _baseLessons = [
     _Lesson(
       title: 'The Board',
-      mikhailSays: 'Welcome, φίλε μου! This is a backgammon board. '
+      botSays: 'Welcome! This is a backgammon board. '
           '24 points, like the hours of the day. Each player has 15 checkers.',
       body: 'The board has 24 triangles called "points." Your checkers start '
           'on specific points and must travel around the board to your home board '
@@ -40,7 +139,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     ),
     _Lesson(
       title: 'Moving Checkers',
-      mikhailSays: 'You roll two dice, ρε! Each die is a separate move. '
+      botSays: 'You roll two dice, ρε! Each die is a separate move. '
           'Roll a 5 and a 3? Move one checker 5 and another 3. '
           'Or move ONE checker 5 then 3 — but the middle point must be open!',
       body: 'Rules:\n'
@@ -61,7 +160,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     ),
     _Lesson(
       title: 'Hitting & The Bar',
-      mikhailSays: 'A checker alone on a point? That\'s a "blot" — vulnerable! '
+      botSays: 'A checker alone on a point? That\'s a "blot" — vulnerable! '
           'I can hit it and send it to the bar. ΩΠΑΑΑ! '
           'Then you must re-enter before doing anything else.',
       body: 'When your checker is hit, it goes to the center bar.\n\n'
@@ -81,7 +180,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     ),
     _Lesson(
       title: 'Bearing Off',
-      mikhailSays: 'When ALL your checkers are in your home board, '
+      botSays: 'When ALL your checkers are in your home board, '
           'you can start taking them off. This is bearing off. '
           'First one to remove all 15 wins!',
       body: 'To bear off:\n'
@@ -104,7 +203,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     ),
     _Lesson(
       title: 'Strategy Tips',
-      mikhailSays: 'Now listen carefully, παιδί μου. Making "points" — '
+      botSays: 'Now listen carefully, παιδί μου. Making "points" — '
           'two or more checkers together — is the key. '
           'They block your opponent. Build a wall, a πρίμα! '
           'And never leave blots if you can avoid it.',
@@ -129,7 +228,7 @@ class _TutorialScreenState extends State<TutorialScreen> {
     ),
     const _Lesson(
       title: 'The Doubling Cube',
-      mikhailSays: 'Ah, the cube! This is where real tavli gets serious. '
+      botSays: 'Ah, the cube! This is where real tavli gets serious. '
           'You can offer to double the stakes before you roll. '
           'Your opponent must accept... or surrender!',
       body: 'The doubling cube:\n'
@@ -213,17 +312,20 @@ class _TutorialScreenState extends State<TutorialScreen> {
                             shape: BoxShape.circle,
                             color: TavliColors.surface,
                           ),
-                          child: const Center(
-                            child: Text('Μ', style: TextStyle(
-                              color: TavliColors.primary,
-                              fontWeight: FontWeight.bold,
-                            )),
+                          child: Center(
+                            child: Text(
+                              SettingsService.instance.botPersonality.avatarInitial,
+                              style: const TextStyle(
+                                color: TavliColors.primary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            lesson.mikhailSays,
+                            lesson.botSays,
                             style: const TextStyle(
                               color: TavliColors.light,
                               fontSize: 14,
@@ -311,14 +413,14 @@ class _TutorialScreenState extends State<TutorialScreen> {
 
 class _Lesson {
   final String title;
-  final String mikhailSays;
+  final String botSays;
   final String body;
   final IconData icon;
   final MiniBoardPainter? diagram;
 
   const _Lesson({
     required this.title,
-    required this.mikhailSays,
+    required this.botSays,
     required this.body,
     required this.icon,
     this.diagram,

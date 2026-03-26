@@ -3,13 +3,27 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/tradition.dart';
+import '../../../shared/services/settings_service.dart';
 import '../../auth/presentation/auth_provider.dart';
+import '../../game/domain/engine/variants/game_variant.dart';
 import '../data/multiplayer_service_provider.dart';
 import '../matchmaking/firestore_matchmaking_service.dart';
 
 /// Screen shown while searching for an opponent.
+///
+/// Now supports tradition-scoped and international pool matching.
 class MatchmakingScreen extends ConsumerStatefulWidget {
-  const MatchmakingScreen({super.key});
+  final PoolType poolType;
+  final GameVariant? variant;
+  final MechanicFamily? mechanicFamily;
+
+  const MatchmakingScreen({
+    super.key,
+    this.poolType = PoolType.tradition,
+    this.variant,
+    this.mechanicFamily,
+  });
 
   @override
   ConsumerState<MatchmakingScreen> createState() => _MatchmakingScreenState();
@@ -21,6 +35,10 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
   int _elapsedSeconds = 0;
   Timer? _elapsedTimer;
   bool _matched = false;
+
+  Tradition get _tradition => SettingsService.instance.tradition;
+  GameVariant get _variant =>
+      widget.variant ?? _tradition.defaultVariant;
 
   @override
   void initState() {
@@ -44,6 +62,10 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
       playerUid: profileAsync.uid,
       playerName: profileAsync.displayName,
       rating: profileAsync.rating,
+      tradition: _tradition,
+      variant: _variant,
+      poolType: widget.poolType,
+      mechanicFamily: widget.mechanicFamily,
     )
         .listen((status) {
       if (status.isMatched && status.gameRoomId != null && !_matched) {
@@ -78,6 +100,14 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
     super.dispose();
   }
 
+  String get _searchText {
+    if (widget.poolType == PoolType.international) {
+      final family = widget.mechanicFamily ?? _variant.mechanicFamily;
+      return 'Searching internationally...\n${family.displayName} · Canonical Rules';
+    }
+    return 'Searching for ${_tradition.displayName} players...';
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -90,7 +120,9 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quick Match'),
+        title: Text(widget.poolType == PoolType.international
+            ? 'International Match'
+            : 'Quick Match'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: _cancel,
@@ -110,10 +142,11 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
             ),
             const SizedBox(height: 32),
             Text(
-              'Searching for opponent...',
+              _searchText,
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(

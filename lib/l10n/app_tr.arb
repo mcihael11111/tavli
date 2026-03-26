@@ -1,0 +1,50 @@
+{
+  "@@locale": "tr",
+  "appTitle": "Tables",
+  "subtitle": "Tavla Gelenekleri",
+
+  "homeGreetingMorning": "Günaydın! Bir kahve, bir tavla?",
+  "homeGreetingAfternoon": "Öğleden sonra... tam oyun zamanı!",
+  "homeGreetingEvening": "İyi akşamlar! Son bir oyun?",
+
+  "playVsBot": "Bota Karşı Oyna",
+  "playVsBotSub": "Yapay zeka rakibine meydan oku",
+  "playOnline": "Çevrimiçi Oyna",
+  "playOnlineSub": "Hızlı eşleşme veya arkadaş davet et",
+  "passAndPlay": "Sırayla Oyna",
+  "passAndPlaySub": "İki oyuncu, bir cihaz",
+  "learnToPlay": "Oynamayı Öğren",
+  "learnToPlaySub": "Bot ile interaktif eğitim",
+
+  "chooseDifficulty": "Zorluk Seç",
+  "difficultyEasy": "Kolay",
+  "difficultyMedium": "Orta",
+  "difficultyHard": "Zor",
+  "difficultyPappous": "Çok Zor",
+
+  "victory": "Zafer!",
+  "defeat": "Yenilgi",
+  "playAgain": "Tekrar Oyna",
+  "home": "Ana Sayfa",
+  "next": "İleri",
+  "cancel": "İptal",
+
+  "profile": "Profil",
+  "rating": "Puan",
+  "games": "Oyunlar",
+  "wins": "Galibiyetler",
+  "losses": "Mağlubiyetler",
+
+  "settings": "Ayarlar",
+  "customize": "Özelleştir",
+
+  "traditionTavli": "Tavli",
+  "traditionTavla": "Tavla",
+  "traditionNardy": "Nardi",
+  "traditionSheshBesh": "Şeş Beş",
+
+  "poolTradition": "Geleneğim",
+  "poolInternational": "Uluslararası",
+  "traditionSwitcher": "Gelenek",
+  "changeTradition": "Geleneği Değiştir"
+}

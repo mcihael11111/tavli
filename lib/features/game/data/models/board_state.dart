@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 import '../../../../core/constants/game_constants.dart';
+import '../../../../core/constants/variants/variant_rules.dart';
+import '../../domain/engine/variants/game_variant.dart';
 
 /// Immutable representation of the backgammon board.
 ///
@@ -80,6 +82,29 @@ class BoardState extends Equatable {
       points: List<int>.filled(24, 0),
       activePlayer: activePlayer,
     );
+  }
+
+  /// Create the correct initial board for any game variant.
+  factory BoardState.forVariant(GameVariant variant, {int activePlayer = 1}) {
+    final rules = variant.rules;
+    switch (rules.startingPosition) {
+      case StartingPosition.standard:
+        return BoardState.initial(activePlayer: activePlayer);
+
+      case StartingPosition.allOnOneOpposing:
+        // Plakoto/Tapa/Mahbusa: all 15 on one point, opposing directions.
+        final pts = List<int>.filled(24, 0);
+        pts[rules.p1StartPoint] = 15;
+        pts[rules.p2StartPoint] = -15;
+        return BoardState(points: pts, activePlayer: activePlayer);
+
+      case StartingPosition.allOnOneSameDirection:
+        // Fevga/Nard/Moultezim: all 15 on one point, same direction.
+        final pts = List<int>.filled(24, 0);
+        pts[rules.p1StartPoint] = 15;
+        pts[rules.p2StartPoint] = -15;
+        return BoardState(points: pts, activePlayer: activePlayer);
+    }
   }
 
   // ── Queries ────────────────────────────────────────────────────

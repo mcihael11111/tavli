@@ -1,0 +1,50 @@
+{
+  "@@locale": "ru",
+  "appTitle": "Tables",
+  "subtitle": "Традиции нард",
+
+  "homeGreetingMorning": "Доброе утро! Партию в нарды?",
+  "homeGreetingAfternoon": "Добрый день! Самое время для партии!",
+  "homeGreetingEvening": "Добрый вечер! Ещё партию?",
+
+  "playVsBot": "Играть с ботом",
+  "playVsBotSub": "Бросить вызов ИИ-сопернику",
+  "playOnline": "Играть онлайн",
+  "playOnlineSub": "Быстрый матч или пригласить друга",
+  "passAndPlay": "По очереди",
+  "passAndPlaySub": "Два игрока, одно устройство",
+  "learnToPlay": "Научиться играть",
+  "learnToPlaySub": "Интерактивный учебник с ботом",
+
+  "chooseDifficulty": "Выберите сложность",
+  "difficultyEasy": "Легко",
+  "difficultyMedium": "Средне",
+  "difficultyHard": "Сложно",
+  "difficultyPappous": "Очень сложно",
+
+  "victory": "Победа!",
+  "defeat": "Поражение",
+  "playAgain": "Играть снова",
+  "home": "Главная",
+  "next": "Далее",
+  "cancel": "Отмена",
+
+  "profile": "Профиль",
+  "rating": "Рейтинг",
+  "games": "Игры",
+  "wins": "Победы",
+  "losses": "Поражения",
+
+  "settings": "Настройки",
+  "customize": "Настроить",
+
+  "traditionTavli": "Тавли",
+  "traditionTavla": "Тавла",
+  "traditionNardy": "Нарды",
+  "traditionSheshBesh": "Шеш Беш",
+
+  "poolTradition": "Моя традиция",
+  "poolInternational": "Международный",
+  "traditionSwitcher": "Традиция",
+  "changeTradition": "Сменить традицию"
+}

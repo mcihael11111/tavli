@@ -1,0 +1,50 @@
+{
+  "@@locale": "he",
+  "appTitle": "Tables",
+  "subtitle": "מסורות שש בש",
+
+  "homeGreetingMorning": "!בוקר טוב! שש בש",
+  "homeGreetingAfternoon": "!צהריים טובים! בוא נשחק",
+  "homeGreetingEvening": "?ערב טוב! עוד סיבוב",
+
+  "playVsBot": "שחק נגד הבוט",
+  "playVsBotSub": "אתגר את היריב המלאכותי",
+  "playOnline": "שחק אונליין",
+  "playOnlineSub": "משחק מהיר או הזמן חבר",
+  "passAndPlay": "העבר ושחק",
+  "passAndPlaySub": "שני שחקנים, מכשיר אחד",
+  "learnToPlay": "למד לשחק",
+  "learnToPlaySub": "הדרכה אינטראקטיבית עם הבוט",
+
+  "chooseDifficulty": "בחר רמת קושי",
+  "difficultyEasy": "קל",
+  "difficultyMedium": "בינוני",
+  "difficultyHard": "קשה",
+  "difficultyPappous": "קשה מאוד",
+
+  "victory": "!ניצחון",
+  "defeat": "הפסד",
+  "playAgain": "שחק שוב",
+  "home": "דף הבית",
+  "next": "הבא",
+  "cancel": "ביטול",
+
+  "profile": "פרופיל",
+  "rating": "דירוג",
+  "games": "משחקים",
+  "wins": "ניצחונות",
+  "losses": "הפסדים",
+
+  "settings": "הגדרות",
+  "customize": "התאמה אישית",
+
+  "traditionTavli": "טאבלי",
+  "traditionTavla": "טאבלה",
+  "traditionNardy": "נארדי",
+  "traditionSheshBesh": "שש בש",
+
+  "poolTradition": "המסורת שלי",
+  "poolInternational": "בינלאומי",
+  "traditionSwitcher": "מסורת",
+  "changeTradition": "שנה מסורת"
+}

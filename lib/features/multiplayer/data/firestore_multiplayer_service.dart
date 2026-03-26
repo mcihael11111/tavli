@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
+import '../../game/data/models/board_state.dart';
+import '../../game/domain/engine/variants/game_variant.dart';
 import '../../notifications/notification_service.dart';
 import 'game_room.dart';
 
@@ -28,9 +30,16 @@ class FirestoreMultiplayerService {
     int playerRating = 1000,
     int turnTimeLimit = 30,
     String variant = 'portes',
+    String tradition = 'tavli',
+    String poolType = 'tradition',
   }) async {
     final gameId = _uuid.v4().substring(0, 8).toUpperCase();
     final now = DateTime.now();
+
+    // Use variant-aware initial board state.
+    final gameVariant = GameVariant.values.where((v) => v.name == variant).firstOrNull
+        ?? GameVariant.portes;
+    final initialBoard = BoardState.forVariant(gameVariant);
 
     final room = GameRoom(
       gameId: gameId,
@@ -40,13 +49,15 @@ class FirestoreMultiplayerService {
         color: 'white',
         rating: playerRating,
       ),
-      boardState: _initialBoardStateJson(),
+      boardState: _boardStateToJson(initialBoard),
       currentTurn: 'player1',
       status: GameRoomStatus.waiting,
       createdAt: now,
       lastMoveAt: now,
       turnTimeLimit: turnTimeLimit,
       variant: variant,
+      tradition: tradition,
+      poolType: poolType,
     );
 
     await _rooms.doc(gameId).set(room.toJson());
@@ -272,22 +283,12 @@ class FirestoreMultiplayerService {
     await NotificationService.instance.unsubscribeFromGame(gameId);
   }
 
-  Map<String, dynamic> _initialBoardStateJson() => {
-        'points': List.generate(24, (i) {
-          if (i == 23) return 2;
-          if (i == 12) return 5;
-          if (i == 7) return 3;
-          if (i == 5) return 5;
-          if (i == 0) return -2;
-          if (i == 11) return -5;
-          if (i == 16) return -3;
-          if (i == 18) return -5;
-          return 0;
-        }),
-        'bar1': 0,
-        'bar2': 0,
-        'borneOff1': 0,
-        'borneOff2': 0,
+  Map<String, dynamic> _boardStateToJson(BoardState state) => {
+        'points': state.points,
+        'bar1': state.bar1,
+        'bar2': state.bar2,
+        'borneOff1': state.borneOff1,
+        'borneOff2': state.borneOff2,
       };
 }
 

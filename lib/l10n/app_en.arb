@@ -1,7 +1,7 @@
 {
   "@@locale": "en",
-  "appTitle": "Tavli",
-  "subtitle": "Greek Backgammon",
+  "appTitle": "Tables",
+  "subtitle": "Backgammon Traditions",
 
   "homeGreetingMorning": "Good morning! Ready for coffee and tavli?",
   "homeGreetingAfternoon": "Afternoon... perfect time for a game!",
@@ -154,5 +154,34 @@
   "greekLevelCantRead": "Can't read Greek",
   "greekLevelFluent": "Fluent",
   "greekLevelCanRead": "Can read and write",
-  "greekLevelExample": "Example"
+  "greekLevelExample": "Example",
+
+  "traditionTavli": "Tavli",
+  "traditionTavla": "Tavla",
+  "traditionNardy": "Nardy",
+  "traditionSheshBesh": "Shesh Besh",
+
+  "variantTavla": "Tavla",
+  "variantTavlaSub": "Turkish standard backgammon",
+  "variantTapa": "Tapa",
+  "variantTapaSub": "Turkish pinning variant",
+  "variantMoultezim": "Moultezim",
+  "variantMoultezimSub": "Turkish running variant",
+  "variantLongNard": "Long Nard",
+  "variantLongNardSub": "Running variant with head rule",
+  "variantShortNard": "Short Nard",
+  "variantShortNardSub": "Standard backgammon with doubling cube",
+  "variantSheshBesh": "Shesh Besh",
+  "variantSheshBeshSub": "Standard hitting game",
+  "variantMahbusa": "Mahbusa",
+  "variantMahbusaSub": "Arabic pinning variant",
+
+  "poolTradition": "My Tradition",
+  "poolInternational": "International",
+  "internationalMatch": "International Match",
+  "internationalMatchSub": "Play across traditions by game mechanic",
+  "canonicalRules": "Canonical Rules",
+
+  "traditionSwitcher": "Tradition",
+  "changeTradition": "Change Tradition"
 }

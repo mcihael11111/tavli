@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/constants/tradition.dart';
 import '../../features/ai/personality/bot_personality.dart';
 
 /// Persists user settings to SharedPreferences.
@@ -20,6 +21,8 @@ class SettingsService {
   static const _jacobyKey = 'tavli_jacoby';
   static const _personalityKey = 'tavli_bot_personality';
   static const _greekLevelKey = 'tavli_greek_level';
+  static const _traditionKey = 'tables_tradition';
+  static const _languageLevelKey = 'tables_language_level';
 
   final SharedPreferences _prefs;
 
@@ -100,6 +103,21 @@ class SettingsService {
       BotPersonality.fromStorageKey(_prefs.getString(_personalityKey));
   set botPersonality(BotPersonality v) =>
       _prefs.setString(_personalityKey, v.toStorageKey());
+
+  // ── Tradition ─────────────────────────────────────────
+  Tradition get tradition =>
+      Tradition.fromStorageKey(_prefs.getString(_traditionKey));
+  set tradition(Tradition v) =>
+      _prefs.setString(_traditionKey, v.toStorageKey());
+
+  // ── Language Level (0.0 = English only, 1.0 = Fluent) ─
+  /// Unified language level — replaces the old Greek-only level.
+  /// Falls back to greekLevel if the new key doesn't exist yet (migration).
+  double get languageLevel =>
+      _prefs.getDouble(_languageLevelKey) ??
+      _prefs.getDouble(_greekLevelKey) ??
+      0.5;
+  set languageLevel(double v) => _prefs.setDouble(_languageLevelKey, v);
 }
 
 /// Provider that bridges SettingsService to Riverpod.

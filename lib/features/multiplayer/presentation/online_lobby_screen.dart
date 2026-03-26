@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../core/constants/tradition.dart';
+import '../../../shared/services/settings_service.dart';
 import '../../auth/presentation/auth_provider.dart';
 
 /// Online lobby — choose quick match or play with friend.
@@ -170,17 +173,60 @@ class OnlineLobbyScreen extends ConsumerWidget {
 
               const SizedBox(height: TavliSpacing.xl),
 
-              // Quick Match.
+              // ── My Tradition section ──────────────────────
+              Text(
+                '${SettingsService.instance.tradition.displayName} — My Tradition',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontFamily: TavliTheme.serifFamily,
+                  fontWeight: FontWeight.w600,
+                  color: TavliColors.text,
+                ),
+              ),
+              const SizedBox(height: TavliSpacing.sm),
+
               _LobbyCard(
                 icon: Icons.flash_on,
                 title: 'Quick Match',
-                subtitle: 'Find an opponent near your rating',
+                subtitle: 'Find a ${SettingsService.instance.tradition.displayName} player near your rating',
                 onTap: () => context.push('/matchmaking'),
               ),
 
               const SizedBox(height: TavliSpacing.sm),
 
-              // Create Room.
+              // ── International section ─────────────────────
+              const Text(
+                'International',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: TavliColors.text,
+                ),
+              ),
+              const SizedBox(height: TavliSpacing.sm),
+
+              _LobbyCard(
+                icon: Icons.public,
+                title: 'International Match',
+                subtitle: 'Play across traditions by game mechanic',
+                onTap: () => context.push('/matchmaking', extra: {
+                  'poolType': PoolType.international,
+                }),
+              ),
+
+              const SizedBox(height: TavliSpacing.lg),
+
+              // ── Private games ─────────────────────────────
+              const Text(
+                'Private Games',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: TavliColors.text,
+                ),
+              ),
+              const SizedBox(height: TavliSpacing.sm),
+
               _LobbyCard(
                 icon: Icons.add_circle_outline,
                 title: 'Create Room',
@@ -190,7 +236,6 @@ class OnlineLobbyScreen extends ConsumerWidget {
 
               const SizedBox(height: TavliSpacing.sm),
 
-              // Join Room.
               _LobbyCard(
                 icon: Icons.login,
                 title: 'Join Room',

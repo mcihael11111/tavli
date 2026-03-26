@@ -7,25 +7,35 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/services/settings_service.dart';
 
 /// Home screen — bot greets you, choose how to play.
+///
+/// Adapts dynamically based on the player's selected tradition.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   String _greeting(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final hour = DateTime.now().hour;
-    if (l10n != null) {
-      if (hour < 12) return l10n.homeGreetingMorning;
-      if (hour < 18) return l10n.homeGreetingAfternoon;
-      return l10n.homeGreetingEvening;
+    final personality = SettingsService.instance.botPersonality;
+    final langLevel = SettingsService.instance.languageLevel;
+
+    // Use tradition-aware greetings from bot personality.
+    if (hour < 12) {
+      return l10n?.homeGreetingMorning ??
+          personality.morningGreeting(langLevel);
     }
-    if (hour < 12) return 'Καλημέρα! Ready for coffee and tavli?';
-    if (hour < 18) return 'Μεσημέρι... perfect time for a game, ρε!';
-    return 'Καληνύχτα soon... one more game?';
+    if (hour < 18) {
+      return l10n?.homeGreetingAfternoon ??
+          personality.afternoonGreeting(langLevel);
+    }
+    return l10n?.homeGreetingEvening ??
+        personality.eveningGreeting(langLevel);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final tradition = SettingsService.instance.tradition;
+    final variants = tradition.variants;
 
     return Scaffold(
       body: SafeArea(
@@ -36,9 +46,9 @@ class HomeScreen extends StatelessWidget {
             children: [
               const SizedBox(height: TavliSpacing.xxl),
 
-              // Title.
+              // Dynamic title — tradition name.
               Text(
-                'Tavli',
+                tradition.displayName,
                 style: TextStyle(
                   fontSize: 32,
                   fontFamily: TavliTheme.serifFamily,
@@ -117,26 +127,18 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: TavliSpacing.md),
 
-              // Game variant tabs.
+              // Game variant chips — dynamic per tradition.
               Row(
                 children: [
-                  _VariantChip(
-                    label: 'Πόρτες',
-                    selected: true,
-                    onTap: () => context.push('/difficulty', extra: {'variant': 'portes'}),
-                  ),
-                  const SizedBox(width: TavliSpacing.sm),
-                  _VariantChip(
-                    label: 'Πλακωτό',
-                    selected: false,
-                    onTap: () => context.push('/difficulty', extra: {'variant': 'plakoto'}),
-                  ),
-                  const SizedBox(width: TavliSpacing.sm),
-                  _VariantChip(
-                    label: 'Φεύγα',
-                    selected: false,
-                    onTap: () => context.push('/difficulty', extra: {'variant': 'fevga'}),
-                  ),
+                  for (int i = 0; i < variants.length; i++) ...[
+                    if (i > 0) const SizedBox(width: TavliSpacing.sm),
+                    _VariantChip(
+                      label: variants[i].nativeName,
+                      selected: i == 0,
+                      onTap: () => context.push('/difficulty',
+                          extra: {'variant': variants[i].name}),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: TavliSpacing.sm),

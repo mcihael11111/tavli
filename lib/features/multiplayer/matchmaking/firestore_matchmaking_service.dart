@@ -1,12 +1,18 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/tradition.dart';
+import '../../game/domain/engine/variants/game_variant.dart';
 import '../data/firestore_multiplayer_service.dart';
 
 /// Firestore-backed matchmaking service.
 ///
 /// Client-side matching for MVP: when entering the queue, also scan for
 /// compatible opponents. Race conditions handled by Firestore transactions.
+///
+/// Supports two pool types:
+/// - **Tradition pool**: matches within the same tradition + variant.
+/// - **International pool**: matches across traditions by mechanic family.
 class FirestoreMatchmakingService {
   final FirebaseFirestore _firestore;
   final FirestoreMultiplayerService _multiplayerService;
@@ -28,12 +34,20 @@ class FirestoreMatchmakingService {
     required String playerUid,
     required String playerName,
     required int rating,
+    required Tradition tradition,
+    required GameVariant variant,
+    PoolType poolType = PoolType.tradition,
+    MechanicFamily? mechanicFamily,
   }) async* {
-    // Write to queue.
+    // Write to queue with tradition/pool context.
     await _queue.doc(playerUid).set({
       'uid': playerUid,
       'name': playerName,
       'rating': rating,
+      'tradition': tradition.name,
+      'variant': variant.name,
+      'poolType': poolType.name,
+      'mechanicFamily': mechanicFamily?.name ?? variant.mechanicFamily.name,
       'joinedAt': FieldValue.serverTimestamp(),
       'status': 'waiting',
       'gameRoomId': null,
@@ -42,7 +56,13 @@ class FirestoreMatchmakingService {
     yield MatchmakingStatus.searching();
 
     // Try to match immediately.
-    final matched = await _tryMatchClient(playerUid, playerName, rating);
+    final matched = await _tryMatchClient(
+      playerUid, playerName, rating,
+      tradition: tradition,
+      variant: variant,
+      poolType: poolType,
+      mechanicFamily: mechanicFamily ?? variant.mechanicFamily,
+    );
     if (matched != null) {
       yield MatchmakingStatus.matched(matched);
       return;
@@ -67,12 +87,30 @@ class FirestoreMatchmakingService {
   Future<String?> _tryMatchClient(
     String playerUid,
     String playerName,
-    int rating,
-  ) async {
-    // Query for waiting players within initial range.
-    final snapshot = await _queue
-        .where('status', isEqualTo: 'waiting')
-        .get();
+    int rating, {
+    required Tradition tradition,
+    required GameVariant variant,
+    required PoolType poolType,
+    required MechanicFamily mechanicFamily,
+  }) async {
+    // Build query based on pool type.
+    Query<Map<String, dynamic>> query = _queue
+        .where('status', isEqualTo: 'waiting');
+
+    if (poolType == PoolType.tradition) {
+      // Tradition pool: match same tradition + variant.
+      query = query
+          .where('poolType', isEqualTo: 'tradition')
+          .where('tradition', isEqualTo: tradition.name)
+          .where('variant', isEqualTo: variant.name);
+    } else {
+      // International pool: match same mechanic family.
+      query = query
+          .where('poolType', isEqualTo: 'international')
+          .where('mechanicFamily', isEqualTo: mechanicFamily.name);
+    }
+
+    final snapshot = await query.get();
 
     for (final doc in snapshot.docs) {
       if (doc.id == playerUid) continue;
@@ -94,11 +132,14 @@ class FirestoreMatchmakingService {
           if (myDoc.data()!['status'] != 'waiting') return null;
           if (oppDoc.data()!['status'] != 'waiting') return null;
 
-          // Create room.
+          // Create room with variant-aware initial state.
           final roomId = await _multiplayerService.createRoom(
             playerUid: playerUid,
             playerName: playerName,
             playerRating: rating,
+            variant: variant.name,
+            tradition: tradition.name,
+            poolType: poolType.name,
           );
 
           // Join as player 2.

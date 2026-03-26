@@ -1,0 +1,50 @@
+{
+  "@@locale": "ar",
+  "appTitle": "Tables",
+  "subtitle": "تقاليد الطاولة",
+
+  "homeGreetingMorning": "صباح الخير! نلعب طاولة؟",
+  "homeGreetingAfternoon": "بعد الظهر... وقت مثالي للعب!",
+  "homeGreetingEvening": "مساء الخير! جولة أخيرة؟",
+
+  "playVsBot": "العب ضد الروبوت",
+  "playVsBotSub": "تحدَّ الخصم الذكي",
+  "playOnline": "العب أونلاين",
+  "playOnlineSub": "مباراة سريعة أو ادعُ صديقاً",
+  "passAndPlay": "تبادل اللعب",
+  "passAndPlaySub": "لاعبان، جهاز واحد",
+  "learnToPlay": "تعلّم اللعب",
+  "learnToPlaySub": "درس تفاعلي مع الروبوت",
+
+  "chooseDifficulty": "اختر الصعوبة",
+  "difficultyEasy": "سهل",
+  "difficultyMedium": "متوسط",
+  "difficultyHard": "صعب",
+  "difficultyPappous": "صعب جداً",
+
+  "victory": "!فوز",
+  "defeat": "هزيمة",
+  "playAgain": "العب مرة أخرى",
+  "home": "الرئيسية",
+  "next": "التالي",
+  "cancel": "إلغاء",
+
+  "profile": "الملف الشخصي",
+  "rating": "التصنيف",
+  "games": "المباريات",
+  "wins": "الانتصارات",
+  "losses": "الخسائر",
+
+  "settings": "الإعدادات",
+  "customize": "تخصيص",
+
+  "traditionTavli": "تافلي",
+  "traditionTavla": "طاولة",
+  "traditionNardy": "نرد",
+  "traditionSheshBesh": "شش بش",
+
+  "poolTradition": "تقليدي",
+  "poolInternational": "دولي",
+  "traditionSwitcher": "التقليد",
+  "changeTradition": "تغيير التقليد"
+}

@@ -26,8 +26,14 @@ class GameRoom {
   /// Pending doubling offer: who offered ('player1' or 'player2'), or null.
   final String? pendingDoubleFrom;
 
-  /// Game variant (portes, plakoto, fevga).
+  /// Game variant (portes, plakoto, fevga, tavla, tapa, etc.).
   final String variant;
+
+  /// Cultural tradition context (tavli, tavla, nardy, sheshBesh).
+  final String tradition;
+
+  /// How the match was made (tradition or international).
+  final String poolType;
 
   const GameRoom({
     required this.gameId,
@@ -48,6 +54,8 @@ class GameRoom {
     this.heartbeats = const {},
     this.pendingDoubleFrom,
     this.variant = 'portes',
+    this.tradition = 'tavli',
+    this.poolType = 'tradition',
   });
 
   GameRoom copyWith({
@@ -92,6 +100,8 @@ class GameRoom {
           ? null
           : (pendingDoubleFrom ?? this.pendingDoubleFrom),
       variant: variant,
+      tradition: tradition,
+      poolType: poolType,
     );
   }
 
@@ -118,6 +128,8 @@ class GameRoom {
         ),
         'pendingDoubleFrom': pendingDoubleFrom,
         'variant': variant,
+        'tradition': tradition,
+        'poolType': poolType,
       };
 
   factory GameRoom.fromJson(Map<String, dynamic> json) {
@@ -158,6 +170,8 @@ class GameRoom {
           {},
       pendingDoubleFrom: json['pendingDoubleFrom'] as String?,
       variant: json['variant'] as String? ?? 'portes',
+      tradition: json['tradition'] as String? ?? 'tavli',
+      poolType: json['poolType'] as String? ?? 'tradition',
     );
   }
 }

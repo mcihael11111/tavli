@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/services/progression_service.dart';
+import '../../../shared/services/settings_service.dart';
 import '../../ai/difficulty/difficulty_level.dart';
 
 /// Profile screen — shows player stats from ProgressionService.
@@ -79,9 +80,18 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: TavliSpacing.xxs),
                           Text(
-                            rankTitle,
+                            '${SettingsService.instance.tradition.flagEmoji} '
+                            '${SettingsService.instance.tradition.displayName} Player',
                             style: const TextStyle(
                               fontSize: 14,
+                              color: TavliColors.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            rankTitle,
+                            style: const TextStyle(
+                              fontSize: 12,
                               color: TavliColors.primary,
                             ),
                           ),
