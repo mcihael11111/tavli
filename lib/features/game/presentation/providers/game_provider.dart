@@ -10,6 +10,7 @@ import '../../data/models/game_state.dart';
 import '../../domain/engine/game_engine.dart';
 import '../../domain/engine/move_generator.dart';
 import '../../domain/engine/variants/game_variant.dart';
+import '../../../../core/constants/tradition.dart';
 import '../../domain/engine/variants/plakoto_engine.dart';
 import '../../domain/engine/variants/fevga_engine.dart';
 import '../../../ai/difficulty/difficulty_level.dart';
@@ -140,64 +141,60 @@ class GameNotifier extends StateNotifier<GameState> {
 
   /// The initial board for the current variant.
   BoardState _initialBoard({int activePlayer = 1}) {
-    return switch (_variant) {
-      GameVariant.portes => BoardState.initial(activePlayer: activePlayer),
-      GameVariant.plakoto => _plakotoEngine.initialState(activePlayer: activePlayer),
-      GameVariant.fevga => _fevgaEngine.initialState(activePlayer: activePlayer),
-    };
+    return BoardState.forVariant(_variant, activePlayer: activePlayer);
   }
 
   /// Generate legal turns for the current variant.
   List<Turn> _generateTurns(BoardState board, DiceRoll roll) {
-    return switch (_variant) {
-      GameVariant.portes => _generator.generateAllLegalTurns(board, roll),
-      GameVariant.plakoto => _plakotoEngine.generateAllLegalTurns(board, roll),
-      GameVariant.fevga => _fevgaEngine.generateAllLegalTurns(board, roll),
+    return switch (_variant.mechanicFamily) {
+      MechanicFamily.hitting => _generator.generateAllLegalTurns(board, roll),
+      MechanicFamily.pinning => _plakotoEngine.generateAllLegalTurns(board, roll),
+      MechanicFamily.running => _fevgaEngine.generateAllLegalTurns(board, roll),
     };
   }
 
   /// Generate single-die moves for the current variant.
   List<Move> _generateMovesForDie(BoardState board, int die) {
-    return switch (_variant) {
-      GameVariant.portes => _generator.generateMovesForDie(board, die),
-      GameVariant.plakoto => _plakotoEngine.generateMovesForDie(board, die),
-      GameVariant.fevga => _fevgaEngine.generateMovesForDie(board, die),
+    return switch (_variant.mechanicFamily) {
+      MechanicFamily.hitting => _generator.generateMovesForDie(board, die),
+      MechanicFamily.pinning => _plakotoEngine.generateMovesForDie(board, die),
+      MechanicFamily.running => _fevgaEngine.generateMovesForDie(board, die),
     };
   }
 
   /// Apply a move for the current variant.
   BoardState _applyMoveVariant(BoardState board, Move move) {
-    return switch (_variant) {
-      GameVariant.portes => _engine.applyMove(board, move),
-      GameVariant.plakoto => _plakotoEngine.applyMove(board, move),
-      GameVariant.fevga => _fevgaEngine.applyMove(board, move),
+    return switch (_variant.mechanicFamily) {
+      MechanicFamily.hitting => _engine.applyMove(board, move),
+      MechanicFamily.pinning => _plakotoEngine.applyMove(board, move),
+      MechanicFamily.running => _fevgaEngine.applyMove(board, move),
     };
   }
 
   /// End turn for the current variant.
   BoardState _endTurnVariant(BoardState board) {
-    return switch (_variant) {
-      GameVariant.portes => _engine.endTurn(board),
-      GameVariant.plakoto => _plakotoEngine.endTurn(board),
-      GameVariant.fevga => _fevgaEngine.endTurn(board),
+    return switch (_variant.mechanicFamily) {
+      MechanicFamily.hitting => _engine.endTurn(board),
+      MechanicFamily.pinning => _plakotoEngine.endTurn(board),
+      MechanicFamily.running => _fevgaEngine.endTurn(board),
     };
   }
 
   /// Check game over for the current variant.
   bool _isGameOverVariant(BoardState board) {
-    return switch (_variant) {
-      GameVariant.portes => _engine.isGameOver(board),
-      GameVariant.plakoto => _plakotoEngine.isGameOver(board),
-      GameVariant.fevga => _fevgaEngine.isGameOver(board),
+    return switch (_variant.mechanicFamily) {
+      MechanicFamily.hitting => _engine.isGameOver(board),
+      MechanicFamily.pinning => _plakotoEngine.isGameOver(board),
+      MechanicFamily.running => _fevgaEngine.isGameOver(board),
     };
   }
 
   /// Get result for the current variant.
   GameResult? _getResultVariant(BoardState board) {
-    return switch (_variant) {
-      GameVariant.portes => _engine.getResult(board),
-      GameVariant.plakoto => _plakotoEngine.getResult(board),
-      GameVariant.fevga => _fevgaEngine.getResult(board),
+    return switch (_variant.mechanicFamily) {
+      MechanicFamily.hitting => _engine.getResult(board),
+      MechanicFamily.pinning => _plakotoEngine.getResult(board),
+      MechanicFamily.running => _fevgaEngine.getResult(board),
     };
   }
 
@@ -483,10 +480,10 @@ class GameNotifier extends StateNotifier<GameState> {
 
   /// Check if all checkers are in the home board for the current variant.
   bool _allInHomeVariant(BoardState board, int player) {
-    return switch (_variant) {
-      GameVariant.portes => board.allInHome(player),
-      GameVariant.plakoto => _plakotoEngine.allInHome(board, player),
-      GameVariant.fevga => _fevgaEngine.allInHome(board, player),
+    return switch (_variant.mechanicFamily) {
+      MechanicFamily.hitting => board.allInHome(player),
+      MechanicFamily.pinning => _plakotoEngine.allInHome(board, player),
+      MechanicFamily.running => _fevgaEngine.allInHome(board, player),
     };
   }
 

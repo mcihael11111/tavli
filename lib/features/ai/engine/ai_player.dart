@@ -7,6 +7,7 @@ import '../../game/domain/engine/board_evaluator.dart';
 import '../../game/domain/engine/game_engine.dart';
 import '../../game/domain/engine/move_generator.dart';
 import '../../game/domain/engine/variants/game_variant.dart';
+import '../../../core/constants/tradition.dart';
 import '../../game/domain/engine/variants/plakoto_evaluator.dart';
 import '../../game/domain/engine/variants/fevga_evaluator.dart';
 import '../difficulty/difficulty_level.dart';
@@ -36,10 +37,10 @@ class AiPlayer {
 
   /// Evaluate a position using the correct variant evaluator.
   double _evaluateForVariant(BoardState state, int player, GameVariant variant) {
-    return switch (variant) {
-      GameVariant.portes => _evaluator.evaluate(state, player),
-      GameVariant.plakoto => _plakotoEvaluator.evaluate(state, player),
-      GameVariant.fevga => _fevgaEvaluator.evaluate(state, player),
+    return switch (variant.mechanicFamily) {
+      MechanicFamily.hitting => _evaluator.evaluate(state, player),
+      MechanicFamily.pinning => _plakotoEvaluator.evaluate(state, player),
+      MechanicFamily.running => _fevgaEvaluator.evaluate(state, player),
     };
   }
 

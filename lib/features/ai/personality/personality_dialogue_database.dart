@@ -12,6 +12,9 @@ abstract final class PersonalityDialogueDatabase {
         BotPersonality.cousinNikos => _nikosLines,
         BotPersonality.pappoosYiorgos => _giorgosLines,
         BotPersonality.theiaEleni => _eleniLines,
+        // New tradition personalities — use Mikhail's lines as placeholder
+        // until tradition-specific dialogue databases are written.
+        _ => DialogueDatabase.lines,
       };
 
   // ═════════════════════════════════════════════════════════════════
