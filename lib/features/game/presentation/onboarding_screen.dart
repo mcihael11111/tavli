@@ -110,65 +110,62 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
 
-            // Indicators + next button.
+            // Pagination dots.
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: TavliSpacing.md,
-                vertical: TavliSpacing.xl,
-              ),
+              padding: const EdgeInsets.only(top: TavliSpacing.sm),
               child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Dots.
-                  Padding(
-                    padding: const EdgeInsets.all(10),
-                    child: Row(
-                      children: [
-                        for (int i = 0; i < _pageCount; i++) ...[
-                          Container(
-                            width: _currentPage == i ? 52 : 14,
-                            height: 14,
-                            margin: const EdgeInsets.only(right: 6),
-                            decoration: BoxDecoration(
-                              color: _currentPage == i
-                                  ? TavliColors.light
-                                  : TavliColors.light.withValues(alpha: 0.35),
-                              borderRadius:
-                                  BorderRadius.circular(TavliRadius.full),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const Spacer(),
-                  // Next / Get Started.
-                  FilledButton(
-                    onPressed: _next,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: TavliColors.primary,
-                      foregroundColor: TavliColors.light,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: TavliSpacing.lg,
-                        vertical: TavliSpacing.xs,
-                      ),
-                      side: BorderSide(
-                        color: TavliColors.light.withValues(alpha: 0.3),
-                      ),
-                      shape: RoundedRectangleBorder(
+                  for (int i = 0; i < _pageCount; i++)
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      curve: Curves.easeInOut,
+                      width: _currentPage == i ? 28 : 8,
+                      height: 8,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      decoration: BoxDecoration(
+                        color: _currentPage == i
+                            ? TavliColors.light
+                            : TavliColors.light.withValues(alpha: 0.5),
                         borderRadius:
-                            BorderRadius.circular(TavliRadius.sm),
+                            BorderRadius.circular(TavliRadius.full),
                       ),
                     ),
-                    child: Text(
-                      _currentPage < _pageCount - 1 ? 'Next' : 'Get Started',
-                      style: TextStyle(
-                        fontFamily: TavliTheme.serifFamily,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 16,
-                      ),
+                ],
+              ),
+            ),
+
+            // Next / Get Started button.
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                TavliSpacing.md,
+                TavliSpacing.md,
+                TavliSpacing.md,
+                TavliSpacing.md + MediaQuery.of(context).padding.bottom,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: FilledButton(
+                  onPressed: _next,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: TavliColors.primary,
+                    foregroundColor: TavliColors.light,
+                    elevation: 1,
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(TavliRadius.lg),
                     ),
                   ),
-                ],
+                  child: Text(
+                    _currentPage < _pageCount - 1 ? 'Next' : 'Get Started',
+                    style: TextStyle(
+                      fontFamily: TavliTheme.serifFamily,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
