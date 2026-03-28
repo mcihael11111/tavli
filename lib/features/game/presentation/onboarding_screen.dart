@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -71,106 +72,133 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return GradientScaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Skip button.
-            Align(
-              alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: _finish,
-                child: Text('Skip',
-                    style: TextStyle(
-                      color: TavliColors.light,
-                      fontSize: 14,
-                      fontFamily: TavliTheme.serifFamily,
-                      fontWeight: FontWeight.w500,
-                    )),
-              ),
-            ),
-
-            // Pages.
-            Expanded(
-              child: PageView(
-                controller: _controller,
-                onPageChanged: (i) => setState(() => _currentPage = i),
+      body: Stack(
+        children: [
+          // Pages (full screen — content scrolls behind the footer).
+          Positioned.fill(
+            child: SafeArea(
+              bottom: false,
+              child: Column(
                 children: [
-                  _WelcomePage(),
-                  _UsernamePage(),
-                  _HistoryPage(),
-                  _TraditionPickPage(onChanged: () => setState(() {})),
-                  _LanguageLevelPage(),
-                  _PersonalityPickPage(),
-                  _ReadyPage(onLearn: () {
-                    _finish();
-                    context.push('/learn');
-                  }),
-                ],
-              ),
-            ),
-
-            // Pagination dots.
-            Padding(
-              padding: const EdgeInsets.only(top: TavliSpacing.sm),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  for (int i = 0; i < _pageCount; i++)
-                    AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      curve: Curves.easeInOut,
-                      width: _currentPage == i ? 28 : 8,
-                      height: 8,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      decoration: BoxDecoration(
-                        color: _currentPage == i
-                            ? TavliColors.light
-                            : TavliColors.light.withValues(alpha: 0.5),
-                        borderRadius:
-                            BorderRadius.circular(TavliRadius.full),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-
-            // Next / Get Started button.
-            Padding(
-              padding: EdgeInsets.fromLTRB(
-                TavliSpacing.md,
-                TavliSpacing.md,
-                TavliSpacing.md,
-                TavliSpacing.md + MediaQuery.of(context).padding.bottom,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: FilledButton(
-                  onPressed: _next,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: TavliColors.background,
-                    foregroundColor: TavliColors.primary,
-                    elevation: 0,
-                    shadowColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(TavliRadius.lg),
+                  // Skip button.
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: TextButton(
+                      onPressed: _finish,
+                      child: Text('Skip',
+                          style: TextStyle(
+                            color: TavliColors.light,
+                            fontSize: 14,
+                            fontFamily: TavliTheme.serifFamily,
+                            fontWeight: FontWeight.w500,
+                          )),
                     ),
                   ),
-                  child: Text(
-                    _currentPage < _pageCount - 1 ? 'Next' : 'Get Started',
-                    style: TextStyle(
-                      fontFamily: TavliTheme.serifFamily,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                  Expanded(
+                    child: PageView(
+                      controller: _controller,
+                      onPageChanged: (i) => setState(() => _currentPage = i),
+                      children: [
+                        _WelcomePage(),
+                        _UsernamePage(),
+                        _HistoryPage(),
+                        _TraditionPickPage(onChanged: () => setState(() {})),
+                        _LanguageLevelPage(),
+                        _PersonalityPickPage(),
+                        _ReadyPage(onLearn: () {
+                          _finish();
+                          context.push('/learn');
+                        }),
+                      ],
                     ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Floating frosted glass footer — dots + button.
+          Positioned(
+            left: TavliSpacing.md,
+            right: TavliSpacing.md,
+            bottom: bottomPadding + TavliSpacing.sm,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(TavliRadius.xl),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(
+                    TavliSpacing.md,
+                    TavliSpacing.sm,
+                    TavliSpacing.sm,
+                    TavliSpacing.sm,
+                  ),
+                  decoration: BoxDecoration(
+                    color: TavliColors.background.withValues(alpha: 0.35),
+                    borderRadius: BorderRadius.circular(TavliRadius.xl),
+                    border: Border.all(
+                      color: TavliColors.light.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      // Pagination dots.
+                      for (int i = 0; i < _pageCount; i++)
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          curve: Curves.easeInOut,
+                          width: _currentPage == i ? 24 : 8,
+                          height: 8,
+                          margin: const EdgeInsets.only(right: 4),
+                          decoration: BoxDecoration(
+                            color: _currentPage == i
+                                ? TavliColors.light
+                                : TavliColors.light.withValues(alpha: 0.4),
+                            borderRadius:
+                                BorderRadius.circular(TavliRadius.full),
+                          ),
+                        ),
+                      const Spacer(),
+                      // Next / Get Started button.
+                      SizedBox(
+                        height: 44,
+                        child: FilledButton(
+                          onPressed: _next,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: TavliColors.background,
+                            foregroundColor: TavliColors.primary,
+                            elevation: 0,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: TavliSpacing.lg,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(TavliRadius.lg),
+                            ),
+                          ),
+                          child: Text(
+                            _currentPage < _pageCount - 1
+                                ? 'Next'
+                                : 'Get Started',
+                            style: TextStyle(
+                              fontFamily: TavliTheme.serifFamily,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
