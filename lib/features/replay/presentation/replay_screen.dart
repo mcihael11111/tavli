@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../game/data/models/board_state.dart';
 import '../data/game_recording.dart';
 
@@ -112,7 +113,7 @@ class _ReplayScreenState extends State<ReplayScreen> {
     final rec = widget.recording;
     final turn = _currentTurnData;
 
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(
         title: Text('${rec.player1Name} vs ${rec.player2Name}'),
         actions: [

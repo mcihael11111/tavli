@@ -2,21 +2,24 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/services/copy_service.dart';
 import '../../../shared/services/settings_service.dart';
+import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../ai/difficulty/difficulty_level.dart';
 import '../../game/data/models/game_result.dart';
 
 /// A single match history entry.
 class MatchRecord {
   final DateTime timestamp;
-  final DifficultyLevel? difficulty; // null for online/pass-play
+  final DifficultyLevel? difficulty;
   final String opponentName;
   final bool playerWon;
   final GameResultType resultType;
   final int cubeValue;
   final int playerPips;
   final int opponentPips;
-  final String mode; // 'bot', 'online', 'pass-play'
+  final String mode;
 
   const MatchRecord({
     required this.timestamp,
@@ -83,7 +86,7 @@ class MatchHistoryService {
 
   static Future<void> record(MatchRecord entry) async {
     final records = await load();
-    records.insert(0, entry); // newest first
+    records.insert(0, entry);
     if (records.length > _maxRecords) records.removeLast();
     final prefs = await SharedPreferences.getInstance();
     prefs.setString(_key, jsonEncode(records.map((r) => r.toJson()).toList()));
@@ -116,31 +119,35 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Match History')),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _records.isEmpty
-              ? _buildEmpty(theme, colors)
-              : _buildList(theme, colors),
+    return GradientScaffold(
+      appBar: AppBar(title: Text(TavliCopy.matchHistory)),
+      body: SafeArea(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _records.isEmpty
+                ? _buildEmpty(theme)
+                : _buildList(theme),
+      ),
     );
   }
 
-  Widget _buildEmpty(ThemeData theme, ColorScheme colors) {
+  Widget _buildEmpty(ThemeData theme) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.history, size: 48, color: colors.outline),
+          Icon(Icons.history, size: 48, color: TavliColors.light.withValues(alpha: 0.5)),
           const SizedBox(height: 12),
-          Text('No games yet', style: theme.textTheme.headlineMedium),
+          Text('No games yet', style: theme.textTheme.headlineMedium?.copyWith(
+            color: TavliColors.light,
+          )),
           const SizedBox(height: 4),
           Text(
             "Play a game and it'll show up here!",
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colors.onSurface.withValues(alpha: 0.7),
+            style: TextStyle(
+              fontSize: 14,
+              color: TavliColors.light.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -148,22 +155,17 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
     );
   }
 
-  Widget _buildList(ThemeData theme, ColorScheme colors) {
+  Widget _buildList(ThemeData theme) {
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, kToolbarHeight + TavliSpacing.md, 12, 12),
       itemCount: _records.length,
       itemBuilder: (context, index) {
         final r = _records[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: TavliColors.primary,
-            borderRadius: BorderRadius.circular(TavliRadius.lg),
-            border: Border.all(color: TavliColors.background),
-            boxShadow: TavliShadows.xsmall,
-          ),
-          child: ListTile(
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: ContentModule(
             leading: CircleAvatar(
+              radius: 20,
               backgroundColor: r.playerWon
                   ? TavliColors.success.withValues(alpha: 0.15)
                   : TavliColors.error.withValues(alpha: 0.15),
@@ -173,16 +175,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                 size: 20,
               ),
             ),
-            title: Text(
-              'vs ${r.opponentName}',
-              style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-            ),
-            subtitle: Text(
-              '${_resultLabel(r.resultType)} · ${r.points} pts · ${_modeLabel(r.mode)}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: colors.onSurface.withValues(alpha: 0.7),
-              ),
-            ),
+            title: 'vs ${r.opponentName}',
+            body: '${_resultLabel(r.resultType)} \u00b7 ${r.points} pts \u00b7 ${_modeLabel(r.mode)}',
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
@@ -198,7 +192,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                 ),
                 Text(
                   _timeAgo(r.timestamp),
-                  style: theme.textTheme.labelSmall?.copyWith(
+                  style: TextStyle(
+                    fontSize: 11,
                     color: TavliColors.light.withValues(alpha: 0.5),
                   ),
                 ),

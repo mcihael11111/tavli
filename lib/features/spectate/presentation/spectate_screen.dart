@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../multiplayer/data/game_room.dart';
 import '../data/spectate_service.dart';
 
@@ -37,7 +39,7 @@ class _SpectateListScreenState extends State<SpectateListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(
         title: const Text('Spectate'),
         actions: [
@@ -113,17 +115,10 @@ class _GameCard extends StatelessWidget {
     final p1 = game.player1;
     final p2 = game.player2;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: TavliSpacing.xs),
-        padding: const EdgeInsets.all(TavliSpacing.md),
-        decoration: BoxDecoration(
-          color: TavliColors.primary,
-          borderRadius: BorderRadius.circular(TavliRadius.lg),
-          border: Border.all(color: TavliColors.background),
-          boxShadow: TavliShadows.xsmall,
-        ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: TavliSpacing.xs),
+      child: ContentModule(
+        onTap: onTap,
         child: Row(
           children: [
             Expanded(

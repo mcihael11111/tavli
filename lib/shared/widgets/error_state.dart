@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/colors.dart';
 
 /// Reusable error state widget for network/loading failures.
 class ErrorStateWidget extends StatelessWidget {
@@ -34,32 +35,29 @@ class ErrorStateWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
 
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(TavliSpacing.xl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 48, color: colors.error.withValues(alpha: 0.7)),
-            const SizedBox(height: 16),
+            Icon(icon, size: 48, color: TavliColors.error),
+            const SizedBox(height: TavliSpacing.md),
             Text(title, style: theme.textTheme.headlineMedium),
             if (message != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: TavliSpacing.xs),
               Text(
                 message!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: colors.onSurface.withValues(alpha: 0.7),
-                ),
+                style: theme.textTheme.bodyMedium,
                 textAlign: TextAlign.center,
               ),
             ],
             if (onRetry != null) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: TavliSpacing.lg),
               ElevatedButton.icon(
                 onPressed: onRetry,
-                icon: const Icon(Icons.refresh, size: 18),
+                icon: const Icon(Icons.refresh, size: 24),
                 label: const Text('Try Again'),
               ),
             ],

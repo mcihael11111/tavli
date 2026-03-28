@@ -35,6 +35,60 @@ class ShopItem {
 /// All shop items available in the game.
 abstract final class ShopItems {
   static const List<ShopItem> all = [
+    // ── Earnable Board Sets (unlockable with coins) ───────────
+    ShopItem(
+      id: 'board_set_2',
+      name: 'Teal Board',
+      nameGreek: 'Σμαραγδί',
+      description: 'Mahogany & Teal board set.',
+      category: ShopCategory.board,
+      priceCoins: 300,
+    ),
+    ShopItem(
+      id: 'board_set_3',
+      name: 'Night Board',
+      nameGreek: 'Νυχτερινό',
+      description: 'Dark Walnut & Navy board set.',
+      category: ShopCategory.board,
+      priceCoins: 300,
+    ),
+
+    // ── Earnable Checker Sets ─────────────────────────────────
+    ShopItem(
+      id: 'checker_set_2',
+      name: 'Ruby Checkers',
+      nameGreek: 'Ρουμπίνι',
+      description: 'Ivory & deep red checker set.',
+      category: ShopCategory.checkers,
+      priceCoins: 250,
+    ),
+    ShopItem(
+      id: 'checker_set_3',
+      name: 'Olive Checkers',
+      nameGreek: 'Ελιά',
+      description: 'Warm gray & olive green checker set.',
+      category: ShopCategory.checkers,
+      priceCoins: 250,
+    ),
+
+    // ── Earnable Dice Sets ────────────────────────────────────
+    ShopItem(
+      id: 'dice_set_2',
+      name: 'Ruby Dice',
+      nameGreek: 'Ρουμπίνι',
+      description: 'Classic dice with ruby-red pips.',
+      category: ShopCategory.dice,
+      priceCoins: 200,
+    ),
+    ShopItem(
+      id: 'dice_set_3',
+      name: 'Olive Dice',
+      nameGreek: 'Ελιά',
+      description: 'Subtle dice with gray pips.',
+      category: ShopCategory.dice,
+      priceCoins: 200,
+    ),
+
     // ── Premium Board Sets ────────────────────────────────────
     ShopItem(
       id: 'board_marble',
@@ -177,10 +231,53 @@ abstract final class ShopItems {
   }
 }
 
+/// Maps shop item IDs to the set index used by SettingsService.
+abstract final class ShopItemSets {
+  /// Board shop-item-id → boardSet index.
+  static const boardSetIndex = {
+    'board_set_2': 2,
+    'board_set_3': 3,
+  };
+
+  /// Checker shop-item-id → checkerSet index.
+  static const checkerSetIndex = {
+    'checker_set_2': 2,
+    'checker_set_3': 3,
+  };
+
+  /// Dice shop-item-id → diceSet index.
+  static const diceSetIndex = {
+    'dice_set_2': 2,
+    'dice_set_3': 3,
+  };
+
+  /// Returns the shop item ID for a given board set index, or null for the default.
+  static String? boardIdForSet(int setIndex) =>
+      boardSetIndex.entries
+          .where((e) => e.value == setIndex)
+          .map((e) => e.key)
+          .firstOrNull;
+
+  /// Returns the shop item ID for a given checker set index, or null for the default.
+  static String? checkerIdForSet(int setIndex) =>
+      checkerSetIndex.entries
+          .where((e) => e.value == setIndex)
+          .map((e) => e.key)
+          .firstOrNull;
+
+  /// Returns the shop item ID for a given dice set index, or null for the default.
+  static String? diceIdForSet(int setIndex) =>
+      diceSetIndex.entries
+          .where((e) => e.value == setIndex)
+          .map((e) => e.key)
+          .firstOrNull;
+}
+
 /// Tracks player's coin balance and purchased items.
 class ShopService {
   static const _coinsKey = 'tavli_coins';
   static const _purchasedKey = 'tavli_purchased_items';
+  static const _initializedKey = 'tavli_shop_initialized';
 
   static ShopService? _instance;
   final SharedPreferences _prefs;
@@ -193,10 +290,46 @@ class ShopService {
   static Future<ShopService> initialize() async {
     if (_instance != null) return _instance!;
     final prefs = await SharedPreferences.getInstance();
-    final coins = prefs.getInt(_coinsKey) ?? 100; // Start with 100 coins
+
+    // First-time initialization: 50 starting coins.
+    // For existing users who already had 100, leave their balance.
+    final isNew = !(prefs.containsKey(_initializedKey));
+    final coins = isNew ? 50 : (prefs.getInt(_coinsKey) ?? 50);
+    if (isNew) {
+      await prefs.setBool(_initializedKey, true);
+      await prefs.setInt(_coinsKey, coins);
+    }
+
     final purchased = prefs.getStringList(_purchasedKey)?.toSet() ?? {};
+
+    // Grandfather existing users: if they had board/checker/dice set != 1
+    // before the shop existed, grant those items for free.
+    _grandfatherExistingSelections(prefs, purchased);
+
     _instance = ShopService._(prefs, coins, purchased);
     return _instance!;
+  }
+
+  static void _grandfatherExistingSelections(
+    SharedPreferences prefs,
+    Set<String> purchased,
+  ) {
+    final boardSet = prefs.getInt('tavli_board_set') ?? 1;
+    final checkerSet = prefs.getInt('tavli_checker_set') ?? 1;
+    final diceSet = prefs.getInt('tavli_dice_set') ?? 1;
+
+    final boardId = ShopItemSets.boardIdForSet(boardSet);
+    if (boardId != null) purchased.add(boardId);
+
+    final checkerId = ShopItemSets.checkerIdForSet(checkerSet);
+    if (checkerId != null) purchased.add(checkerId);
+
+    final diceId = ShopItemSets.diceIdForSet(diceSet);
+    if (diceId != null) purchased.add(diceId);
+
+    if (purchased.isNotEmpty) {
+      prefs.setStringList(_purchasedKey, purchased.toList());
+    }
   }
 
   static ShopService get instance {
@@ -210,6 +343,27 @@ class ShopService {
   bool isOwned(String itemId) => _purchased.contains(itemId);
 
   bool canAfford(ShopItem item) => _coins >= item.priceCoins;
+
+  /// Whether a board set index is owned (set 1 is always free).
+  bool isBoardSetOwned(int setIndex) {
+    if (setIndex == 1) return true;
+    final id = ShopItemSets.boardIdForSet(setIndex);
+    return id != null && _purchased.contains(id);
+  }
+
+  /// Whether a checker set index is owned (set 1 is always free).
+  bool isCheckerSetOwned(int setIndex) {
+    if (setIndex == 1) return true;
+    final id = ShopItemSets.checkerIdForSet(setIndex);
+    return id != null && _purchased.contains(id);
+  }
+
+  /// Whether a dice set index is owned (set 1 is always free).
+  bool isDiceSetOwned(int setIndex) {
+    if (setIndex == 1) return true;
+    final id = ShopItemSets.diceIdForSet(setIndex);
+    return id != null && _purchased.contains(id);
+  }
 
   /// Purchase an item with coins. Returns true if successful.
   bool purchaseWithCoins(ShopItem item) {

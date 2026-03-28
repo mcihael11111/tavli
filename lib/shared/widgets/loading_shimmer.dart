@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/constants/colors.dart';
 
 /// Shimmer loading placeholder for content that's being fetched.
 class LoadingShimmer extends StatefulWidget {
@@ -9,20 +10,20 @@ class LoadingShimmer extends StatefulWidget {
   const LoadingShimmer({
     super.key,
     this.width = double.infinity,
-    this.height = 16,
-    this.borderRadius = 4,
+    this.height = TavliSpacing.md,
+    this.borderRadius = TavliRadius.xs,
   });
 
   /// A card-shaped shimmer placeholder.
   const LoadingShimmer.card({super.key})
       : width = double.infinity,
         height = 72,
-        borderRadius = 12;
+        borderRadius = TavliRadius.md;
 
   /// A circle shimmer (avatar placeholder).
   const LoadingShimmer.circle({super.key, this.width = 48})
       : height = 48,
-        borderRadius = 999;
+        borderRadius = TavliRadius.full;
 
   @override
   State<LoadingShimmer> createState() => _LoadingShimmerState();
@@ -49,10 +50,6 @@ class _LoadingShimmerState extends State<LoadingShimmer>
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-    final baseColor = colors.surfaceContainerHigh;
-    final highlightColor = colors.surfaceContainerLow;
-
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -64,7 +61,11 @@ class _LoadingShimmerState extends State<LoadingShimmer>
             gradient: LinearGradient(
               begin: Alignment(-1.0 + 2.0 * _controller.value, 0),
               end: Alignment(-1.0 + 2.0 * _controller.value + 1, 0),
-              colors: [baseColor, highlightColor, baseColor],
+              colors: [
+                TavliColors.background.withValues(alpha: 0.12),
+                TavliColors.background.withValues(alpha: 0.25),
+                TavliColors.background.withValues(alpha: 0.12),
+              ],
             ),
           ),
         );
@@ -81,10 +82,10 @@ class LoadingShimmerList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(TavliSpacing.md),
       child: Column(
         children: List.generate(itemCount, (i) => const Padding(
-          padding: EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: TavliSpacing.sm),
           child: LoadingShimmer.card(),
         )),
       ),

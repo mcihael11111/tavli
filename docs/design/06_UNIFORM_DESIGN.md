@@ -2,13 +2,16 @@
 
 > Consistency rules, spacing rhythm, alignment grid, do/don't examples.
 > Uniformity is not a constraint — it is a feature.
+>
+> **Token values live in [00_TOKENS.md](00_TOKENS.md).** This document defines HOW to apply tokens consistently.
 
 ## Related Documents
 
-- [Design System](01_DESIGN_SYSTEM.md) — Token definitions referenced here
-- [Components](02_COMPONENTS.md) — Component specifications
-- [States](03_STATES.md) — Consistent state treatments
-- [Accessibility](05_ACCESSIBILITY.md) — Consistency as accessibility aid
+- [Token Registry](00_TOKENS.md) — **Single source of truth** for all token values
+- [Design System](01_DESIGN_SYSTEM.md) — Principles and rationale
+- [Components](02_COMPONENTS.md) — Components with inline states and accessibility
+- [States](03_STATES.md) — Universal state formulas
+- [Accessibility](05_ACCESSIBILITY.md) — Universal WCAG rules
 - [Material Design 3](07_MATERIAL_DESIGN.md) — M3 consistency principles
 
 ---

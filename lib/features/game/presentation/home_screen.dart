@@ -3,14 +3,34 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../core/constants/tradition.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/services/copy_service.dart';
 import '../../../shared/services/settings_service.dart';
+import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
+import '../../../shared/widgets/variant_intro_sheet.dart';
+import '../domain/engine/variants/game_variant.dart';
 
-/// Home screen — bot greets you, choose how to play.
+/// Home screen — cultural-first game selection hub.
 ///
+/// Layout: greeting -> variant chips -> marathon -> play modes.
 /// Adapts dynamically based on the player's selected tradition.
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late GameVariant _selectedVariant;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedVariant = SettingsService.instance.tradition.defaultVariant;
+  }
 
   String _greeting(BuildContext context) {
     final l10n = AppLocalizations.of(context);
@@ -18,7 +38,6 @@ class HomeScreen extends StatelessWidget {
     final personality = SettingsService.instance.botPersonality;
     final langLevel = SettingsService.instance.languageLevel;
 
-    // Use tradition-aware greetings from bot personality.
     if (hour < 12) {
       return l10n?.homeGreetingMorning ??
           personality.morningGreeting(langLevel);
@@ -31,20 +50,50 @@ class HomeScreen extends StatelessWidget {
         personality.eveningGreeting(langLevel);
   }
 
+  void _onVariantTap(GameVariant variant) async {
+    setState(() => _selectedVariant = variant);
+
+    final shown = await VariantIntroSheet.showIfNeeded(
+      context: context,
+      variant: variant,
+      onPlay: () => context.push('/difficulty',
+          extra: {'variant': variant.name}),
+      onTutorial: () => context.push('/learn'),
+    );
+
+    if (!shown && mounted) {
+      context.push('/difficulty', extra: {'variant': variant.name});
+    }
+  }
+
+  void _onMarathonTap() {
+    final tradition = SettingsService.instance.tradition;
+    context.push('/difficulty', extra: {
+      'variant': tradition.defaultVariant.name,
+      'marathon': true,
+      'tradition': tradition.name,
+    });
+  }
+
+  void _onQuickPlay() {
+    context.push('/difficulty',
+        extra: {'variant': _selectedVariant.name});
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final tradition = SettingsService.instance.tradition;
     final variants = tradition.variants;
 
-    return Scaffold(
+    return GradientScaffold(
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
           child: Column(
             children: [
-              const SizedBox(height: TavliSpacing.xxl),
+              const SizedBox(height: TavliSpacing.xl),
 
               // Dynamic title — tradition name.
               Text(
@@ -53,7 +102,7 @@ class HomeScreen extends StatelessWidget {
                   fontSize: 32,
                   fontFamily: TavliTheme.serifFamily,
                   fontWeight: FontWeight.w400,
-                  color: TavliColors.text,
+                  color: TavliColors.light,
                   letterSpacing: -0.64,
                   height: 1.25,
                 ),
@@ -62,99 +111,110 @@ class HomeScreen extends StatelessWidget {
 
               const SizedBox(height: TavliSpacing.sm),
 
-              // Bot greeting card.
-              Container(
-                padding: const EdgeInsets.all(TavliSpacing.md),
-                decoration: BoxDecoration(
-                  color: TavliColors.background,
-                  borderRadius: BorderRadius.circular(TavliRadius.lg),
-                  border: Border.all(color: TavliColors.primary),
-                  boxShadow: TavliShadows.xsmall,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: TavliColors.surface,
-                        border: Border.all(
-                          color: TavliColors.primary,
-                          width: 0.467,
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          SettingsService.instance.botPersonality.avatarInitial,
-                          style: const TextStyle(
-                            color: TavliColors.primary,
-                            fontSize: 21,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: -0.41,
-                          ),
-                        ),
+              // Bot greeting module.
+              ContentModule(
+                title: SettingsService.instance.botPersonality.displayName,
+                leading: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: TavliColors.surface,
+                    border: Border.all(
+                      color: TavliColors.primary,
+                      width: 0.467,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      SettingsService.instance.botPersonality.avatarInitial,
+                      style: const TextStyle(
+                        color: TavliColors.primary,
+                        fontSize: 21,
+                        fontWeight: FontWeight.w400,
+                        letterSpacing: -0.41,
                       ),
                     ),
-                    const SizedBox(width: TavliSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            SettingsService.instance.botPersonality.displayName,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontFamily: TavliTheme.serifFamily,
-                              fontWeight: FontWeight.w500,
-                              color: TavliColors.primary,
-                            ),
-                          ),
-                          const SizedBox(height: TavliSpacing.xxs),
-                          Text(
-                            _greeting(context),
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: TavliColors.primary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+                body: _greeting(context),
               ),
 
-              const SizedBox(height: TavliSpacing.md),
+              const SizedBox(height: TavliSpacing.lg),
 
-              // Game variant chips — dynamic per tradition.
+              // Section: Choose Your Game.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Choose Your Game',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontFamily: TavliTheme.serifFamily,
+                    fontWeight: FontWeight.w600,
+                    color: TavliColors.light,
+                  ),
+                ),
+              ),
+              const SizedBox(height: TavliSpacing.sm),
+
+              // Game variant cards — dynamic per tradition.
               Row(
                 children: [
                   for (int i = 0; i < variants.length; i++) ...[
                     if (i > 0) const SizedBox(width: TavliSpacing.sm),
-                    _VariantChip(
-                      label: variants[i].nativeName,
-                      selected: i == 0,
-                      onTap: () => context.push('/difficulty',
-                          extra: {'variant': variants[i].name}),
+                    _VariantCard(
+                      variant: variants[i],
+                      selected: variants[i] == _selectedVariant,
+                      onTap: () => _onVariantTap(variants[i]),
                     ),
                   ],
                 ],
               ),
+
               const SizedBox(height: TavliSpacing.sm),
 
-              // Play mode cards.
-              _PlayModeCard(
-                icon: Icons.smart_toy_outlined,
-                title: l10n?.playVsBot ?? 'Play vs ${SettingsService.instance.botPersonality.displayName}',
-                subtitle: l10n?.playVsBotSub ?? 'Challenge the AI opponent',
-                onTap: () => context.push('/difficulty'),
+              // Marathon mode module.
+              ContentModule(
+                icon: Icons.emoji_events,
+                iconSize: 32,
+                title: '${tradition.displayName} Marathon',
+                body: tradition.variants.map((v) => v.nativeName).join(' \u2192 '),
+                trailing: const Icon(Icons.play_arrow, color: TavliColors.light, size: 28),
+                onTap: _onMarathonTap,
+              ),
+
+              const SizedBox(height: TavliSpacing.lg),
+
+              // Section: Play Modes.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Play',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontFamily: TavliTheme.serifFamily,
+                    fontWeight: FontWeight.w600,
+                    color: TavliColors.light,
+                  ),
+                ),
               ),
               const SizedBox(height: TavliSpacing.sm),
-              _PlayModeCard(
+
+              ContentModule(
+                icon: Icons.smart_toy_outlined,
+                iconSize: 32,
+                title: l10n?.playVsBot ?? TavliCopy.playVsBot,
+                body: l10n?.playVsBotSub ?? TavliCopy.playVsBotSub,
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
+                onTap: _onQuickPlay,
+              ),
+              const SizedBox(height: TavliSpacing.sm),
+              ContentModule(
                 icon: Icons.public,
-                title: l10n?.playOnline ?? 'Play Online',
-                subtitle: l10n?.playOnlineSub ?? 'Quick match or invite a friend',
+                iconSize: 32,
+                title: l10n?.playOnline ?? TavliCopy.playOnline,
+                body: l10n?.playOnlineSub ?? TavliCopy.playOnlineSub,
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () {
                   if (FirebaseAuth.instance.currentUser != null) {
                     context.push('/online-lobby');
@@ -164,40 +224,72 @@ class HomeScreen extends StatelessWidget {
                 },
               ),
               const SizedBox(height: TavliSpacing.sm),
-              _PlayModeCard(
+              ContentModule(
                 icon: Icons.people_outline,
-                title: l10n?.passAndPlay ?? 'Pass & Play',
-                subtitle: l10n?.passAndPlaySub ?? 'Two players, one device',
-                onTap: () => context.push('/pass-play'),
+                iconSize: 32,
+                title: l10n?.passAndPlay ?? TavliCopy.passAndPlay,
+                body: l10n?.passAndPlaySub ?? TavliCopy.passAndPlaySub,
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
+                onTap: () => context.push('/pass-play',
+                    extra: {'variant': _selectedVariant.name}),
+              ),
+
+              const SizedBox(height: TavliSpacing.lg),
+
+              // Section: More.
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'More',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontFamily: TavliTheme.serifFamily,
+                    fontWeight: FontWeight.w600,
+                    color: TavliColors.light,
+                  ),
+                ),
               ),
               const SizedBox(height: TavliSpacing.sm),
-              _PlayModeCard(
+
+              ContentModule(
                 icon: Icons.school_outlined,
-                title: l10n?.learnToPlay ?? 'Learn to Play',
-                subtitle: l10n?.learnToPlaySub ?? 'Interactive tutorial with ${SettingsService.instance.botPersonality.displayName}',
-                onTap: () => context.push('/tutorial'),
+                iconSize: 32,
+                title: l10n?.learnToPlay ?? TavliCopy.learnToPlay,
+                body: l10n?.learnToPlaySub ?? TavliCopy.learnToPlaySub,
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
+                onTap: () => context.push('/learn'),
               ),
               const SizedBox(height: TavliSpacing.sm),
-              _PlayModeCard(
+              ContentModule(
                 icon: Icons.emoji_events_outlined,
-                title: 'Weekly Challenges',
-                subtitle: 'Complete tasks and earn rewards',
+                iconSize: 32,
+                title: TavliCopy.weeklyChallenges,
+                body: TavliCopy.challengesSub,
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/challenges'),
               ),
               const SizedBox(height: TavliSpacing.sm),
-              _PlayModeCard(
+              ContentModule(
                 icon: Icons.storefront_outlined,
-                title: 'Shop',
-                subtitle: 'Boards, checkers, and dice sets',
+                iconSize: 32,
+                title: TavliCopy.shop,
+                body: TavliCopy.shopSub,
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/shop'),
               ),
               const SizedBox(height: TavliSpacing.sm),
-              _PlayModeCard(
-                icon: Icons.replay_outlined,
-                title: 'Replay',
-                subtitle: 'Watch your previous games',
-                onTap: () => context.push('/replay'),
+
+              // Explore other traditions module.
+              _ExploreTraditionsCard(
+                currentTradition: tradition,
+                onTraditionTap: (t) {
+                  SettingsService.instance.tradition = t;
+                  setState(() {
+                    _selectedVariant = t.defaultVariant;
+                  });
+                },
               ),
+
               // Extra padding for bottom nav gradient.
               const SizedBox(height: 140),
             ],
@@ -208,63 +300,104 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _PlayModeCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
+/// Card for a single game variant with mechanic icon and native name.
+class _VariantCard extends StatefulWidget {
+  final GameVariant variant;
+  final bool selected;
   final VoidCallback onTap;
 
-  const _PlayModeCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
+  const _VariantCard({
+    required this.variant,
+    required this.selected,
     required this.onTap,
   });
 
   @override
+  State<_VariantCard> createState() => _VariantCardState();
+}
+
+class _VariantCardState extends State<_VariantCard> {
+  bool _pressed = false;
+
+  IconData get _mechanicIcon => switch (widget.variant.mechanicFamily) {
+        MechanicFamily.hitting => Icons.gavel,
+        MechanicFamily.pinning => Icons.push_pin,
+        MechanicFamily.running => Icons.directions_run,
+      };
+
+  String get _mechanicLabel => switch (widget.variant.mechanicFamily) {
+        MechanicFamily.hitting => 'Hit & run',
+        MechanicFamily.pinning => 'Trap & pin',
+        MechanicFamily.running => 'Race & block',
+      };
+
+  @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: '$title — $subtitle',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(TavliSpacing.md),
-          decoration: BoxDecoration(
-            color: TavliColors.primary,
-            borderRadius: BorderRadius.circular(TavliRadius.lg),
-            border: Border.all(color: TavliColors.background),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 32, color: TavliColors.light),
-              const SizedBox(width: TavliSpacing.sm),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontFamily: TavliTheme.serifFamily,
-                        fontWeight: FontWeight.w500,
-                        color: TavliColors.light,
-                      ),
-                    ),
-                    const SizedBox(height: TavliSpacing.xxs),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: TavliColors.light,
-                      ),
-                    ),
-                  ],
-                ),
+    final selected = widget.selected;
+    final bg = _pressed
+        ? (selected ? TavliColors.primaryActive : TavliColors.surfaceActive)
+        : (selected ? TavliColors.primary : TavliColors.surface);
+    final contentAlpha = selected ? 1.0 : 0.7;
+
+    return Expanded(
+      child: Semantics(
+        button: true,
+        selected: selected,
+        label: '${widget.variant.displayName} — ${widget.variant.mechanicFamily.displayName}',
+        child: GestureDetector(
+          onTap: widget.onTap,
+          onTapDown: (_) => setState(() => _pressed = true),
+          onTapUp: (_) => setState(() => _pressed = false),
+          onTapCancel: () => setState(() => _pressed = false),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeInOut,
+            transform: _pressed
+                ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
+                : Matrix4.identity(),
+            transformAlignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(
+              vertical: TavliSpacing.md,
+              horizontal: TavliSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(TavliRadius.lg),
+              border: Border.all(
+                color: selected ? TavliColors.background : TavliColors.primary,
+                width: selected ? 2 : 1,
               ),
-              const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
-            ],
+              boxShadow: selected ? TavliShadows.xsmall : null,
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  _mechanicIcon,
+                  size: 24,
+                  color: TavliColors.light.withValues(alpha: contentAlpha),
+                ),
+                const SizedBox(height: TavliSpacing.xs),
+                Text(
+                  widget.variant.nativeName,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontFamily: TavliTheme.serifFamily,
+                    fontWeight: FontWeight.w600,
+                    color: TavliColors.light.withValues(alpha: contentAlpha),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _mechanicLabel,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: TavliColors.light.withValues(alpha: selected ? 0.8 : 0.5),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -272,41 +405,66 @@ class _PlayModeCard extends StatelessWidget {
   }
 }
 
-class _VariantChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
+/// Explore other traditions module.
+class _ExploreTraditionsCard extends StatelessWidget {
+  final Tradition currentTradition;
+  final ValueChanged<Tradition> onTraditionTap;
 
-  const _VariantChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
+  const _ExploreTraditionsCard({
+    required this.currentTradition,
+    required this.onTraditionTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: TavliSpacing.md),
-          decoration: BoxDecoration(
-            color: TavliColors.primary,
-            borderRadius: BorderRadius.circular(TavliRadius.lg),
-            border: Border.all(color: TavliColors.background),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 18,
-                fontFamily: TavliTheme.serifFamily,
-                fontWeight: FontWeight.w500,
-                color: TavliColors.light,
+    final otherTraditions =
+        Tradition.values.where((t) => t != currentTradition).toList();
+
+    return ContentModule(
+      icon: Icons.explore_outlined,
+      title: 'Explore Other Traditions',
+      body: 'Backgammon is played differently around the world. Try another style!',
+      child: Row(
+        children: [
+          for (int i = 0; i < otherTraditions.length; i++) ...[
+            if (i > 0) const SizedBox(width: TavliSpacing.sm),
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onTraditionTap(otherTraditions[i]),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: TavliSpacing.sm,
+                    horizontal: TavliSpacing.xs,
+                  ),
+                  decoration: BoxDecoration(
+                    color: TavliColors.background.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(TavliRadius.md),
+                    border: Border.all(
+                        color: TavliColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        otherTraditions[i].flagEmoji,
+                        style: const TextStyle(fontSize: 22),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        otherTraditions[i].displayName,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: TavliColors.light,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
-        ),
+          ],
+        ],
       ),
     );
   }

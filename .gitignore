@@ -43,3 +43,4 @@ firebase_app_id_file.json
 *.g.dart
 *.freezed.dart
 *.mocks.dart
+flutter_01.log

@@ -23,6 +23,9 @@ abstract class AuthService {
 
   /// Sign out.
   Future<void> signOut();
+
+  /// Delete the current user's account.
+  Future<void> deleteAccount();
 }
 
 /// Firebase-backed auth service.
@@ -101,6 +104,19 @@ class FirebaseAuthService implements AuthService {
     await _googleSignIn.signOut();
     await _auth.signOut();
   }
+
+  @override
+  Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'no-user',
+        message: 'No user is currently signed in.',
+      );
+    }
+    await _googleSignIn.signOut();
+    await user.delete();
+  }
 }
 
 /// In-memory auth service for testing.
@@ -133,6 +149,11 @@ class InMemoryAuthService implements AuthService {
 
   @override
   Future<void> signOut() async {
+    _currentUser = null;
+  }
+
+  @override
+  Future<void> deleteAccount() async {
     _currentUser = null;
   }
 }

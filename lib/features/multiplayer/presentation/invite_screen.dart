@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../social/invite/invite_service.dart';
 import '../data/game_room.dart';
@@ -81,7 +82,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(
         title: const Text('Invite Friend'),
         leading: IconButton(

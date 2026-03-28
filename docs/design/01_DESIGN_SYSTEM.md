@@ -1,13 +1,17 @@
 # Tavli Design System
 
 > Version 2.0 | March 2026 | Flutter + Flame + Material 3
-> Supersedes: `../DESIGN_SYSTEM.md`, `../DESIGN_STANDARDS.md`
+> Supersedes: `../archive/DESIGN_SYSTEM_deprecated.md`, `../archive/DESIGN_STANDARDS_deprecated.md`
+>
+> **Token values live in [00_TOKENS.md](00_TOKENS.md)** — the single source of truth for all hex, px, and constant values.
+> This document defines principles, rules, and the rationale behind token choices.
 
 ## Related Documents
 
-- [Accessibility](05_ACCESSIBILITY.md) — WCAG 2.1 compliance, contrast verification
-- [Components](02_COMPONENTS.md) — UI component specifications
-- [States](03_STATES.md) — Interaction state definitions
+- [Token Registry](00_TOKENS.md) — **Single source of truth** for all token values
+- [Components](02_COMPONENTS.md) — UI components with inline states and accessibility
+- [States](03_STATES.md) — Universal state formulas and timing
+- [Accessibility](05_ACCESSIBILITY.md) — Universal WCAG rules
 - [Copy & Content](04_COPY_CONTENT.md) — Voice, tone, bilingual patterns
 - [Uniform Design](06_UNIFORM_DESIGN.md) — Consistency rules, do/don't
 - [Material Design 3](07_MATERIAL_DESIGN.md) — M3 mapping and deviations
@@ -33,6 +37,25 @@ Fewer elements, better crafted. Every pixel should feel considered. Avoid decora
 
 ### Respect the Ritual
 Backgammon is social. The design should feel like setting up a board between friends — unhurried, inviting, familiar.
+
+---
+
+## 1b. Depth Model
+
+The app uses a **3-layer depth system** inspired by translucent, layered interfaces. Every screen participates in this model:
+
+1. **Back Layer — Gradient Scaffold**: All screens use `GradientScaffold` with a warm linear or radial gradient (`surface` → `primary`). This replaces flat scaffold backgrounds and creates a sense of lit environment — warmer/lighter at top, darker at bottom.
+
+2. **Mid Layer — Content Modules**: Translucent cards (`ContentModule`) with 12% alpha background and subtle 40% alpha borders float on the gradient. These are the primary content containers across the app, replacing solid-fill cards for informational and navigational content.
+
+3. **Front Layer — Solid Anchors**: Interactive elements inside modules (avatars, action buttons, selection indicators) use solid fills (`primary`, `surface`) to provide tactile weight and visual hierarchy.
+
+The gradient background does the heavy lifting: translucent modules naturally pick up the underlying color shift, so cards near the top feel warmer/lighter and cards near the bottom darker. No shadows are needed — depth comes from transparency contrast.
+
+**Key files:**
+- `lib/shared/widgets/gradient_scaffold.dart` — Drop-in Scaffold replacement
+- `lib/shared/widgets/content_module.dart` — Translucent card widget
+- `lib/core/constants/colors.dart` — `TavliGradients`, `TavliModule` token classes
 
 ---
 
@@ -193,7 +216,7 @@ The typographic scale uses a **Minor Second** ratio of **1.067**, producing subt
 
 ### 3.4 Typography Rules
 
-1. **Font family:** Poppins (primary), Noto Sans (Greek fallback)
+1. **Font families:** Playfair Display (serif, headings/titles/buttons via `TavliTheme.serifFamily`), Poppins (sans-serif, body/labels), Noto Sans (Greek fallback)
 2. **Minimum text size:** 11px (`labelSmall`). No text smaller than 11px anywhere in the app.
 3. **Headings** (`headline*`, `display*`) use `primary` color in light mode to create warm hierarchy
 4. **Body text** uses `text` color for maximum readability

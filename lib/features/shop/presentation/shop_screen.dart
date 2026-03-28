@@ -71,10 +71,7 @@ class _ShopScreenState extends State<ShopScreen> {
         child: Column(
           children: [
             // Spacer to clear the AppBar
-            SizedBox(
-                height: kToolbarHeight +
-                    MediaQuery.of(context).viewPadding.top +
-                    TavliSpacing.md),
+            const SizedBox(height: kToolbarHeight + TavliSpacing.md),
 
             // Category tab segments (design spec §2.4)
             Padding(
@@ -226,8 +223,8 @@ class _ShopTabBar extends StatelessWidget {
                     isSelected ? TavliColors.primary : TavliColors.surface,
                 borderRadius: BorderRadius.circular(TavliRadius.lg),
                 border: Border.all(
-                  color: TavliColors.primary,
-                  width: 1,
+                  color: isSelected ? TavliColors.background : TavliColors.primary,
+                  width: isSelected ? 2 : 1,
                 ),
                 boxShadow: isSelected ? TavliShadows.xsmall : null,
               ),
@@ -240,7 +237,7 @@ class _ShopTabBar extends StatelessWidget {
                     size: 16,
                     color: isSelected
                         ? TavliColors.light
-                        : TavliColors.text,
+                        : TavliColors.light.withValues(alpha: 0.7),
                   ),
                   const SizedBox(width: TavliSpacing.xxs),
                   Text(
@@ -251,7 +248,7 @@ class _ShopTabBar extends StatelessWidget {
                       fontFamily: TavliTheme.serifFamily,
                       color: isSelected
                           ? TavliColors.light
-                          : TavliColors.text,
+                          : TavliColors.light.withValues(alpha: 0.7),
                     ),
                   ),
                 ],

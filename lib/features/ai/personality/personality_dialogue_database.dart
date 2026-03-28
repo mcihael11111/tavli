@@ -2,19 +2,38 @@ import '../difficulty/difficulty_level.dart';
 import '../mikhail/dialogue_database.dart';
 import '../mikhail/dialogue_event.dart';
 import 'bot_personality.dart';
+import 'tavla_dialogue_database.dart';
+import 'nardy_dialogue_database.dart';
+import 'sheshbesh_dialogue_database.dart';
 
 /// Routes dialogue lines to the correct personality database.
 abstract final class PersonalityDialogueDatabase {
   static List<DialogueLine> linesFor(BotPersonality personality) =>
       switch (personality) {
+        // Greek (Tavli)
         BotPersonality.mikhail => DialogueDatabase.lines,
         BotPersonality.spyrosUncle => _spyrosLines,
         BotPersonality.cousinNikos => _nikosLines,
         BotPersonality.pappoosYiorgos => _giorgosLines,
         BotPersonality.theiaEleni => _eleniLines,
-        // New tradition personalities — use Mikhail's lines as placeholder
-        // until tradition-specific dialogue databases are written.
-        _ => DialogueDatabase.lines,
+        // Turkish (Tavla)
+        BotPersonality.mehmetAbi => TavlaDialogueDatabase.mehmetLines,
+        BotPersonality.teyzeFatma => TavlaDialogueDatabase.fatmaLines,
+        BotPersonality.emre => TavlaDialogueDatabase.emreLines,
+        BotPersonality.dedeHasan => TavlaDialogueDatabase.hasanLines,
+        BotPersonality.ayseAbla => TavlaDialogueDatabase.ayseLines,
+        // Russian/Caucasian (Nardy)
+        BotPersonality.armen => NardyDialogueDatabase.armenLines,
+        BotPersonality.babushkaVera => NardyDialogueDatabase.veraLines,
+        BotPersonality.giorgi => NardyDialogueDatabase.giorgiLines,
+        BotPersonality.dyadyaSasha => NardyDialogueDatabase.sashaLines,
+        BotPersonality.leyla => NardyDialogueDatabase.leylaLines,
+        // Israeli/Arab (Shesh Besh)
+        BotPersonality.abuYusuf => SheshBeshDialogueDatabase.abuYusufLines,
+        BotPersonality.dodMoshe => SheshBeshDialogueDatabase.mosheLines,
+        BotPersonality.samira => SheshBeshDialogueDatabase.samiraLines,
+        BotPersonality.sabaEli => SheshBeshDialogueDatabase.eliLines,
+        BotPersonality.hana => SheshBeshDialogueDatabase.hanaLines,
       };
 
   // ═════════════════════════════════════════════════════════════════

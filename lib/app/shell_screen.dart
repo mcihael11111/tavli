@@ -1,8 +1,14 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../core/constants/colors.dart';
 
-/// Shell with pill-shaped floating bottom nav — wraps home, profile, customize, settings.
+/// Shell with frosted pill-shaped floating bottom nav — wraps home, profile, customize, settings.
+///
+/// Architecture: The blur+fill pill and the nav icons are in separate layers.
+/// The pill is clipped to its rounded shape, but the icons sit in an unclipped
+/// layer so the active circle can protrude above the bar edge.
 class ShellScreen extends StatelessWidget {
   final GoRouterState state;
   final Widget child;
@@ -16,6 +22,10 @@ class ShellScreen extends StatelessWidget {
     return 0;
   }
 
+  static const double _barHeight = 58;
+  static const double _activeSize = 58;
+  static const double _activeProtrusion = 14;
+
   @override
   Widget build(BuildContext context) {
     final index = _currentIndex(state.uri.path);
@@ -24,63 +34,78 @@ class ShellScreen extends StatelessWidget {
       body: Stack(
         children: [
           child,
-          // Bottom gradient fade + nav bar.
+          // Nav bar area.
           Positioned(
-            left: 0,
-            right: 0,
+            left: TavliSpacing.md,
+            right: TavliSpacing.md,
             bottom: 0,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.5, 1.0],
-                  colors: [
-                    Color(0x00D4C2A8),
-                    Color(0x88A67F5B),
-                    TavliColors.surface,
-                  ],
-                ),
-              ),
-              child: SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    TavliSpacing.md, TavliSpacing.xl,
-                    TavliSpacing.md, TavliSpacing.md,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: TavliColors.background,
-                      borderRadius: BorderRadius.circular(TavliRadius.full),
-                      border: Border.all(color: TavliColors.background, width: 1),
-                      boxShadow: TavliShadows.xsmall,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _NavItem(
-                          icon: Icons.home,
-                          active: index == 0,
-                          onTap: () => context.go('/home'),
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: TavliSpacing.sm),
+                child: SizedBox(
+                  // Total height = bar + protrusion space above.
+                  height: _barHeight + _activeProtrusion,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.bottomCenter,
+                    children: [
+                      // Layer 1: Frosted glass pill (clipped).
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: _barHeight,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(TavliRadius.full),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: TavliColors.background.withValues(alpha: 0.35),
+                                borderRadius: BorderRadius.circular(TavliRadius.full),
+                                border: Border.all(
+                                  color: TavliColors.light.withValues(alpha: 0.12),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                        _NavItem(
-                          icon: Icons.person,
-                          active: index == 1,
-                          onTap: () => context.go('/profile'),
+                      ),
+                      // Layer 2: Nav items (unclipped — active circle can protrude).
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: _barHeight + _activeProtrusion,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            _NavItem(
+                              icon: Icons.home,
+                              active: index == 0,
+                              onTap: () => context.go('/home'),
+                            ),
+                            _NavItem(
+                              icon: Icons.person,
+                              active: index == 1,
+                              onTap: () => context.go('/profile'),
+                            ),
+                            _NavItem(
+                              icon: Icons.palette,
+                              active: index == 2,
+                              onTap: () => context.go('/customize'),
+                            ),
+                            _NavItem(
+                              icon: Icons.settings,
+                              active: index == 3,
+                              onTap: () => context.go('/settings'),
+                            ),
+                          ],
                         ),
-                        _NavItem(
-                          icon: Icons.palette,
-                          active: index == 2,
-                          onTap: () => context.go('/customize'),
-                        ),
-                        _NavItem(
-                          icon: Icons.settings,
-                          active: index == 3,
-                          onTap: () => context.go('/settings'),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -105,21 +130,68 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const double activeSize = ShellScreen._activeSize;
+    const double inactiveSize = 44;
+    const double barHeight = ShellScreen._barHeight;
+    const double protrusion = ShellScreen._activeProtrusion;
+
+    final double size = active ? activeSize : inactiveSize;
+    final double iconSize = active ? 26 : 22;
+
+    // Active: centered vertically so it protrudes above the bar.
+    // Inactive: centered within the bar height at the bottom.
+    final double bottomOffset = active
+        ? (barHeight - activeSize) / 2 // vertically center in bar, protrusion handles the rise
+        : (barHeight - inactiveSize) / 2;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: active ? TavliColors.primary : TavliColors.background,
+      child: SizedBox(
+        width: activeSize + 8, // tap target
+        height: barHeight + protrusion,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned(
+              bottom: bottomOffset,
+              left: (activeSize + 8 - size) / 2,
+              child: active
+                  ? Transform.translate(
+                      offset: const Offset(0, -protrusion),
+                      child: _buildCircle(size, iconSize),
+                    )
+                  : _buildCircle(size, iconSize),
+            ),
+          ],
         ),
-        child: Icon(
-          icon,
-          size: 24,
-          color: active ? TavliColors.light : TavliColors.primary,
-        ),
+      ),
+    );
+  }
+
+  Widget _buildCircle(double size, double iconSize) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: active ? TavliColors.primary : Colors.transparent,
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: TavliColors.primary.withValues(alpha: 0.45),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                ),
+              ]
+            : null,
+      ),
+      child: Icon(
+        icon,
+        size: iconSize,
+        color: active
+            ? TavliColors.light
+            : TavliColors.light.withValues(alpha: 0.7),
       ),
     );
   }

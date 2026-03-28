@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/colors.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../game/domain/engine/variants/game_variant.dart';
 import '../data/multiplayer_service_provider.dart';
@@ -118,7 +120,8 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
     final timeText =
         '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 
-    return Scaffold(
+    return GradientScaffold(
+      gradient: TavliGradients.deepScaffold,
       appBar: AppBar(
         title: Text(widget.poolType == PoolType.international
             ? 'International Match'

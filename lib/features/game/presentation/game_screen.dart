@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
 import '../../../flame_game/tavli_game.dart';
 import '../../../shared/services/audio_service.dart';
+import '../../../shared/services/copy_service.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../ai/personality/bot_personality.dart';
 import 'package:flutter/semantics.dart';
@@ -52,6 +53,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     final boardSet = SettingsService.instance.boardSet;
     final checkerSet = SettingsService.instance.checkerSet;
+    final diceSet = SettingsService.instance.diceSet;
 
     _game = TavliGame(
       boardState: BoardState.initial(),
@@ -60,6 +62,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       onDiceRollRequested: _onDiceRoll,
       boardSet: boardSet,
       checkerSet: checkerSet,
+      diceSet: diceSet,
     );
 
     // Allow landscape for gameplay.
@@ -495,9 +498,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
       color: TavliColors.botThinkingBanner,
-      child: const Center(
-        child: Text('Bot thinking',
-          style: TextStyle(
+      child: Center(
+        child: Text(TavliCopy.botThinking,
+          style: const TextStyle(
             color: TavliColors.light,
             fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 1.5,
           )),
@@ -536,8 +539,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               borderRadius: BorderRadius.circular(TavliRadius.md),
             ),
           ),
-          child: const Text('ROLL',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 2)),
+          child: Text(TavliCopy.roll,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: 2)),
         ),
       ),
     );
@@ -563,8 +566,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(TavliRadius.sm)),
                   ),
-                  child: const Text('COMPLETE',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                  child: Text(TavliCopy.complete,
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                 ),
               ),
             ),
@@ -722,7 +725,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               child: ElevatedButton.icon(
                 onPressed: () => ref.read(gameProvider.notifier).offerDouble(),
                 icon: const Icon(Icons.casino, size: 20),
-                label: const Text('Double', style: TextStyle(fontSize: 14)),
+                label: Text(TavliCopy.double_, style: const TextStyle(fontSize: 14)),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: TavliColors.surface,
                   foregroundColor: TavliColors.light,
@@ -746,6 +749,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   void _showPauseMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: TavliColors.primary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(TavliRadius.lg)),
@@ -755,15 +759,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('PAUSE', style: TextStyle(
+            Text(TavliCopy.pause, style: const TextStyle(
               color: TavliColors.light, fontSize: 21, fontWeight: FontWeight.bold, letterSpacing: 2)),
             const SizedBox(height: TavliSpacing.md),
-            _menuBtn('Resume', () => Navigator.pop(ctx)),
-            _menuBtn('Resign', () {
+            _menuBtn(TavliCopy.resume, () => Navigator.pop(ctx)),
+            _menuBtn(TavliCopy.resign, () {
               Navigator.pop(ctx);
               ref.read(gameProvider.notifier).resign(1);
             }),
-            _menuBtn('New Game', () {
+            _menuBtn(TavliCopy.newGame, () {
               Navigator.pop(ctx);
               ref.read(gameProvider.notifier).newGame(
                 difficulty: widget.difficulty,
@@ -774,7 +778,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               _navigatingToVictory = false;
               setState(() {});
             }),
-            _menuBtn('Exit to Home', () {
+            _menuBtn(TavliCopy.exitToHome, () {
               Navigator.pop(ctx);
               context.go('/home');
             }),
@@ -804,7 +808,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 color: TavliColors.surface, fontSize: 27, fontWeight: FontWeight.bold,
               )),
               const SizedBox(height: TavliSpacing.xs),
-              Text('${_personality.displayName} offers a double!', style: const TextStyle(
+              Text(TavliCopy.offersDouble(_personality.displayName), style: const TextStyle(
                 color: TavliColors.light, fontSize: 18, fontWeight: FontWeight.w600,
               )),
               const SizedBox(height: TavliSpacing.xxs),
@@ -832,7 +836,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         side: const BorderSide(color: TavliColors.error),
                         padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
                       ),
-                      child: const Text('Decline'),
+                      child: Text(TavliCopy.decline),
                     ),
                   ),
                   const SizedBox(width: TavliSpacing.sm),
@@ -844,7 +848,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         foregroundColor: TavliColors.surfaceDark,
                         padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
                       ),
-                      child: const Text('Accept'),
+                      child: Text(TavliCopy.accept),
                     ),
                   ),
                 ],
@@ -878,9 +882,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 children: [
                   const Text('🎲', style: TextStyle(fontSize: 48)),
                   const SizedBox(height: TavliSpacing.md),
-                  const Text(
-                    'Roll for First Move',
-                    style: TextStyle(
+                  Text(
+                    TavliCopy.rollForFirstMove,
+                    style: const TextStyle(
                       color: TavliColors.light,
                       fontSize: 21,
                       fontWeight: FontWeight.w600,
@@ -888,7 +892,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                   ),
                   const SizedBox(height: TavliSpacing.xs),
                   Text(
-                    'Both players roll one die.\nHigher number goes first.',
+                    TavliCopy.rollForFirstMoveSub,
                     style: TextStyle(
                       color: TavliColors.light.withValues(alpha: 0.8),
                       fontSize: 14,
@@ -904,7 +908,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       foregroundColor: TavliColors.primary,
                       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xxl, vertical: TavliSpacing.sm),
                     ),
-                    child: const Text('Roll!', style: TextStyle(
+                    child: Text(TavliCopy.rollButton, style: const TextStyle(
                       fontSize: 16, fontWeight: FontWeight.w700,
                     )),
                   ),

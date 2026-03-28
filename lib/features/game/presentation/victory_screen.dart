@@ -9,6 +9,8 @@ import '../../ai/mikhail/dialogue_system.dart';
 import '../../ai/mikhail/dialogue_event.dart';
 import '../../profile/data/achievements.dart';
 import '../../profile/presentation/match_history_screen.dart';
+import '../../shop/data/shop_items.dart';
+import '../../../shared/services/copy_service.dart';
 
 /// Victory/defeat screen with score breakdown and bot's reaction.
 class VictoryScreen extends StatefulWidget {
@@ -37,6 +39,7 @@ class _VictoryScreenState extends State<VictoryScreen>
   late Animation<double> _bannerScale;
   late Animation<double> _detailsFade;
   final _dialogue = DialogueSystem();
+  int _coinsEarned = 0;
 
   bool get _playerWon => widget.result.winner == 1;
 
@@ -83,10 +86,37 @@ class _VictoryScreenState extends State<VictoryScreen>
         result: widget.result,
         difficulty: widget.difficulty,
       );
+      // Grant achievement coin rewards.
+      for (final a in newlyUnlocked) {
+        if (a.rewardCoins > 0) {
+          ShopService.instance.addCoins(a.rewardCoins);
+          _coinsEarned += a.rewardCoins;
+        }
+      }
       if (newlyUnlocked.isNotEmpty) {
         _showAchievementToast(newlyUnlocked.first);
       }
     }
+
+    // Award coins for winning.
+    if (_playerWon) {
+      final winReward = _coinReward(widget.difficulty, widget.isOnline);
+      _coinsEarned += winReward;
+      if (winReward > 0) {
+        ShopService.instance.addCoins(winReward);
+      }
+    }
+  }
+
+  /// Coin reward by difficulty.
+  static int _coinReward(DifficultyLevel difficulty, bool isOnline) {
+    if (isOnline) return 15;
+    return switch (difficulty) {
+      DifficultyLevel.easy || DifficultyLevel.easyWithHelp => 5,
+      DifficultyLevel.medium => 10,
+      DifficultyLevel.hard => 20,
+      DifficultyLevel.pappous => 30,
+    };
   }
 
   void _showAchievementToast(Achievement achievement) {
@@ -130,8 +160,16 @@ class _VictoryScreenState extends State<VictoryScreen>
     final accentColor = _playerWon ? TavliColors.surface : TavliColors.error;
 
     return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [bgColor, _playerWon ? TavliColors.text : Colors.black],
+          ),
+        ),
+        child: SafeArea(
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) => Column(
@@ -147,7 +185,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                       const Text('🏆', style: TextStyle(fontSize: 60)),
                     const SizedBox(height: TavliSpacing.sm),
                     Text(
-                      _playerWon ? 'ΝΙΚΗ!' : 'ΗΤΤΑ',
+                      _playerWon ? TavliCopy.victoryBanner : TavliCopy.defeatBanner,
                       style: TextStyle(
                         color: accentColor,
                         fontSize: 42,
@@ -157,7 +195,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                     ),
                     const SizedBox(height: TavliSpacing.xxs),
                     Text(
-                      _playerWon ? 'Victory!' : 'Defeat',
+                      _playerWon ? TavliCopy.victory : TavliCopy.defeat,
                       style: const TextStyle(color: textColor, fontSize: 18),
                     ),
                   ],
@@ -179,12 +217,35 @@ class _VictoryScreenState extends State<VictoryScreen>
                   ),
                   child: Column(
                     children: [
-                      _scoreLine('Result', _resultLabel(widget.result.type), textColor),
-                      _scoreLine('Multiplier', '${_resultMul(widget.result.type)}x', textColor),
+                      _scoreLine(TavliCopy.result, _resultLabel(widget.result.type), textColor),
+                      _scoreLine(TavliCopy.multiplier, '${_resultMul(widget.result.type)}x', textColor),
                       if (widget.result.cubeValue > 1)
                         _scoreLine('Cube', '${widget.result.cubeValue}x', textColor),
                       Divider(color: accentColor.withValues(alpha: 0.3), height: TavliSpacing.lg),
-                      _scoreLine('Total Points', '${widget.result.points}', textColor, bold: true),
+                      _scoreLine(TavliCopy.totalPoints, '${widget.result.points}', textColor, bold: true),
+                      if (_coinsEarned > 0) ...[
+                        const SizedBox(height: TavliSpacing.xs),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.monetization_on,
+                                    size: 16, color: TavliColors.warning),
+                                const SizedBox(width: 4),
+                                Text(TavliCopy.coinsEarned,
+                                    style: const TextStyle(color: TavliColors.light, fontSize: 14)),
+                              ],
+                            ),
+                            Text('+$_coinsEarned',
+                                style: const TextStyle(
+                                  color: TavliColors.warning,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                )),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -275,11 +336,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   foregroundColor: bgColor,
                                   padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
                                 ),
-                                child: const Text('BACK TO LOBBY',
-                                    style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 2)),
+                                child: Text(TavliCopy.backToLobby,
+                                    style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 2)),
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: TavliSpacing.sm),
                             SizedBox(
                               width: double.infinity,
                               child: OutlinedButton(
@@ -288,7 +349,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   foregroundColor: textColor,
                                   side: const BorderSide(color: textColor, width: 1.5),
                                 ),
-                                child: const Text('Home'),
+                                child: Text(TavliCopy.home),
                               ),
                             ),
                           ],
@@ -304,11 +365,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                                   foregroundColor: bgColor,
                                   padding: const EdgeInsets.symmetric(vertical: TavliSpacing.sm),
                                 ),
-                                child: const Text('PLAY AGAIN',
-                                    style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 2)),
+                                child: Text(TavliCopy.playAgain,
+                                    style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 2)),
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: TavliSpacing.sm),
                             Row(
                               children: [
                                 Expanded(
@@ -318,10 +379,10 @@ class _VictoryScreenState extends State<VictoryScreen>
                                       foregroundColor: textColor,
                                       side: const BorderSide(color: textColor, width: 1.5),
                                     ),
-                                    child: const Text('Difficulty'),
+                                    child: Text(TavliCopy.difficulty),
                                   ),
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: TavliSpacing.sm),
                                 Expanded(
                                   child: OutlinedButton(
                                     onPressed: () => context.go('/home'),
@@ -329,7 +390,7 @@ class _VictoryScreenState extends State<VictoryScreen>
                                       foregroundColor: textColor,
                                       side: const BorderSide(color: textColor, width: 1.5),
                                     ),
-                                    child: const Text('Home'),
+                                    child: Text(TavliCopy.home),
                                   ),
                                 ),
                               ],
@@ -342,6 +403,7 @@ class _VictoryScreenState extends State<VictoryScreen>
             ],
           ),
         ),
+      ),
       ),
     );
   }

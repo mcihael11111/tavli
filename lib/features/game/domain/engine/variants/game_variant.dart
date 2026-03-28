@@ -23,6 +23,9 @@ enum GameVariant {
   /// Moultezim — Turkish running variant.
   moultezim,
 
+  /// Gul Bara — Turkish cascading doubles variant (Crazy Narde).
+  gulBara,
+
   // ── Nardy (Russia / Caucasus / Iran) ──────────────────────
   /// Long Nard — primary Russian running variant with head rule.
   longNard,
@@ -40,7 +43,7 @@ enum GameVariant {
   /// The tradition this variant belongs to.
   Tradition get tradition => switch (this) {
         portes || plakoto || fevga => Tradition.tavli,
-        tavla || tapa || moultezim => Tradition.tavla,
+        tavla || tapa || moultezim || gulBara => Tradition.tavla,
         longNard || shortNard => Tradition.nardy,
         sheshBesh || mahbusa => Tradition.sheshBesh,
       };
@@ -49,7 +52,7 @@ enum GameVariant {
   MechanicFamily get mechanicFamily => switch (this) {
         portes || tavla || shortNard || sheshBesh => MechanicFamily.hitting,
         plakoto || tapa || mahbusa => MechanicFamily.pinning,
-        fevga || moultezim || longNard => MechanicFamily.running,
+        fevga || moultezim || longNard || gulBara => MechanicFamily.running,
       };
 
   /// English display name.
@@ -60,6 +63,7 @@ enum GameVariant {
         tavla => 'Tavla',
         tapa => 'Tapa',
         moultezim => 'Moultezim',
+        gulBara => 'Gul Bara',
         longNard => 'Long Nard',
         shortNard => 'Short Nard',
         sheshBesh => 'Shesh Besh',
@@ -74,6 +78,7 @@ enum GameVariant {
         tavla => 'Tavla',
         tapa => 'Tapa',
         moultezim => 'Moultezim',
+        gulBara => 'Gül Bara',
         longNard => 'Длинные нарды',
         shortNard => 'Короткие нарды',
         sheshBesh => 'שש בש',
@@ -139,7 +144,7 @@ enum GameVariant {
           startingPosition: StartingPosition.allOnOneOpposing,
           movementDirection: MovementDirection.opposing,
           captureMode: CaptureMode.pinning,
-          hasMotherPiece: true,
+          hasMotherPiece: false, // Tapa does NOT have mother piece (key difference from Plakoto)
           winnerRerolls: true,
           p1StartPoint: 0, p2StartPoint: 23,
           p1HomeStart: 18, p1HomeEnd: 23,
@@ -157,6 +162,19 @@ enum GameVariant {
         ),
 
         // ── Running games ───────────────────────────────────
+        gulBara => const VariantRules(
+          startingPosition: StartingPosition.allOnOneSameDirection,
+          movementDirection: MovementDirection.same,
+          captureMode: CaptureMode.none,
+          singleControlsPoint: true,
+          hasAdvancementRule: true,
+          hasPrimeRestriction: true,
+          maxPrimeWithTrapped: 5,
+          winnerRerolls: true,
+          p1StartPoint: 0, p2StartPoint: 12,
+          p1HomeStart: 18, p1HomeEnd: 23,
+          p2HomeStart: 6, p2HomeEnd: 11,
+        ),
         fevga => const VariantRules(
           startingPosition: StartingPosition.allOnOneSameDirection,
           movementDirection: MovementDirection.same,
@@ -192,7 +210,7 @@ enum GameVariant {
           headRuleDoubleExceptions: [3, 4, 6], // 3-3, 4-4, 6-6 allow 2 off head
           hasPrimeRestriction: true,
           maxPrimeWithTrapped: 5,
-          winnerRerolls: true,
+          winnerRerolls: false, // Narde tradition does NOT re-roll opening
           p1StartPoint: 0, p2StartPoint: 12,
           p1HomeStart: 18, p1HomeEnd: 23,
           p2HomeStart: 6, p2HomeEnd: 11,

@@ -61,6 +61,8 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
     );
 
     final boardSet = SettingsService.instance.boardSet;
+    final checkerSet = SettingsService.instance.checkerSet;
+    final diceSet = SettingsService.instance.diceSet;
 
     _game = TavliGame(
       boardState: _defaultBoard(),
@@ -68,6 +70,8 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
       onDestinationTapped: _onDestinationTapped,
       onDiceRollRequested: _onDiceRoll,
       boardSet: boardSet,
+      checkerSet: checkerSet,
+      diceSet: diceSet,
       flipped: widget.localPlayerNumber == 2,
     );
 
@@ -195,6 +199,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       builder: (ctx) => QuickChatPanel(
         onSend: (msg) {
           final index = QuickChatMessages.all.indexOf(msg);
@@ -459,6 +464,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   void _showPauseMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       backgroundColor: TavliColors.primary,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -496,6 +502,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   void _showResignConfirmation() {
     showDialog(
       context: context,
+      useRootNavigator: true,
       builder: (ctx) => AlertDialog(
         title: const Text('Resign?'),
         content: const Text(

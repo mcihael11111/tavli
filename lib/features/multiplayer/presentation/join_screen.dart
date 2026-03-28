@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../social/invite/invite_service.dart';
 import '../data/multiplayer_service_provider.dart';
@@ -64,6 +65,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
 
     showModalBottomSheet(
       context: context,
+      useRootNavigator: true,
       isScrollControlled: true,
       builder: (ctx) => SizedBox(
         height: MediaQuery.of(ctx).size.height * 0.6,
@@ -121,7 +123,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(
         title: const Text('Join Room'),
         leading: IconButton(

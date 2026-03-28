@@ -40,6 +40,9 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   /// Checker set index (1, 2, or 3) for color customization.
   final int _checkerSetIndex;
 
+  /// Dice set index (1, 2, or 3) for color customization.
+  final int _diceSetIndex;
+
   TavliGame({
     required BoardState boardState,
     this.onCheckerTapped,
@@ -47,10 +50,12 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
     this.onDiceRollRequested,
     int boardSet = 1,
     int checkerSet = 1,
+    int diceSet = 1,
     this.flipped = false,
   })  : _boardState = boardState,
         _boardSetIndex = boardSet,
-        _checkerSetIndex = checkerSet;
+        _checkerSetIndex = checkerSet,
+        _diceSetIndex = diceSet;
 
   /// Map a logical point index to a visual point index.
   /// When flipped, mirrors the board so player 2 sees their home board
@@ -134,6 +139,7 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
       remaining: remaining,
       boardLayout: _boardComponent.layout,
       onTap: () => onDiceRollRequested?.call(),
+      diceSet: _diceSetIndex,
     );
     add(_diceComponent!);
   }
@@ -147,6 +153,7 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
       remaining: const [],
       boardLayout: _boardComponent.layout,
       onTap: () => onDiceRollRequested?.call(),
+      diceSet: _diceSetIndex,
     );
     add(_diceComponent!);
   }

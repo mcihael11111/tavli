@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/services/copy_service.dart';
+import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../data/achievements.dart';
 
 /// Achievements display screen.
@@ -8,48 +11,54 @@ class AchievementsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     final service = AchievementService.instance;
 
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(
-        title: Text('Achievements (${service.unlockedCount}/${service.totalCount})'),
+        title: Text('${TavliCopy.achievements} (${service.unlockedCount}/${service.totalCount})'),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // Progress bar.
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: service.totalCount > 0
-                  ? service.unlockedCount / service.totalCount
-                  : 0,
-              minHeight: 8,
-              backgroundColor: TavliColors.primary.withValues(alpha: 0.3),
-              valueColor: const AlwaysStoppedAnimation(TavliColors.primary),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            const SizedBox(height: kToolbarHeight + TavliSpacing.md),
+
+            // Progress module.
+            ContentModule(
+              icon: Icons.emoji_events,
+              title: '${service.unlockedCount} / ${service.totalCount} Unlocked',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: service.totalCount > 0
+                      ? service.unlockedCount / service.totalCount
+                      : 0,
+                  minHeight: 8,
+                  backgroundColor: TavliColors.light.withValues(alpha: 0.15),
+                  valueColor: const AlwaysStoppedAnimation(TavliColors.light),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 24),
-
-          // Unlocked.
-          if (service.unlockedAchievements.isNotEmpty) ...[
-            const _SectionLabel('Unlocked', TavliColors.primary),
-            const SizedBox(height: 8),
-            for (final a in service.unlockedAchievements)
-              _AchievementTile(achievement: a, unlocked: true),
             const SizedBox(height: 24),
-          ],
 
-          // All locked achievements grouped.
-          ..._buildLockedSections(service, colors),
-        ],
+            // Unlocked.
+            if (service.unlockedAchievements.isNotEmpty) ...[
+              _SectionLabel('Unlocked'),
+              const SizedBox(height: 8),
+              for (final a in service.unlockedAchievements)
+                _AchievementTile(achievement: a, unlocked: true),
+              const SizedBox(height: 24),
+            ],
+
+            // All locked achievements grouped.
+            ..._buildLockedSections(service),
+          ],
+        ),
       ),
     );
   }
 
-  List<Widget> _buildLockedSections(AchievementService service, ColorScheme colors) {
+  List<Widget> _buildLockedSections(AchievementService service) {
     final widgets = <Widget>[];
     for (final cat in AchievementCategory.values) {
       final catAchievements = service.lockedAchievements
@@ -57,7 +66,7 @@ class AchievementsScreen extends StatelessWidget {
           .toList();
       if (catAchievements.isEmpty) continue;
 
-      widgets.add(_SectionLabel(_categoryLabel(cat), TavliColors.primary));
+      widgets.add(_SectionLabel(_categoryLabel(cat)));
       widgets.add(const SizedBox(height: 8));
       for (final a in catAchievements) {
         widgets.add(_AchievementTile(achievement: a, unlocked: false));
@@ -77,8 +86,7 @@ class AchievementsScreen extends StatelessWidget {
 
 class _SectionLabel extends StatelessWidget {
   final String text;
-  final Color color;
-  const _SectionLabel(this.text, this.color);
+  const _SectionLabel(this.text);
 
   @override
   Widget build(BuildContext context) {
@@ -86,7 +94,7 @@ class _SectionLabel extends StatelessWidget {
       text.toUpperCase(),
       style: TextStyle(
         fontSize: 12, letterSpacing: 1.5,
-        fontWeight: FontWeight.w600, color: color,
+        fontWeight: FontWeight.w600, color: TavliColors.light.withValues(alpha: 0.7),
       ),
     );
   }
@@ -99,42 +107,35 @@ class _AchievementTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      decoration: BoxDecoration(
-        color: TavliColors.primary,
-        borderRadius: BorderRadius.circular(TavliRadius.lg),
-        border: Border.all(color: TavliColors.background),
-        boxShadow: TavliShadows.xsmall,
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
       child: Opacity(
         opacity: unlocked ? 1.0 : 0.5,
-        child: ListTile(
+        child: ContentModule(
           leading: Text(
-            unlocked ? achievement.icon : '🔒',
+            unlocked ? achievement.icon : '\u{1F512}',
             style: const TextStyle(fontSize: 24),
           ),
-          title: Text(
-            achievement.name,
-            style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          subtitle: Column(
+          title: achievement.name,
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(achievement.nameGreek,
-                  style: theme.textTheme.labelSmall?.copyWith(color: colors.secondary)),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                    color: TavliColors.light.withValues(alpha: 0.6),
+                  )),
               const SizedBox(height: 2),
               Text(achievement.description,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: colors.onSurface.withValues(alpha: 0.7),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: TavliColors.light.withValues(alpha: 0.8),
                   )),
             ],
           ),
           trailing: unlocked
-              ? const Icon(Icons.check_circle, color: TavliColors.primary, size: 20)
+              ? const Icon(Icons.check_circle, color: TavliColors.light, size: 20)
               : null,
         ),
       ),

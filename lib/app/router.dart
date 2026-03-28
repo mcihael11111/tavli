@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/ai/difficulty/difficulty_level.dart';
@@ -15,13 +16,16 @@ import '../features/profile/presentation/match_history_screen.dart';
 import '../features/profile/presentation/achievements_screen.dart';
 import '../features/customization/presentation/customization_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
-import '../features/tutorial/presentation/tutorial_screen.dart';
+import '../features/learn/presentation/screens/learn_hub_screen.dart';
+import '../features/learn/presentation/screens/lesson_detail_screen.dart';
+import '../features/learn/presentation/screens/mechanic_comparison_screen.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
 import '../features/multiplayer/presentation/online_lobby_screen.dart';
 import '../features/multiplayer/presentation/online_game_screen.dart';
 import '../features/multiplayer/presentation/matchmaking_screen.dart';
 import '../features/multiplayer/presentation/invite_screen.dart';
 import '../features/multiplayer/presentation/join_screen.dart';
+import '../features/marathon/presentation/marathon_scoreboard_screen.dart';
 import '../features/replay/data/game_recording.dart';
 import '../features/replay/presentation/replay_screen.dart';
 import '../features/spectate/presentation/spectate_screen.dart';
@@ -36,11 +40,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/splash',
-        builder: (context, state) => const SplashScreen(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          child: const SplashScreen(),
+          transitionsBuilder: (context, animation, secondary, child) => child,
+        ),
       ),
       GoRoute(
         path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
+        pageBuilder: (context, state) => CustomTransitionPage(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 500),
+          child: const OnboardingScreen(),
+          transitionsBuilder: (context, animation, secondary, child) =>
+              FadeTransition(opacity: animation, child: child),
+        ),
       ),
 
       // Shell with bottom nav.
@@ -120,11 +134,40 @@ final routerProvider = Provider<GoRouter>((ref) {
           return PassPlayScreen(variant: variant);
         },
       ),
+      // Learn to Play module.
       GoRoute(
-        path: '/tutorial',
-        name: 'tutorial',
-        builder: (context, state) => const TutorialScreen(),
+        path: '/learn',
+        name: 'learn',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>?;
+          return LearnHubScreen(
+            initialSection: args?['section'] as String?,
+            initialLesson: args?['lesson'] as String?,
+          );
+        },
       ),
+      GoRoute(
+        path: '/learn/lesson',
+        name: 'learn-lesson',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>? ?? {};
+          return LessonDetailScreen(
+            sectionId: args['sectionId'] as String? ?? 'foundation',
+            lessonIndex: args['lessonIndex'] as int? ?? 0,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/learn/compare',
+        name: 'learn-compare',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>? ?? {};
+          return MechanicComparisonScreen(
+            family: args['family'] as String? ?? 'hitting',
+          );
+        },
+      ),
+
       GoRoute(
         path: '/match-history',
         name: 'match-history',
@@ -198,6 +241,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/challenges',
         name: 'challenges',
         builder: (context, state) => const ChallengesScreen(),
+      ),
+
+      // Marathon scoreboard (between games).
+      GoRoute(
+        path: '/marathon-scoreboard',
+        name: 'marathon-scoreboard',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>? ?? {};
+          return MarathonScoreboardScreen(
+            difficulty: args['difficulty'] as DifficultyLevel? ??
+                DifficultyLevel.easy,
+          );
+        },
       ),
 
       // V2 dual-phone board.

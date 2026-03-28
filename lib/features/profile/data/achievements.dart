@@ -14,6 +14,7 @@ class Achievement {
   final String description;
   final AchievementCategory category;
   final String icon;
+  final int rewardCoins;
 
   const Achievement({
     required this.id,
@@ -22,6 +23,7 @@ class Achievement {
     required this.description,
     required this.category,
     this.icon = '🏆',
+    this.rewardCoins = 0,
   });
 }
 
@@ -34,24 +36,28 @@ abstract final class Achievements {
       name: 'First Roll', nameGreek: 'Πρώτο Ζάρι',
       description: 'Complete your first game.',
       category: AchievementCategory.beginner, icon: '🎲',
+      rewardCoins: 10,
     ),
     Achievement(
       id: 'first_win',
       name: 'First Victory', nameGreek: 'Πρώτη Νίκη',
       description: 'Win your first game.',
       category: AchievementCategory.beginner, icon: '⭐',
+      rewardCoins: 20,
     ),
     Achievement(
       id: 'tutorial_complete',
       name: 'Student', nameGreek: 'Μαθητής',
       description: 'Complete all tutorial lessons.',
       category: AchievementCategory.beginner, icon: '📚',
+      rewardCoins: 15,
     ),
     Achievement(
       id: 'ten_games',
       name: 'Regular', nameGreek: 'Θαμώνας',
       description: 'Play 10 games.',
       category: AchievementCategory.beginner, icon: '☕',
+      rewardCoins: 25,
     ),
 
     // ── Skill ───────────────────────────────────────────────
@@ -60,48 +66,56 @@ abstract final class Achievements {
       name: 'Gammon!', nameGreek: 'Γκάμον!',
       description: 'Win a game by gammon.',
       category: AchievementCategory.skill, icon: '💪',
+      rewardCoins: 20,
     ),
     Achievement(
       id: 'win_backgammon',
       name: 'Backgammon!', nameGreek: 'Πόρτες Κλειστές',
       description: 'Win a game by backgammon.',
       category: AchievementCategory.skill, icon: '🔥',
+      rewardCoins: 30,
     ),
     Achievement(
       id: 'three_streak',
       name: 'Hat Trick', nameGreek: 'Τρεις στη Σειρά',
       description: 'Win 3 games in a row.',
       category: AchievementCategory.skill, icon: '🎩',
+      rewardCoins: 25,
     ),
     Achievement(
       id: 'five_streak',
       name: 'On Fire', nameGreek: 'Φωτιά!',
       description: 'Win 5 games in a row.',
       category: AchievementCategory.skill, icon: '🔥',
+      rewardCoins: 40,
     ),
     Achievement(
       id: 'beat_medium',
       name: 'Contender', nameGreek: 'Αντίπαλος',
       description: 'Beat the bot on Medium.',
       category: AchievementCategory.skill, icon: '⚔️',
+      rewardCoins: 25,
     ),
     Achievement(
       id: 'beat_hard',
       name: 'Warrior', nameGreek: 'Πολεμιστής',
       description: 'Beat the bot on Hard.',
       category: AchievementCategory.skill, icon: '🛡️',
+      rewardCoins: 35,
     ),
     Achievement(
       id: 'beat_pappous',
       name: 'Legend Slayer', nameGreek: 'Θρυλοκτόνος',
       description: 'Beat Παππούς.',
       category: AchievementCategory.skill, icon: '👑',
+      rewardCoins: 50,
     ),
     Achievement(
       id: 'double_win',
       name: 'Bold Move', nameGreek: 'Τολμηρή Κίνηση',
       description: 'Win a game after accepting a double.',
       category: AchievementCategory.skill, icon: '🎯',
+      rewardCoins: 20,
     ),
 
     // ── Social ──────────────────────────────────────────────
@@ -110,18 +124,21 @@ abstract final class Achievements {
       name: 'Connected', nameGreek: 'Συνδεδεμένος',
       description: 'Play your first online game.',
       category: AchievementCategory.social, icon: '🌐',
+      rewardCoins: 15,
     ),
     Achievement(
       id: 'invite_friend',
       name: 'Host', nameGreek: 'Οικοδεσπότης',
       description: 'Invite a friend to play.',
       category: AchievementCategory.social, icon: '📨',
+      rewardCoins: 15,
     ),
     Achievement(
       id: 'ten_online',
       name: 'Social Butterfly', nameGreek: 'Κοινωνικός',
       description: 'Play 10 online games.',
       category: AchievementCategory.social, icon: '🦋',
+      rewardCoins: 30,
     ),
 
     // ── Mastery ─────────────────────────────────────────────
@@ -130,24 +147,28 @@ abstract final class Achievements {
       name: 'Veteran', nameGreek: 'Βετεράνος',
       description: 'Win 50 games total.',
       category: AchievementCategory.mastery, icon: '🎖️',
+      rewardCoins: 50,
     ),
     Achievement(
       id: 'hundred_games',
       name: 'Kafeneio Regular', nameGreek: 'Θαμώνας Καφενείου',
       description: 'Play 100 games.',
       category: AchievementCategory.mastery, icon: '☕',
+      rewardCoins: 50,
     ),
     Achievement(
       id: 'all_boards',
       name: 'Collector', nameGreek: 'Συλλέκτης',
       description: 'Play at least one game on each board set.',
       category: AchievementCategory.mastery, icon: '🎨',
+      rewardCoins: 40,
     ),
     Achievement(
       id: 'all_difficulties',
       name: 'Complete Journey', nameGreek: 'Πλήρες Ταξίδι',
       description: 'Win at least one game on every difficulty.',
       category: AchievementCategory.mastery, icon: '🗺️',
+      rewardCoins: 50,
     ),
   ];
 

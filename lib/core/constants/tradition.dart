@@ -45,7 +45,7 @@ enum Tradition {
   /// The game variants belonging to this tradition.
   List<GameVariant> get variants => switch (this) {
         tavli => [GameVariant.portes, GameVariant.plakoto, GameVariant.fevga],
-        tavla => [GameVariant.tavla, GameVariant.tapa, GameVariant.moultezim],
+        tavla => [GameVariant.tavla, GameVariant.tapa, GameVariant.moultezim, GameVariant.gulBara],
         nardy => [GameVariant.longNard, GameVariant.shortNard],
         sheshBesh => [GameVariant.sheshBesh, GameVariant.mahbusa],
       };

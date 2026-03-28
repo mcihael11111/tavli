@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/services/progression_service.dart';
+import '../../../shared/services/copy_service.dart';
 import '../../../shared/services/settings_service.dart';
+import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../ai/difficulty/difficulty_level.dart';
 
 /// Profile screen — shows player stats from ProgressionService.
@@ -18,7 +21,7 @@ class ProfileScreen extends StatelessWidget {
     final rating = 1000 + (overall.wins * 15) - (overall.losses * 10);
     final rankTitle = _rankFor(rating);
 
-    return Scaffold(
+    return GradientScaffold(
       body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
@@ -28,12 +31,12 @@ class ProfileScreen extends StatelessWidget {
               const SizedBox(height: TavliSpacing.xxl),
               // Title.
               Text(
-                'Profile',
+                TavliCopy.profile,
                 style: TextStyle(
                   fontSize: 32,
                   fontFamily: TavliTheme.serifFamily,
                   fontWeight: FontWeight.w400,
-                  color: TavliColors.text,
+                  color: TavliColors.light,
                   letterSpacing: -0.64,
                   height: 1.25,
                 ),
@@ -41,61 +44,40 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: TavliSpacing.sm),
 
-              // Profile card (elevated).
-              Container(
-                padding: const EdgeInsets.all(TavliSpacing.md),
-                decoration: BoxDecoration(
-                  color: TavliColors.background,
-                  borderRadius: BorderRadius.circular(TavliRadius.lg),
-                  border: Border.all(color: TavliColors.primary),
-                  boxShadow: TavliShadows.xsmall,
+              // Profile module.
+              ContentModule(
+                title: SettingsService.instance.playerDisplayName.isNotEmpty
+                    ? SettingsService.instance.playerDisplayName
+                    : TavliCopy.player,
+                leading: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: TavliColors.surface,
+                    border: Border.all(color: TavliColors.primary, width: 0.467),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.person, size: 24, color: TavliColors.primary),
+                  ),
                 ),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: TavliColors.surface,
-                        border: Border.all(color: TavliColors.primary, width: 0.467),
-                      ),
-                      child: const Center(
-                        child: Icon(Icons.person, size: 24, color: TavliColors.primary),
+                    Text(
+                      '${SettingsService.instance.tradition.flagEmoji} '
+                      '${SettingsService.instance.tradition.displayName} Player',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: TavliColors.light,
                       ),
                     ),
-                    const SizedBox(width: TavliSpacing.sm),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Player',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontFamily: TavliTheme.serifFamily,
-                              fontWeight: FontWeight.w500,
-                              color: TavliColors.primary,
-                            ),
-                          ),
-                          const SizedBox(height: TavliSpacing.xxs),
-                          Text(
-                            '${SettingsService.instance.tradition.flagEmoji} '
-                            '${SettingsService.instance.tradition.displayName} Player',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: TavliColors.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            rankTitle,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: TavliColors.primary,
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 2),
+                    Text(
+                      rankTitle,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: TavliColors.light.withValues(alpha: 0.8),
                       ),
                     ),
                   ],
@@ -103,47 +85,57 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: TavliSpacing.md),
 
-              // Stats tabs.
-              Row(
-                children: [
-                  _StatChip('$rating', 'Rating'),
-                  const SizedBox(width: TavliSpacing.sm),
-                  _StatChip('${overall.totalGames}', 'Games'),
-                  const SizedBox(width: TavliSpacing.sm),
-                  _StatChip(overall.totalGames > 0
-                      ? '${(overall.winRate * 100).round()}%'
-                      : '—', 'Win Rate'),
-                ],
+              // Stats module (group).
+              ContentModule(
+                child: Row(
+                  children: [
+                    _StatChip('$rating', 'Rating'),
+                    const SizedBox(width: TavliSpacing.sm),
+                    _StatChip('${overall.totalGames}', 'Games'),
+                    const SizedBox(width: TavliSpacing.sm),
+                    _StatChip(overall.totalGames > 0
+                        ? '${(overall.winRate * 100).round()}%'
+                        : '—', 'Win Rate'),
+                  ],
+                ),
               ),
               const SizedBox(height: TavliSpacing.sm),
 
               // List cards.
-              _ProfileCard(
+              ContentModule(
                 icon: Icons.history,
-                title: 'Match History',
-                subtitle: '${overall.totalGames} games played',
+                iconSize: 32,
+                title: TavliCopy.matchHistory,
+                body: '${overall.totalGames} games played',
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/match-history'),
               ),
               const SizedBox(height: 10),
-              _ProfileCard(
+              ContentModule(
                 icon: Icons.emoji_events_outlined,
-                title: 'Achievements',
-                subtitle: 'Track your progress',
+                iconSize: 32,
+                title: TavliCopy.achievements,
+                body: 'Track your progress',
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/achievements'),
               ),
               const SizedBox(height: 10),
-              _ProfileCard(
+              ContentModule(
                 icon: Icons.trending_up,
-                title: 'Statistics',
-                subtitle: '${overall.wins}W – ${overall.losses}L · Best streak: ${overall.bestStreak}',
+                iconSize: 32,
+                title: TavliCopy.statistics,
+                body: '${overall.wins}W – ${overall.losses}L · Best streak: ${overall.bestStreak}',
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () {},
               ),
               const SizedBox(height: 10),
               for (final level in DifficultyLevel.values) ...[
-                _ProfileCard(
+                ContentModule(
                   icon: isUnlockedIcon(progression, level),
+                  iconSize: 32,
                   title: level.greekName,
-                  subtitle: _difficultySubtitle(progression, level),
+                  body: _difficultySubtitle(progression, level),
+                  trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                   onTap: () {},
                 ),
                 const SizedBox(height: 10),
@@ -187,93 +179,25 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: TavliSpacing.md),
-        decoration: BoxDecoration(
-          color: TavliColors.primary,
-          borderRadius: BorderRadius.circular(TavliRadius.lg),
-          border: Border.all(color: TavliColors.background),
-        ),
-        child: Center(
-          child: Column(
-            children: [
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontFamily: TavliTheme.serifFamily,
-                  fontWeight: FontWeight.w500,
-                  color: TavliColors.light,
-                ),
-              ),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: TavliColors.light,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  const _ProfileCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(TavliSpacing.md),
-        decoration: BoxDecoration(
-          color: TavliColors.primary,
-          borderRadius: BorderRadius.circular(TavliRadius.lg),
-          border: Border.all(color: TavliColors.background),
-        ),
-        child: Row(
+      child: Center(
+        child: Column(
           children: [
-            Icon(icon, size: 32, color: TavliColors.light),
-            const SizedBox(width: TavliSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontFamily: TavliTheme.serifFamily,
-                      fontWeight: FontWeight.w500,
-                      color: TavliColors.light,
-                    ),
-                  ),
-                  const SizedBox(height: TavliSpacing.xxs),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: TavliColors.light,
-                    ),
-                  ),
-                ],
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 18,
+                fontFamily: TavliTheme.serifFamily,
+                fontWeight: FontWeight.w500,
+                color: TavliColors.light,
               ),
             ),
-            const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                color: TavliColors.light.withValues(alpha: 0.8),
+              ),
+            ),
           ],
         ),
       ),

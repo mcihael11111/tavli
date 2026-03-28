@@ -15,6 +15,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   final List<int> remaining;
   final BoardLayout boardLayout;
   final void Function()? onTap;
+  final int diceSet;
 
   static const double _dieSize = 38;
   static const double _gap = 14;
@@ -22,12 +23,43 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   static const double _pipRadius = 3.2;
   static const double _cornerRadius = 5;
 
+  /// Per-set color palettes: (topFace, topFaceUsed, rightFace, rightFaceUsed, pipActive, pipUsed).
+  static const _palettes = <int, _DicePalette>{
+    1: _DicePalette(
+      topActive: Color(0xFFFAF6EE),
+      topUsed: Color(0xFFD4CDB8),
+      sideActive: Color(0xFFD8D0C0),
+      sideUsed: Color(0xFFB0A890),
+      pipActive: Color(0xFF2C1810),
+      pipUsed: Color(0xFF8C7C60),
+    ),
+    2: _DicePalette(
+      topActive: Color(0xFFFAF8F0),
+      topUsed: Color(0xFFD4CDB8),
+      sideActive: Color(0xFFD8D0C0),
+      sideUsed: Color(0xFFB0A890),
+      pipActive: Color(0xFF8B1A1A),
+      pipUsed: Color(0xFF8C6060),
+    ),
+    3: _DicePalette(
+      topActive: Color(0xFFF0EDE0),
+      topUsed: Color(0xFFD0CCBC),
+      sideActive: Color(0xFFCCC8B8),
+      sideUsed: Color(0xFFACA890),
+      pipActive: Color(0xFF4A4A4A),
+      pipUsed: Color(0xFF8A8A7A),
+    ),
+  };
+
+  _DicePalette get _palette => _palettes[diceSet] ?? _palettes[1]!;
+
   DiceComponent({
     required this.die1,
     required this.die2,
     required this.remaining,
     required this.boardLayout,
     this.onTap,
+    this.diceSet = 1,
   }) : super(
           position: boardLayout.diceAreaCenter - Vector2(_dieSize + _gap / 2, _dieSize / 2),
           size: Vector2(_dieSize * 2 + _gap + _depth, _dieSize + _depth),
@@ -67,15 +99,14 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     canvas.drawRRect(shadowRect, LightingSystem.dropShadowPaint(opacity: 0.4, blur: 6));
 
     // ── Right face (3D depth) ──────────────────────────────
+    final pal = _palette;
     final rightFacePath = Path()
       ..moveTo(x + _dieSize, y + _cornerRadius)
       ..lineTo(x + _dieSize + _depth * 0.7, y + _cornerRadius - _depth * 0.3)
       ..lineTo(x + _dieSize + _depth * 0.7, y + _dieSize - _cornerRadius - _depth * 0.3)
       ..lineTo(x + _dieSize, y + _dieSize - _cornerRadius)
       ..close();
-    final rightColor = isAvailable
-        ? const Color(0xFFD8D0C0)
-        : const Color(0xFFB0A890);
+    final rightColor = isAvailable ? pal.sideActive : pal.sideUsed;
     canvas.drawPath(rightFacePath, Paint()..color = LightingSystem.applyShadow(rightColor, 0.2));
 
     // ── Bottom face (3D depth) ─────────────────────────────
@@ -93,7 +124,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     final topRRect = RRect.fromRectAndRadius(topRect, const Radius.circular(_cornerRadius));
 
     // Gradient: lighter top-left (toward light), darker bottom-right.
-    final topColor = isAvailable ? const Color(0xFFFAF6EE) : const Color(0xFFD4CDB8);
+    final topColor = isAvailable ? pal.topActive : pal.topUsed;
     final topGradient = Paint()
       ..shader = Gradient.linear(
         Offset(x, y),
@@ -123,9 +154,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     );
 
     // ── Pips (drilled into surface) ────────────────────────
-    final pipColor = isAvailable
-        ? const Color(0xFF2C1810)
-        : const Color(0xFF8C7C60);
+    final pipColor = isAvailable ? pal.pipActive : pal.pipUsed;
     _drawPips(canvas, x, y, value, pipColor, opacity);
   }
 
@@ -236,4 +265,22 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   void onTapUp(TapUpEvent event) {
     onTap?.call();
   }
+}
+
+class _DicePalette {
+  final Color topActive;
+  final Color topUsed;
+  final Color sideActive;
+  final Color sideUsed;
+  final Color pipActive;
+  final Color pipUsed;
+
+  const _DicePalette({
+    required this.topActive,
+    required this.topUsed,
+    required this.sideActive,
+    required this.sideUsed,
+    required this.pipActive,
+    required this.pipUsed,
+  });
 }

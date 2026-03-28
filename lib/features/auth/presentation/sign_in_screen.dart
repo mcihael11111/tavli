@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import 'auth_provider.dart';
 
 /// Sign-in screen shown before accessing online play.
@@ -55,7 +56,8 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
 
-    return Scaffold(
+    return GradientScaffold(
+      gradient: TavliGradients.deepScaffold,
       appBar: AppBar(
         title: const Text('Sign In'),
         leading: IconButton(
@@ -143,9 +145,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                   label: const Text('Play as Guest'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    side: const BorderSide(
-                      color: TavliColors.primary,
-                    ),
+                    foregroundColor: TavliColors.light,
+                    backgroundColor: TavliColors.background.withValues(alpha: 0.15),
+                    side: BorderSide(color: TavliColors.light.withValues(alpha: 0.4)),
                   ),
                 ),
               ),

@@ -420,4 +420,79 @@ class AppLocalizationsEl extends AppLocalizations {
 
   @override
   String get greekLevelExample => 'Παράδειγμα';
+
+  @override
+  String get traditionTavli => 'Tavli';
+
+  @override
+  String get traditionTavla => 'Tavla';
+
+  @override
+  String get traditionNardy => 'Nardy';
+
+  @override
+  String get traditionSheshBesh => 'Shesh Besh';
+
+  @override
+  String get variantTavla => 'Tavla';
+
+  @override
+  String get variantTavlaSub => 'Turkish standard backgammon';
+
+  @override
+  String get variantTapa => 'Tapa';
+
+  @override
+  String get variantTapaSub => 'Turkish pinning variant';
+
+  @override
+  String get variantMoultezim => 'Moultezim';
+
+  @override
+  String get variantMoultezimSub => 'Turkish running variant';
+
+  @override
+  String get variantLongNard => 'Long Nard';
+
+  @override
+  String get variantLongNardSub => 'Running variant with head rule';
+
+  @override
+  String get variantShortNard => 'Short Nard';
+
+  @override
+  String get variantShortNardSub => 'Standard backgammon with doubling cube';
+
+  @override
+  String get variantSheshBesh => 'Shesh Besh';
+
+  @override
+  String get variantSheshBeshSub => 'Standard hitting game';
+
+  @override
+  String get variantMahbusa => 'Mahbusa';
+
+  @override
+  String get variantMahbusaSub => 'Arabic pinning variant';
+
+  @override
+  String get poolTradition => 'My Tradition';
+
+  @override
+  String get poolInternational => 'International';
+
+  @override
+  String get internationalMatch => 'International Match';
+
+  @override
+  String get internationalMatchSub => 'Play across traditions by game mechanic';
+
+  @override
+  String get canonicalRules => 'Canonical Rules';
+
+  @override
+  String get traditionSwitcher => 'Tradition';
+
+  @override
+  String get changeTradition => 'Change Tradition';
 }

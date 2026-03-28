@@ -1,14 +1,17 @@
 # Material Design 3 Alignment
 
-> How Tavli maps to, extends, and deviates from Material Design 3
+> How Tavli maps to, extends, and deviates from Material Design 3.
 > Flutter `useMaterial3: true` | Material 3 specification v2
+>
+> **Token values live in [00_TOKENS.md](00_TOKENS.md).** This document maps M3 roles to Tavli tokens.
 
 ## Related Documents
 
-- [Design System](01_DESIGN_SYSTEM.md) — Core tokens referenced here
-- [Components](02_COMPONENTS.md) — Per-component M3 mapping
-- [States](03_STATES.md) — State layer implementation via M3
-- [Accessibility](05_ACCESSIBILITY.md) — M3 accessibility features used
+- [Token Registry](00_TOKENS.md) — **Single source of truth** for all token values
+- [Design System](01_DESIGN_SYSTEM.md) — Principles and rationale
+- [Components](02_COMPONENTS.md) — Components with inline states, accessibility, and M3 widget mapping
+- [States](03_STATES.md) — Universal state formulas (M3 deviation: pre-computed shades)
+- [Accessibility](05_ACCESSIBILITY.md) — Universal WCAG rules (leverages M3 a11y infrastructure)
 
 ---
 

@@ -48,10 +48,10 @@ abstract final class TavliTheme {
           titleTextStyle: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w600,
-            color: TavliColors.text,
+            color: TavliColors.light,
             fontFamily: 'Poppins',
           ),
-          iconTheme: IconThemeData(color: TavliColors.primary, size: 24),
+          iconTheme: IconThemeData(color: TavliColors.light, size: 24),
         ),
         cardTheme: CardThemeData(
           color: TavliColors.primary,
@@ -104,7 +104,7 @@ abstract final class TavliTheme {
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
-            backgroundColor: TavliColors.surface,
+            backgroundColor: TavliColors.background,
             foregroundColor: TavliColors.primary,
             minimumSize: const Size(48, 48),
             side: const BorderSide(color: TavliColors.primary),

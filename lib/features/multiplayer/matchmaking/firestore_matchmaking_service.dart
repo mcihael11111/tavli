@@ -30,6 +30,9 @@ class FirestoreMatchmakingService {
   ///
   /// Returns a stream of [MatchmakingStatus] updates. When a match is found,
   /// emits [MatchmakingStatus.matched] with the game room ID.
+  ///
+  /// [acceptedVariants] enables multi-queue: player can accept matches for
+  /// multiple variants. If null, only [variant] is used.
   Stream<MatchmakingStatus> findMatch({
     required String playerUid,
     required String playerName,
@@ -38,14 +41,18 @@ class FirestoreMatchmakingService {
     required GameVariant variant,
     PoolType poolType = PoolType.tradition,
     MechanicFamily? mechanicFamily,
+    List<GameVariant>? acceptedVariants,
   }) async* {
     // Write to queue with tradition/pool context.
+    // Include accepted variants list for multi-queue matching.
+    final accepted = acceptedVariants ?? [variant];
     await _queue.doc(playerUid).set({
       'uid': playerUid,
       'name': playerName,
       'rating': rating,
       'tradition': tradition.name,
       'variant': variant.name,
+      'acceptedVariants': accepted.map((v) => v.name).toList(),
       'poolType': poolType.name,
       'mechanicFamily': mechanicFamily?.name ?? variant.mechanicFamily.name,
       'joinedAt': FieldValue.serverTimestamp(),
@@ -62,6 +69,7 @@ class FirestoreMatchmakingService {
       variant: variant,
       poolType: poolType,
       mechanicFamily: mechanicFamily ?? variant.mechanicFamily,
+      acceptedVariants: accepted,
     );
     if (matched != null) {
       yield MatchmakingStatus.matched(matched);
@@ -92,6 +100,7 @@ class FirestoreMatchmakingService {
     required GameVariant variant,
     required PoolType poolType,
     required MechanicFamily mechanicFamily,
+    List<GameVariant>? acceptedVariants,
   }) async {
     // Build query based on pool type.
     Query<Map<String, dynamic>> query = _queue
@@ -112,6 +121,9 @@ class FirestoreMatchmakingService {
 
     final snapshot = await query.get();
 
+    final myAccepted = acceptedVariants?.map((v) => v.name).toSet()
+        ?? {variant.name};
+
     for (final doc in snapshot.docs) {
       if (doc.id == playerUid) continue;
 
@@ -121,6 +133,15 @@ class FirestoreMatchmakingService {
 
       // Start with tight range — expand in periodic retries.
       if (ratingDiff > 300) continue;
+
+      // Multi-queue: check if opponent accepts any of our variants.
+      if (poolType == PoolType.tradition) {
+        final oppAccepted = (data['acceptedVariants'] as List<dynamic>?)
+            ?.map((v) => v as String).toSet()
+            ?? {data['variant'] as String};
+        final commonVariants = myAccepted.intersection(oppAccepted);
+        if (commonVariants.isEmpty) continue;
+      }
 
       // Try to claim this match via transaction.
       try {

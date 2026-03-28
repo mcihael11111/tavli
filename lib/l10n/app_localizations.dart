@@ -5,8 +5,12 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_ar.dart';
 import 'app_localizations_el.dart';
 import 'app_localizations_en.dart';
+import 'app_localizations_he.dart';
+import 'app_localizations_ru.dart';
+import 'app_localizations_tr.dart';
 
 // ignore_for_file: type=lint
 
@@ -94,20 +98,24 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('ar'),
     Locale('el'),
-    Locale('en')
+    Locale('en'),
+    Locale('he'),
+    Locale('ru'),
+    Locale('tr')
   ];
 
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
-  /// **'Tavli'**
+  /// **'Tables'**
   String get appTitle;
 
   /// No description provided for @subtitle.
   ///
   /// In en, this message translates to:
-  /// **'Greek Backgammon'**
+  /// **'Backgammon Traditions'**
   String get subtitle;
 
   /// No description provided for @homeGreetingMorning.
@@ -913,6 +921,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Example'**
   String get greekLevelExample;
+
+  /// No description provided for @traditionTavli.
+  ///
+  /// In en, this message translates to:
+  /// **'Tavli'**
+  String get traditionTavli;
+
+  /// No description provided for @traditionTavla.
+  ///
+  /// In en, this message translates to:
+  /// **'Tavla'**
+  String get traditionTavla;
+
+  /// No description provided for @traditionNardy.
+  ///
+  /// In en, this message translates to:
+  /// **'Nardy'**
+  String get traditionNardy;
+
+  /// No description provided for @traditionSheshBesh.
+  ///
+  /// In en, this message translates to:
+  /// **'Shesh Besh'**
+  String get traditionSheshBesh;
+
+  /// No description provided for @variantTavla.
+  ///
+  /// In en, this message translates to:
+  /// **'Tavla'**
+  String get variantTavla;
+
+  /// No description provided for @variantTavlaSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish standard backgammon'**
+  String get variantTavlaSub;
+
+  /// No description provided for @variantTapa.
+  ///
+  /// In en, this message translates to:
+  /// **'Tapa'**
+  String get variantTapa;
+
+  /// No description provided for @variantTapaSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish pinning variant'**
+  String get variantTapaSub;
+
+  /// No description provided for @variantMoultezim.
+  ///
+  /// In en, this message translates to:
+  /// **'Moultezim'**
+  String get variantMoultezim;
+
+  /// No description provided for @variantMoultezimSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish running variant'**
+  String get variantMoultezimSub;
+
+  /// No description provided for @variantLongNard.
+  ///
+  /// In en, this message translates to:
+  /// **'Long Nard'**
+  String get variantLongNard;
+
+  /// No description provided for @variantLongNardSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Running variant with head rule'**
+  String get variantLongNardSub;
+
+  /// No description provided for @variantShortNard.
+  ///
+  /// In en, this message translates to:
+  /// **'Short Nard'**
+  String get variantShortNard;
+
+  /// No description provided for @variantShortNardSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard backgammon with doubling cube'**
+  String get variantShortNardSub;
+
+  /// No description provided for @variantSheshBesh.
+  ///
+  /// In en, this message translates to:
+  /// **'Shesh Besh'**
+  String get variantSheshBesh;
+
+  /// No description provided for @variantSheshBeshSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard hitting game'**
+  String get variantSheshBeshSub;
+
+  /// No description provided for @variantMahbusa.
+  ///
+  /// In en, this message translates to:
+  /// **'Mahbusa'**
+  String get variantMahbusa;
+
+  /// No description provided for @variantMahbusaSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic pinning variant'**
+  String get variantMahbusaSub;
+
+  /// No description provided for @poolTradition.
+  ///
+  /// In en, this message translates to:
+  /// **'My Tradition'**
+  String get poolTradition;
+
+  /// No description provided for @poolInternational.
+  ///
+  /// In en, this message translates to:
+  /// **'International'**
+  String get poolInternational;
+
+  /// No description provided for @internationalMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'International Match'**
+  String get internationalMatch;
+
+  /// No description provided for @internationalMatchSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Play across traditions by game mechanic'**
+  String get internationalMatchSub;
+
+  /// No description provided for @canonicalRules.
+  ///
+  /// In en, this message translates to:
+  /// **'Canonical Rules'**
+  String get canonicalRules;
+
+  /// No description provided for @traditionSwitcher.
+  ///
+  /// In en, this message translates to:
+  /// **'Tradition'**
+  String get traditionSwitcher;
+
+  /// No description provided for @changeTradition.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Tradition'**
+  String get changeTradition;
 }
 
 class _AppLocalizationsDelegate
@@ -925,8 +1083,14 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['el', 'en'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+        'ar',
+        'el',
+        'en',
+        'he',
+        'ru',
+        'tr'
+      ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -935,10 +1099,18 @@ class _AppLocalizationsDelegate
 AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'ar':
+      return AppLocalizationsAr();
     case 'el':
       return AppLocalizationsEl();
     case 'en':
       return AppLocalizationsEn();
+    case 'he':
+      return AppLocalizationsHe();
+    case 'ru':
+      return AppLocalizationsRu();
+    case 'tr':
+      return AppLocalizationsTr();
   }
 
   throw FlutterError(

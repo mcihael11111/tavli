@@ -2,11 +2,13 @@
 
 > Voice, tone, writing guidelines, Greek/English bilingual patterns, and the Mikhail character guide.
 > Words are part of the design.
+>
+> **Typography tokens** (font family, sizes, weights) are in [00_TOKENS.md](00_TOKENS.md).
 
 ## Related Documents
 
-- [Design System](01_DESIGN_SYSTEM.md) — Typography tokens for text sizing
-- [Components](02_COMPONENTS.md) — Where copy appears in components
+- [Token Registry](00_TOKENS.md) — Typography tokens for text sizing
+- [Components](02_COMPONENTS.md) — Where copy appears in components (with inline accessibility)
 - [Accessibility](05_ACCESSIBILITY.md) — Alt text, semantic labels, screen reader text
 - [Uniform Design](06_UNIFORM_DESIGN.md) — Capitalization and terminology consistency
 

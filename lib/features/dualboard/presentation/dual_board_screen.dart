@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../multiplayer/data/ble_board_service.dart';
 import '../data/ble_board_impl.dart';
 
@@ -75,7 +76,7 @@ class _DualBoardPairingScreenState extends State<DualBoardPairingScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Scaffold(
+    return GradientScaffold(
       appBar: AppBar(title: const Text('Dual-Phone Board')),
       body: Padding(
         padding: const EdgeInsets.all(TavliSpacing.md),
@@ -132,8 +133,9 @@ class _DualBoardPairingScreenState extends State<DualBoardPairingScreen> {
                 icon: const Icon(Icons.search),
                 label: const Text('Join (Right Half)'),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: TavliColors.primary,
-                  side: const BorderSide(color: TavliColors.primary),
+                  foregroundColor: TavliColors.light,
+                  backgroundColor: TavliColors.background.withValues(alpha: 0.15),
+                  side: BorderSide(color: TavliColors.light.withValues(alpha: 0.4)),
                   padding: const EdgeInsets.all(TavliSpacing.md),
                 ),
               ),
@@ -160,7 +162,7 @@ class _DualBoardPairingScreenState extends State<DualBoardPairingScreen> {
               ),
               const SizedBox(height: TavliSpacing.md),
               if (_devices.isNotEmpty) ...[
-                Text(
+                const Text(
                   'FOUND DEVICES',
                   style: TextStyle(
                     fontSize: 12,
@@ -383,7 +385,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
                     ),
                   const SizedBox(width: TavliSpacing.sm),
                   Text(
-                    'Player ${_activePlayer}\'s turn',
+                    'Player $_activePlayer\'s turn',
                     style: const TextStyle(
                       fontSize: 11,
                       color: TavliColors.light,

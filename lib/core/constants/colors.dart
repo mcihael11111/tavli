@@ -185,3 +185,56 @@ abstract final class TavliShadows {
   static const medium = [BoxShadow(offset: Offset(0, 4), blurRadius: 16, color: Color(0x26000000))];
   static const large = [BoxShadow(blurRadius: 48, color: Color(0x33000000))];
 }
+
+/// Gradient tokens for depth-layered backgrounds.
+abstract final class TavliGradients {
+  /// Warm scaffold gradient — linear top-to-bottom, surface → primary.
+  static const warmScaffold = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [TavliColors.surface, TavliColors.primary],
+  );
+
+  /// Deep scaffold gradient — radial, lighter center-top → darker edges.
+  static const deepScaffold = RadialGradient(
+    center: Alignment(0, -0.3),
+    radius: 1.2,
+    colors: [TavliColors.surface, TavliColors.primary],
+  );
+
+  /// Dark mode warm scaffold.
+  static const warmScaffoldDark = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [TavliColors.surfaceDark, TavliColors.backgroundDark],
+  );
+
+  /// Dark mode deep scaffold.
+  static const deepScaffoldDark = RadialGradient(
+    center: Alignment(0, -0.3),
+    radius: 1.2,
+    colors: [TavliColors.surfaceDark, TavliColors.backgroundDark],
+  );
+}
+
+/// Semantic module tokens — translucent card decoration.
+abstract final class TavliModule {
+  /// Module background fill (12% alpha of background on gradient).
+  static final Color fill = TavliColors.background.withValues(alpha: 0.12);
+
+  /// Module border (40% alpha of primary).
+  static final Color border = TavliColors.primary.withValues(alpha: 0.4);
+
+  /// Module fill — dark mode.
+  static final Color fillDark = TavliColors.primaryDark.withValues(alpha: 0.12);
+
+  /// Module border — dark mode.
+  static final Color borderDark = TavliColors.primaryDark.withValues(alpha: 0.4);
+
+  /// Complete BoxDecoration for a module card.
+  static BoxDecoration decoration({bool isDark = false}) => BoxDecoration(
+    color: isDark ? fillDark : fill,
+    borderRadius: BorderRadius.circular(TavliRadius.lg),
+    border: Border.all(color: isDark ? borderDark : border),
+  );
+}

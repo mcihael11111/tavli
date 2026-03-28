@@ -7,16 +7,19 @@ import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
+import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../ai/personality/bot_personality.dart';
 
-/// First-launch onboarding — 6 screens, skippable.
+/// First-launch onboarding — 7 screens, skippable.
 ///
 /// Screen 1: Welcome to Tables
-/// Screen 2: Choose your tradition
-/// Screen 3: Choose your board style (card carousel)
-/// Screen 4: Choose your opponent (personality)
+/// Screen 2: What should we call you? (username)
+/// Screen 3: 5,000 Years of Play (history)
+/// Screen 4: Choose your tradition
 /// Screen 5: How [tradition] should I be (language level slider)
-/// Screen 6: Ready to play
+/// Screen 6: Choose your opponent (personality)
+/// Screen 7: Ready to play
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -42,7 +45,7 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final _controller = PageController();
   int _currentPage = 0;
-  static const _pageCount = 6;
+  static const _pageCount = 7;
 
   @override
   void dispose() {
@@ -68,8 +71,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: TavliColors.surface,
+    return GradientScaffold(
       body: SafeArea(
         child: Column(
           children: [
@@ -78,8 +80,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               alignment: Alignment.topRight,
               child: TextButton(
                 onPressed: _finish,
-                child: const Text('Skip',
-                  style: TextStyle(color: TavliColors.light, fontSize: 14)),
+                child: Text('Skip',
+                    style: TextStyle(
+                      color: TavliColors.light,
+                      fontSize: 14,
+                      fontFamily: TavliTheme.serifFamily,
+                      fontWeight: FontWeight.w500,
+                    )),
               ),
             ),
 
@@ -90,13 +97,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPageChanged: (i) => setState(() => _currentPage = i),
                 children: [
                   _WelcomePage(),
+                  _UsernamePage(),
+                  _HistoryPage(),
                   _TraditionPickPage(onChanged: () => setState(() {})),
-                  _BoardPickPage(),
-                  _PersonalityPickPage(),
                   _LanguageLevelPage(),
+                  _PersonalityPickPage(),
                   _ReadyPage(onLearn: () {
                     _finish();
-                    context.push('/tutorial');
+                    context.push('/learn');
                   }),
                 ],
               ),
@@ -123,8 +131,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             decoration: BoxDecoration(
                               color: _currentPage == i
                                   ? TavliColors.light
-                                  : TavliColors.primary,
-                              borderRadius: BorderRadius.circular(TavliRadius.full),
+                                  : TavliColors.light.withValues(alpha: 0.35),
+                              borderRadius:
+                                  BorderRadius.circular(TavliRadius.full),
                             ),
                           ),
                         ],
@@ -133,17 +142,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   ),
                   const Spacer(),
                   // Next / Get Started.
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: _next,
-                    style: ElevatedButton.styleFrom(
+                    style: FilledButton.styleFrom(
                       backgroundColor: TavliColors.primary,
                       foregroundColor: TavliColors.light,
                       padding: const EdgeInsets.symmetric(
-                        horizontal: TavliSpacing.sm,
+                        horizontal: TavliSpacing.lg,
                         vertical: TavliSpacing.xs,
                       ),
+                      side: BorderSide(
+                        color: TavliColors.light.withValues(alpha: 0.3),
+                      ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(TavliRadius.sm),
+                        borderRadius:
+                            BorderRadius.circular(TavliRadius.sm),
                       ),
                     ),
                     child: Text(
@@ -239,7 +252,162 @@ class _WelcomePage extends StatelessWidget {
   }
 }
 
-// ─── Screen 2: Tradition Selection ──────────────────────────────
+// ─── Screen 2: Username ─────────────────────────────────────────
+
+class _UsernamePage extends StatefulWidget {
+  @override
+  State<_UsernamePage> createState() => _UsernamePageState();
+}
+
+class _UsernamePageState extends State<_UsernamePage> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(
+      text: SettingsService.instance.playerDisplayName,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: TavliSpacing.lg),
+          Text(
+            'What Should We\nCall You?',
+            style: TextStyle(
+              color: TavliColors.light,
+              fontSize: 32,
+              fontFamily: TavliTheme.serifFamily,
+              fontWeight: FontWeight.w400,
+              letterSpacing: -0.64,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: TavliSpacing.sm),
+          const Text(
+            'This is how others see you\nin online games.',
+            style: TextStyle(
+              color: TavliColors.light,
+              fontSize: 18,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: TavliSpacing.xl),
+          TextField(
+            controller: _controller,
+            maxLength: 20,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: TavliColors.text,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Enter your name',
+              hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                color: TavliColors.text.withValues(alpha: 0.6),
+              ),
+              filled: true,
+              fillColor: TavliColors.surface,
+              counterStyle: const TextStyle(color: TavliColors.light),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(TavliRadius.sm),
+                borderSide: const BorderSide(color: TavliColors.primary),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(TavliRadius.sm),
+                borderSide:
+                    const BorderSide(color: TavliColors.primary, width: 2),
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: TavliSpacing.md,
+                vertical: TavliSpacing.sm,
+              ),
+            ),
+            onChanged: (value) {
+              SettingsService.instance.playerDisplayName = value.trim();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Screen 3: History of Tables ────────────────────────────────
+
+class _HistoryPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: TavliSpacing.lg),
+          Text(
+            '5,000 Years\nof Play',
+            style: TextStyle(
+              color: TavliColors.light,
+              fontSize: 32,
+              fontFamily: TavliTheme.serifFamily,
+              fontWeight: FontWeight.w400,
+              letterSpacing: -0.64,
+              height: 1.25,
+            ),
+          ),
+          const SizedBox(height: TavliSpacing.xl),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.only(bottom: TavliSpacing.lg),
+              children: const [
+                ContentModule(
+                  icon: Icons.temple_buddhist_outlined,
+                  title: 'Ancient Origins',
+                  body: 'Long before borders were drawn, people played. '
+                      'In ancient Mesopotamia, around 3000 BCE, the Royal '
+                      'Game of Ur was carved into stone \u2014 the ancestor '
+                      'of every backgammon board.',
+                ),
+                SizedBox(height: TavliSpacing.lg),
+                ContentModule(
+                  icon: Icons.explore_outlined,
+                  title: 'The Silk Road Spread',
+                  body: 'The game traveled with traders, soldiers, and '
+                      'sailors. The Romans called it Tabula. The Persians '
+                      'called it Takht\u2011e\u00A0Nard. In medieval Europe '
+                      'it became "Tables" \u2014 the name that stuck for '
+                      'centuries.',
+                ),
+                SizedBox(height: TavliSpacing.lg),
+                ContentModule(
+                  icon: Icons.flag_outlined,
+                  title: 'Living Traditions',
+                  body: 'Today, the same game lives in kafeneia in Athens, '
+                      'tea houses in Istanbul, dachas in Moscow, and shuk '
+                      'stalls in Jerusalem. Same board. Same dice. '
+                      'Different names, different rules, different souls.',
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Screen 4: Tradition Selection ──────────────────────────────
 
 class _TraditionPickPage extends StatefulWidget {
   final VoidCallback onChanged;
@@ -287,8 +455,7 @@ class _TraditionPickPageState extends State<_TraditionPickPage> {
             child: ListView(
               children: [
                 for (final tradition in Tradition.values) ...[
-                  _TraditionChoice(
-                    tradition: tradition,
+                  _SelectionCard(
                     selected: _selected == tradition,
                     onTap: () {
                       setState(() => _selected = tradition);
@@ -298,8 +465,17 @@ class _TraditionPickPageState extends State<_TraditionPickPage> {
                           BotPersonality.defaultFor(tradition);
                       widget.onChanged();
                     },
+                    leading: Text(tradition.flagEmoji,
+                        style: const TextStyle(fontSize: 28)),
+                    title: tradition.displayName,
+                    titleTrailing: tradition.nativeName,
+                    subtitle:
+                        '${tradition.regionLabel} · ${tradition.variants.length} games',
+                    detail: tradition.variants
+                        .map((v) => v.displayName)
+                        .join(' · '),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: TavliSpacing.sm),
                 ],
               ],
             ),
@@ -310,322 +486,7 @@ class _TraditionPickPageState extends State<_TraditionPickPage> {
   }
 }
 
-class _TraditionChoice extends StatelessWidget {
-  final Tradition tradition;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _TraditionChoice({
-    required this.tradition,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(TavliSpacing.md),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(TavliRadius.lg),
-          color: TavliColors.background,
-          border: Border.all(color: TavliColors.primary),
-          boxShadow: TavliShadows.xsmall,
-        ),
-        child: Row(
-          children: [
-            Text(tradition.flagEmoji, style: const TextStyle(fontSize: 28)),
-            const SizedBox(width: TavliSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(tradition.displayName, style: TextStyle(
-                        color: TavliColors.primary, fontSize: 18,
-                        fontFamily: TavliTheme.serifFamily, fontWeight: FontWeight.w500,
-                      )),
-                      const SizedBox(width: TavliSpacing.xs),
-                      Text(tradition.nativeName, style: const TextStyle(
-                        color: TavliColors.primary, fontSize: 14,
-                      )),
-                    ],
-                  ),
-                  const SizedBox(height: TavliSpacing.xxs),
-                  Text(
-                    '${tradition.regionLabel} · ${tradition.variants.length} games',
-                    style: const TextStyle(color: TavliColors.primary, fontSize: 12),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    tradition.variants.map((v) => v.displayName).join(' · '),
-                    style: const TextStyle(color: TavliColors.primary, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            if (selected)
-              const Icon(Icons.check_circle, color: TavliColors.primary, size: 22),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Screen 3: Board Selection (Card Carousel) ─────────────────
-
-class _BoardPickPage extends StatefulWidget {
-  @override
-  State<_BoardPickPage> createState() => _BoardPickPageState();
-}
-
-class _BoardPickPageState extends State<_BoardPickPage> {
-  int _selected = 1;
-  late final PageController _carouselController;
-
-  @override
-  void initState() {
-    super.initState();
-    _carouselController = PageController(viewportFraction: 0.72);
-  }
-
-  @override
-  void dispose() {
-    _carouselController.dispose();
-    super.dispose();
-  }
-
-  List<_BoardInfo> get _boards {
-    final tradition = SettingsService.instance.tradition;
-    return switch (tradition) {
-      Tradition.tavli => const [
-        _BoardInfo(1, 'Μαόνι', 'Mahogany & Olive Wood', [Color(0xFF8B4513), Color(0xFFC8B560)]),
-        _BoardInfo(2, 'Σμαραγδί', 'Mahogany & Teal', [Color(0xFF6F3024), Color(0xFF1A5C5C)]),
-        _BoardInfo(3, 'Νυχτερινό', 'Dark Walnut & Navy', [Color(0xFF2A1A0E), Color(0xFF2C3E50)]),
-      ],
-      Tradition.tavla => const [
-        _BoardInfo(1, 'Sultanahmet', 'Warm Cedar & Crimson', [Color(0xFF8B4513), Color(0xFF8B2500)]),
-        _BoardInfo(2, 'Anadolu', 'Light Ash & Turquoise', [Color(0xFFA0856C), Color(0xFF1A8B8B)]),
-        _BoardInfo(3, 'İstanbuli', 'Dark Walnut & Gold', [Color(0xFF2A1A0E), Color(0xFFB8860B)]),
-      ],
-      Tradition.nardy => const [
-        _BoardInfo(1, 'Кавказ', 'Light Birch & Burgundy', [Color(0xFFC4A882), Color(0xFF722F37)]),
-        _BoardInfo(2, 'Москва', 'Dark Oak & Forest Green', [Color(0xFF4A3728), Color(0xFF2E5A3E)]),
-        _BoardInfo(3, 'Баку', 'Rosewood & Copper', [Color(0xFF65000B), Color(0xFFB87333)]),
-      ],
-      Tradition.sheshBesh => const [
-        _BoardInfo(1, 'ירושלים', 'Olive Wood & Sandstone', [Color(0xFF808000), Color(0xFFD2B48C)]),
-        _BoardInfo(2, 'السوق', 'Mother-of-Pearl Inlay', [Color(0xFF3B2F2F), Color(0xFFD4C5B5)]),
-        _BoardInfo(3, 'صحراء', 'Light Cedar & Amber', [Color(0xFFC4A882), Color(0xFFFFBF00)]),
-      ],
-    };
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final boards = _boards;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const SizedBox(height: TavliSpacing.lg),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
-          child: Text(
-            'Choose Your Board',
-            style: TextStyle(
-              color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
-              fontWeight: FontWeight.w400,
-              letterSpacing: -0.64,
-              height: 1.25,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: TavliSpacing.sm),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
-          child: const Text(
-            'You can change this anytime in Customize.',
-            style: TextStyle(
-              color: TavliColors.light,
-              fontSize: 18,
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ),
-        const SizedBox(height: TavliSpacing.xl),
-
-        // Card carousel.
-        Expanded(
-          child: PageView.builder(
-            controller: _carouselController,
-            itemCount: boards.length,
-            onPageChanged: (i) {
-              setState(() => _selected = boards[i].index);
-              SettingsService.instance.boardSet = boards[i].index;
-            },
-            itemBuilder: (context, index) {
-              return ListenableBuilder(
-                listenable: _carouselController,
-                builder: (context, child) {
-                  double page = 0;
-                  if (_carouselController.position.haveDimensions) {
-                    page = _carouselController.page ?? 0;
-                  }
-                  final delta = (index - page).abs();
-                  final scale = 1.0 - (delta * 0.1).clamp(0.0, 0.3);
-                  final rotation = (index - page) * 0.05;
-
-                  return Transform(
-                    alignment: Alignment.bottomCenter,
-                    transform: Matrix4.identity()
-                      ..setEntry(3, 2, 0.001)
-                      ..rotateZ(rotation)
-                      ..scale(scale, scale, 1.0),
-                    child: child,
-                  );
-                },
-                child: _BoardCard(
-                  board: boards[index],
-                  selected: _selected == boards[index].index,
-                  onTap: () {
-                    setState(() => _selected = boards[index].index);
-                    SettingsService.instance.boardSet = boards[index].index;
-                    _carouselController.animateToPage(
-                      index,
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeInOut,
-                    );
-                  },
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _BoardCard extends StatelessWidget {
-  final _BoardInfo board;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _BoardCard({
-    required this.board,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: TavliSpacing.xs,
-          vertical: TavliSpacing.md,
-        ),
-        decoration: BoxDecoration(
-          color: TavliColors.background,
-          borderRadius: BorderRadius.circular(TavliRadius.lg),
-          border: Border.all(color: TavliColors.primary),
-          boxShadow: TavliShadows.large,
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(TavliRadius.lg),
-                  ),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: board.colors,
-                  ),
-                ),
-                child: Center(
-                  child: Transform.rotate(
-                    angle: math.pi / 4,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: TavliColors.light.withValues(alpha: 0.3),
-                          width: 2,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Center(
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                              color: TavliColors.light.withValues(alpha: 0.3),
-                              width: 1.5,
-                            ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(TavliSpacing.sm),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    board.name,
-                    style: TextStyle(
-                      color: TavliColors.primary,
-                      fontSize: 18,
-                      fontFamily: TavliTheme.serifFamily,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: TavliSpacing.xxs),
-                  Text(
-                    board.subtitle,
-                    style: const TextStyle(
-                      color: TavliColors.primary,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BoardInfo {
-  final int index;
-  final String name;
-  final String subtitle;
-  final List<Color> colors;
-  const _BoardInfo(this.index, this.name, this.subtitle, this.colors);
-}
-
-// ─── Screen 4: Personality Selection ────────────────────────────
+// ─── Screen 6: Personality Selection ────────────────────────────
 
 class _PersonalityPickPage extends StatefulWidget {
   @override
@@ -649,7 +510,6 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: TavliSpacing.lg),
           Text(
@@ -680,15 +540,34 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
             child: ListView(
               children: [
                 for (final personality in personalities) ...[
-                  _PersonalityChoice(
-                    personality: personality,
+                  _SelectionCard(
                     selected: _selected == personality,
                     onTap: () {
                       setState(() => _selected = personality);
                       SettingsService.instance.botPersonality = personality;
                     },
+                    leading: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: TavliColors.surface,
+                      ),
+                      child: Center(
+                        child: Text(
+                          personality.avatarInitial,
+                          style: const TextStyle(
+                            fontSize: 21,
+                            fontWeight: FontWeight.bold,
+                            color: TavliColors.light,
+                          ),
+                        ),
+                      ),
+                    ),
+                    title: personality.displayName,
+                    subtitle: personality.subtitle,
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: TavliSpacing.sm),
                 ],
               ],
             ),
@@ -699,62 +578,124 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
   }
 }
 
-class _PersonalityChoice extends StatelessWidget {
-  final BotPersonality personality;
+// ─── Shared Selection Card ──────────────────────────────────────
+
+class _SelectionCard extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
+  final Widget? leading;
+  final String title;
+  final String? titleTrailing;
+  final String? subtitle;
+  final String? detail;
 
-  const _PersonalityChoice({
-    required this.personality,
+  const _SelectionCard({
     required this.selected,
     required this.onTap,
+    this.leading,
+    required this.title,
+    this.titleTrailing,
+    this.subtitle,
+    this.detail,
   });
 
   @override
+  State<_SelectionCard> createState() => _SelectionCardState();
+}
+
+class _SelectionCardState extends State<_SelectionCard> {
+  bool _pressed = false;
+
+  @override
   Widget build(BuildContext context) {
+    final isSelected = widget.selected;
+
+    final bg = _pressed
+        ? (isSelected ? TavliColors.primaryActive : TavliColors.surfaceActive)
+        : (isSelected ? TavliColors.primary : TavliColors.surface);
+    final border =
+        isSelected ? TavliColors.background : TavliColors.primary;
+    final borderWidth = isSelected ? 2.0 : 1.0;
+    final textColor = TavliColors.light.withValues(alpha: isSelected ? 1.0 : 0.7);
+
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeIn,
+        transform: _pressed
+            ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
+            : Matrix4.identity(),
+        transformAlignment: Alignment.center,
         padding: const EdgeInsets.all(TavliSpacing.md),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(TavliRadius.lg),
-          color: TavliColors.background,
-          border: Border.all(color: TavliColors.primary),
-          boxShadow: TavliShadows.xsmall,
+          color: bg,
+          border: Border.all(color: border, width: borderWidth),
+          boxShadow: isSelected ? TavliShadows.xsmall : null,
         ),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: TavliColors.surface,
-              ),
-              child: Center(
-                child: Text(personality.avatarInitial, style: const TextStyle(
-                  fontSize: 21, fontWeight: FontWeight.bold,
-                  color: TavliColors.primary,
-                )),
-              ),
-            ),
-            const SizedBox(width: TavliSpacing.sm),
+            if (widget.leading != null) ...[
+              widget.leading!,
+              const SizedBox(width: TavliSpacing.sm),
+            ],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(personality.displayName, style: TextStyle(
-                    color: TavliColors.primary, fontSize: 18, fontFamily: TavliTheme.serifFamily, fontWeight: FontWeight.w500,
-                  )),
-                  const SizedBox(height: TavliSpacing.xxs),
-                  Text(personality.subtitle, style: const TextStyle(
-                    color: TavliColors.primary, fontSize: 14,
-                  )),
+                  Row(
+                    children: [
+                      Text(
+                        widget.title,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 18,
+                          fontFamily: TavliTheme.serifFamily,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      if (widget.titleTrailing != null) ...[
+                        const SizedBox(width: TavliSpacing.xs),
+                        Text(
+                          widget.titleTrailing!,
+                          style: TextStyle(
+                            color: textColor.withValues(alpha: 0.7),
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (widget.subtitle != null) ...[
+                    const SizedBox(height: TavliSpacing.xxs),
+                    Text(
+                      widget.subtitle!,
+                      style: TextStyle(
+                        color: textColor.withValues(alpha: 0.8),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                  if (widget.detail != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.detail!,
+                      style: TextStyle(
+                        color: textColor.withValues(alpha: 0.7),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-            if (selected)
-              const Icon(Icons.check_circle, color: TavliColors.primary, size: 22),
+            if (isSelected)
+              const Icon(Icons.check_circle, color: TavliColors.light,
+                  size: 22),
           ],
         ),
       ),
@@ -806,33 +747,33 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
     final tradition = SettingsService.instance.tradition;
     return switch (tradition) {
       Tradition.tavli => const [
-        _LangExample('Ready to play', 'Michael will lose'),
-        _LangExample('Έτοιμο to play', 'Michael θα lose'),
-        _LangExample('Έτοιμο να παίξει', 'Ο Michael θα χάσει'),
-        _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
-        _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
-      ],
+          _LangExample('Ready to play', 'Michael will lose'),
+          _LangExample('Έτοιμο to play', 'Michael θα lose'),
+          _LangExample('Έτοιμο να παίξει', 'Ο Michael θα χάσει'),
+          _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
+          _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
+        ],
       Tradition.tavla => const [
-        _LangExample('Ready to play', 'Good roll!'),
-        _LangExample('Hazır to play', 'Güzel roll!'),
-        _LangExample('Hazır oynamaya', 'Güzel atış!'),
-        _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
-        _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
-      ],
+          _LangExample('Ready to play', 'Good roll!'),
+          _LangExample('Hazır to play', 'Güzel roll!'),
+          _LangExample('Hazır oynamaya', 'Güzel atış!'),
+          _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
+          _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
+        ],
       Tradition.nardy => const [
-        _LangExample('Ready to play', 'Nice move!'),
-        _LangExample('Готов to play', 'Хороший move!'),
-        _LangExample('Готов играть', 'Хороший ход!'),
-        _LangExample('Готов играть', 'Отличный ход, молодец!'),
-        _LangExample('Готов играть', 'Отличный ход, молодец!'),
-      ],
+          _LangExample('Ready to play', 'Nice move!'),
+          _LangExample('Готов to play', 'Хороший move!'),
+          _LangExample('Готов играть', 'Хороший ход!'),
+          _LangExample('Готов играть', 'Отличный ход, молодец!'),
+          _LangExample('Готов играть', 'Отличный ход, молодец!'),
+        ],
       Tradition.sheshBesh => const [
-        _LangExample('Ready to play', 'Good move!'),
-        _LangExample('מוכן to play', 'Good move, yalla!'),
-        _LangExample('מוכן לשחק', '!יאללה, מהלך טוב'),
-        _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
-        _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
-      ],
+          _LangExample('Ready to play', 'Good move!'),
+          _LangExample('מוכן to play', 'Good move, yalla!'),
+          _LangExample('מוכן לשחק', '!יאללה, מהלך טוב'),
+          _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
+          _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
+        ],
     };
   }
 
@@ -882,7 +823,8 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
                   activeTrackColor: TavliColors.background,
                   inactiveTrackColor: TavliColors.background,
                   thumbColor: TavliColors.background,
-                  overlayColor: TavliColors.background.withValues(alpha: 0.2),
+                  overlayColor:
+                      TavliColors.background.withValues(alpha: 0.2),
                   trackHeight: 4,
                   thumbShape: _LangSliderThumb(),
                 ),
@@ -959,7 +901,7 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(TavliSpacing.sm),
                 decoration: BoxDecoration(
-                  color: TavliColors.background,
+                  color: TavliColors.surface,
                   borderRadius: BorderRadius.circular(TavliRadius.md),
                   border: Border.all(color: TavliColors.primary),
                   boxShadow: TavliShadows.xsmall,
@@ -970,7 +912,7 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
                     const Text(
                       'Example',
                       style: TextStyle(
-                        color: TavliColors.primary,
+                        color: TavliColors.background,
                         fontSize: 12,
                       ),
                     ),
@@ -978,7 +920,7 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
                     Text(
                       _currentExample.line1,
                       style: const TextStyle(
-                        color: TavliColors.primary,
+                        color: TavliColors.text,
                         fontSize: 16,
                         height: 1.5,
                       ),
@@ -987,7 +929,7 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
                     Text(
                       _currentExample.line2,
                       style: const TextStyle(
-                        color: TavliColors.primary,
+                        color: TavliColors.text,
                         fontSize: 14,
                         height: 1.57,
                       ),
@@ -1007,7 +949,8 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
 
 class _LangSliderThumb extends SliderComponentShape {
   @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(28, 28);
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
+      const Size(28, 28);
 
   @override
   void paint(
@@ -1055,7 +998,7 @@ class _LangExample {
   const _LangExample(this.line1, this.line2);
 }
 
-// ─── Screen 6: Ready to Play ────────────────────────────────────
+// ─── Screen 7: Ready to Play ────────────────────────────────────
 
 class _ReadyPage extends StatelessWidget {
   final VoidCallback onLearn;
@@ -1087,7 +1030,7 @@ class _ReadyPage extends StatelessWidget {
                   fontSize: 44,
                   fontFamily: TavliTheme.serifFamily,
                   fontWeight: FontWeight.w400,
-                  color: TavliColors.primary,
+                  color: TavliColors.light,
                   letterSpacing: -0.88,
                 ),
               ),
@@ -1116,24 +1059,49 @@ class _ReadyPage extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: TavliSpacing.lg),
-          GestureDetector(
-            onTap: onLearn,
-            child: Container(
-              width: double.infinity,
-              height: 40,
-              padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
-              decoration: BoxDecoration(
-                color: TavliColors.background,
-                borderRadius: BorderRadius.circular(TavliRadius.sm),
-                border: Border.all(color: TavliColors.primary),
-                boxShadow: TavliShadows.xsmall,
+          const SizedBox(height: TavliSpacing.md),
+          // Shop teaser.
+          Container(
+            padding: const EdgeInsets.all(TavliSpacing.sm),
+            decoration: BoxDecoration(
+              color: TavliColors.background.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(TavliRadius.md),
+              border: Border.all(
+                color: TavliColors.primary.withValues(alpha: 0.4),
               ),
-              alignment: Alignment.centerLeft,
-              child: Text(
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.storefront, color: TavliColors.light,
+                    size: 18),
+                const SizedBox(width: TavliSpacing.xs),
+                Text(
+                  'Visit the Shop to unlock boards, dice & more',
+                  style: TextStyle(
+                    color: TavliColors.light.withValues(alpha: 0.9),
+                    fontSize: 13,
+                    height: 1.3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: TavliSpacing.lg),
+          // Learn to Play button — proper OutlinedButton.
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onLearn,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: TavliColors.light,
+                backgroundColor: TavliColors.background.withValues(alpha: 0.15),
+                side: BorderSide(color: TavliColors.light.withValues(alpha: 0.4)),
+              ),
+              icon: const Icon(Icons.school_outlined, size: 20),
+              label: Text(
                 'Learn to Play',
                 style: TextStyle(
-                  color: TavliColors.primary,
                   fontFamily: TavliTheme.serifFamily,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,

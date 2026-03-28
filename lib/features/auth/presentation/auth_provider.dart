@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../shared/services/settings_service.dart';
 import '../data/auth_service.dart';
 import '../domain/player_profile.dart';
 
@@ -26,10 +27,14 @@ final playerProfileProvider =
   }
 
   // First-time user — create profile.
+  // Prefer the name set during onboarding, then Firebase, then default.
   final user = FirebaseAuth.instance.currentUser;
+  final onboardingName = SettingsService.instance.playerDisplayName;
   final profile = PlayerProfile.newPlayer(
     uid: uid,
-    displayName: user?.displayName ?? 'Player',
+    displayName: onboardingName.isNotEmpty
+        ? onboardingName
+        : (user?.displayName ?? 'Player'),
   );
 
   await firestore.collection('players').doc(uid).set(profile.toJson());

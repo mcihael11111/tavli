@@ -23,6 +23,7 @@ class SettingsService {
   static const _greekLevelKey = 'tavli_greek_level';
   static const _traditionKey = 'tables_tradition';
   static const _languageLevelKey = 'tables_language_level';
+  static const _playerNameKey = 'tavli_player_name';
 
   final SharedPreferences _prefs;
 
@@ -118,6 +119,15 @@ class SettingsService {
       _prefs.getDouble(_greekLevelKey) ??
       0.5;
   set languageLevel(double v) => _prefs.setDouble(_languageLevelKey, v);
+
+  // ── Player Display Name ─────────────────────────────────
+  String get playerDisplayName => _prefs.getString(_playerNameKey) ?? '';
+  set playerDisplayName(String v) => _prefs.setString(_playerNameKey, v);
+
+  /// Clears all persisted settings and onboarding state.
+  Future<void> clearAll() async {
+    await _prefs.clear();
+  }
 }
 
 /// Provider that bridges SettingsService to Riverpod.
