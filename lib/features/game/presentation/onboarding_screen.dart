@@ -83,20 +83,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               bottom: false,
               child: Column(
                 children: [
-                  // Skip button.
-                  Align(
-                    alignment: Alignment.topRight,
-                    child: TextButton(
-                      onPressed: _finish,
-                      child: Text('Skip',
-                          style: TextStyle(
-                            color: TavliColors.light,
-                            fontSize: 14,
-                            fontFamily: TavliTheme.serifFamily,
-                            fontWeight: FontWeight.w500,
-                          )),
-                    ),
-                  ),
                   Expanded(
                     child: PageView(
                       controller: _controller,
@@ -382,7 +368,7 @@ class _HistoryPage extends StatelessWidget {
         children: [
           const SizedBox(height: TavliSpacing.lg),
           Text(
-            '5,000 Years\nof Play',
+            '5,000 Years of Play',
             style: TextStyle(
               color: TavliColors.light,
               fontSize: 32,
@@ -392,20 +378,20 @@ class _HistoryPage extends StatelessWidget {
               height: 1.25,
             ),
           ),
-          const SizedBox(height: TavliSpacing.xl),
+          const SizedBox(height: TavliSpacing.lg),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.only(bottom: TavliSpacing.lg),
+              padding: const EdgeInsets.only(bottom: 120),
               children: const [
                 ContentModule(
                   icon: Icons.temple_buddhist_outlined,
                   title: 'Ancient Origins',
-                  body: 'Long before borders were drawn, people played. '
-                      'In ancient Mesopotamia, around 3000 BCE, the Royal '
-                      'Game of Ur was carved into stone \u2014 the ancestor '
-                      'of every backgammon board.',
+                  body: 'In ancient Mesopotamia, around 3000 BCE, the Royal '
+                      'Game of Ur was carved into stone \u2014 the oldest '
+                      'ancestor of every backgammon board. In Egypt, Senet '
+                      'was buried with pharaohs for the afterlife.',
                 ),
-                SizedBox(height: TavliSpacing.lg),
+                SizedBox(height: TavliSpacing.sm),
                 ContentModule(
                   icon: Icons.explore_outlined,
                   title: 'The Silk Road Spread',
@@ -415,13 +401,31 @@ class _HistoryPage extends StatelessWidget {
                       'it became "Tables" \u2014 the name that stuck for '
                       'centuries.',
                 ),
-                SizedBox(height: TavliSpacing.lg),
+                SizedBox(height: TavliSpacing.sm),
+                ContentModule(
+                  icon: Icons.local_cafe_outlined,
+                  title: 'The Coffeehouse Era',
+                  body: 'From the 17th century, coffeehouses across the '
+                      'Ottoman Empire and Europe became the heart of the '
+                      'game. Greek kafeneia, Turkish kahvehane, and '
+                      'Viennese kaffeehaus \u2014 every culture had its table.',
+                ),
+                SizedBox(height: TavliSpacing.sm),
+                ContentModule(
+                  icon: Icons.shield_outlined,
+                  title: 'Through the Wars',
+                  body: 'During both World Wars, soldiers carried pocket '
+                      'backgammon sets in their kits. In prisoner-of-war '
+                      'camps, boards were scratched into floors and tables. '
+                      'The game was a thread of normalcy in chaos.',
+                ),
+                SizedBox(height: TavliSpacing.sm),
                 ContentModule(
                   icon: Icons.flag_outlined,
                   title: 'Living Traditions',
                   body: 'Today, the same game lives in kafeneia in Athens, '
-                      'tea houses in Istanbul, dachas in Moscow, and shuk '
-                      'stalls in Jerusalem. Same board. Same dice. '
+                      'tea houses in Istanbul, dachas outside Moscow, and '
+                      'shuk stalls in Jerusalem. Same board. Same dice. '
                       'Different names, different rules, different souls.',
                 ),
               ],
