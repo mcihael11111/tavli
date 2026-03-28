@@ -841,7 +841,7 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
             ),
           ),
 
-          const Spacer(),
+          const SizedBox(height: TavliSpacing.xl),
 
           // Slider with endpoint labels.
           Column(
@@ -968,7 +968,7 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
             ],
           ),
 
-          const Spacer(flex: 2),
+          const Spacer(),
         ],
       ),
     );
