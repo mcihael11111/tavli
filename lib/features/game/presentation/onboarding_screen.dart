@@ -145,13 +145,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
               child: SizedBox(
                 width: double.infinity,
-                height: 48,
+                height: 52,
                 child: FilledButton(
                   onPressed: _next,
                   style: FilledButton.styleFrom(
-                    backgroundColor: TavliColors.primary,
-                    foregroundColor: TavliColors.light,
-                    elevation: 1,
+                    backgroundColor: TavliColors.background,
+                    foregroundColor: TavliColors.primary,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
                     shape: RoundedRectangleBorder(
                       borderRadius:
                           BorderRadius.circular(TavliRadius.lg),
