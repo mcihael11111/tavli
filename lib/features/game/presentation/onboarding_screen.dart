@@ -819,7 +819,7 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: TavliSpacing.lg),
+          const SizedBox(height: TavliSpacing.lg + TavliSpacing.sm),
           Text(
             _title,
             style: TextStyle(
@@ -830,7 +830,6 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
               letterSpacing: -0.64,
               height: 1.25,
             ),
-            textAlign: TextAlign.center,
           ),
           const SizedBox(height: TavliSpacing.sm),
           Text(
@@ -840,7 +839,6 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
               fontSize: 18,
               height: 1.4,
             ),
-            textAlign: TextAlign.center,
           ),
 
           const Spacer(),
