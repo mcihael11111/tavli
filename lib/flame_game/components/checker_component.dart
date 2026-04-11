@@ -1,13 +1,15 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/effects.dart';
-import 'package:flutter/animation.dart' show Curves;
+import 'package:flutter/animation.dart' show Curve, Curves;
 import 'package:flutter/material.dart' show Colors;
 import '../../core/constants/colors.dart';
 import '../rendering/lighting.dart';
+import '../sprite_manager.dart';
 import 'board_layout.dart';
 
 /// 3D-rendered checker piece — cylindrical with visible thickness,
@@ -15,12 +17,18 @@ import 'board_layout.dart';
 ///
 /// Renders as an oblique-view cylinder: elliptical top face + side band + shadow.
 class CheckerComponent extends CircleComponent with TapCallbacks {
-  final int pointIndex;
-  final int stackPosition;
-  final int player;
+  int pointIndex;
+  int stackPosition;
+  int player;
   final BoardLayout boardLayout;
-  final void Function()? onTap;
+  void Function()? onTap;
   final int checkerSet;
+
+  /// Unique ID for tracking this checker through board state diffs.
+  final int checkerId;
+
+  /// Sprite-based rendering (null = use procedural fallback).
+  CheckerSprites? _sprites;
 
   bool _isSelected = false;
 
@@ -31,6 +39,9 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
   /// Higher value = rounder looking. 0.55 gives a nice "thick coin" look.
   static const double _perspectiveSquash = 0.55;
 
+  /// Counter for generating unique checker IDs.
+  static int _nextId = 0;
+
   CheckerComponent({
     required this.pointIndex,
     required this.stackPosition,
@@ -38,7 +49,8 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
     required this.boardLayout,
     this.onTap,
     this.checkerSet = 1,
-  }) : super(
+  })  : checkerId = _nextId++,
+        super(
           radius: boardLayout.checkerRadius,
           anchor: Anchor.center,
           position: boardLayout.checkerPosition(pointIndex, stackPosition, player),
@@ -88,6 +100,9 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
     return colors.$4;
   }
 
+  /// Set sprite assets for this checker. Pass null to use procedural rendering.
+  set sprites(CheckerSprites? value) => _sprites = value;
+
   double get _thickness => radius * _thicknessRatio;
   double get _ellipseH => radius * _perspectiveSquash;
 
@@ -110,6 +125,11 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
 
   @override
   void render(Canvas canvas) {
+    if (_sprites != null) {
+      _renderWithSprite(canvas);
+      return;
+    }
+
     final cx = radius;
     final cy = radius;
 
@@ -153,6 +173,17 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
     if (_isSelected) {
       _drawSelectionGlow(canvas, cx, cy);
     }
+  }
+
+  /// Render using designer-provided sprite assets.
+  void _renderWithSprite(Canvas canvas) {
+    final sprite = _sprites!.getSprite(player, _isSelected);
+    final spriteSize = radius * 2;
+    sprite.render(
+      canvas,
+      position: Vector2(0, 0),
+      size: Vector2(spriteSize, spriteSize),
+    );
   }
 
   void _drawCylinderSide(Canvas canvas, double cx, double cy) {
@@ -335,10 +366,45 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
     onTap?.call();
   }
 
-  void animateMoveTo(Vector2 target, {double duration = 0.35}) {
-    add(MoveEffect.to(
+  /// Active move effect — tracked so we can cancel if a new move starts.
+  MoveEffect? _activeMoveEffect;
+
+  /// Animate this checker to [target] position.
+  /// Returns a Future that completes when the animation finishes.
+  /// Cancels any in-progress animation first.
+  Future<void> animateMoveTo(Vector2 target, {
+    double duration = 0.35,
+    Curve curve = Curves.easeInOutCubic,
+  }) {
+    // Cancel any existing animation to prevent overlap.
+    if (_activeMoveEffect != null) {
+      _activeMoveEffect!.removeFromParent();
+      _activeMoveEffect = null;
+    }
+
+    final completer = Completer<void>();
+    final effect = MoveEffect.to(
       target,
-      EffectController(duration: duration, curve: Curves.easeInOutCubic),
-    ));
+      EffectController(duration: duration, curve: curve),
+      onComplete: () {
+        _activeMoveEffect = null;
+        if (!completer.isCompleted) completer.complete();
+      },
+    );
+    _activeMoveEffect = effect;
+    add(effect);
+    return completer.future;
+  }
+
+  /// Update this checker's logical position without changing its visual position.
+  /// Used by the differ to update identity before animating.
+  void updateLogicalPosition({
+    required int newPointIndex,
+    required int newStackPosition,
+    required int newPlayer,
+  }) {
+    pointIndex = newPointIndex;
+    stackPosition = newStackPosition;
+    player = newPlayer;
   }
 }

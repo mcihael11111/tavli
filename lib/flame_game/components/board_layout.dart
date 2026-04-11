@@ -4,8 +4,13 @@ import 'package:flame/game.dart';
 ///
 /// The board is laid out in landscape with the bar dividing left/right halves.
 /// Player 1 (bottom) bears off to the right, player 2 (top) bears off to the left.
+///
+/// When [useSpriteLayout] is true, proportions are calibrated to match the
+/// designer's board sprite (set 1: Mahogany & Olive). These values may need
+/// fine-tuning through visual testing.
 class BoardLayout {
   final Vector2 gameSize;
+  final bool useSpriteLayout;
 
   late final double boardWidth;
   late final double boardHeight;
@@ -18,7 +23,7 @@ class BoardLayout {
   late final double checkerRadius;
   late final double bearOffWidth;
 
-  BoardLayout(this.gameSize) {
+  BoardLayout(this.gameSize, {this.useSpriteLayout = false}) {
     _compute();
   }
 
@@ -30,9 +35,18 @@ class BoardLayout {
     boardLeft = margin;
     boardTop = gameSize.y * 0.08;
 
-    frameThickness = boardWidth * 0.025;
-    barWidth = boardWidth * 0.04;
-    bearOffWidth = boardWidth * 0.05;
+    if (useSpriteLayout) {
+      // Calibrated to match the designer's board sprite proportions.
+      // The sprite has an asymmetric frame (3D perspective), but we use
+      // averaged values since the layout system assumes symmetry.
+      frameThickness = boardWidth * 0.035;
+      barWidth = boardWidth * 0.045;
+      bearOffWidth = boardWidth * 0.04; // virtual tray for checker positioning
+    } else {
+      frameThickness = boardWidth * 0.025;
+      barWidth = boardWidth * 0.04;
+      bearOffWidth = boardWidth * 0.05;
+    }
 
     // Playing area: boardWidth - 2*frame - bar - 2*bearOff
     final playingWidth =

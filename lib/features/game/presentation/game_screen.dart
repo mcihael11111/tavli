@@ -41,6 +41,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   late AudioService _audio;
   bool _aiThinking = false;
   bool _navigatingToVictory = false;
+  bool _animationInProgress = false;
 
   BotPersonality get _personality => SettingsService.instance.botPersonality;
 
@@ -98,6 +99,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   void _onCheckerTapped(int pointIndex) {
+    if (_animationInProgress) return;
     final gs = ref.read(gameProvider);
     if (!gs.isPlayerTurn) return;
     if (gs.phase != GamePhase.movingCheckers) return;
@@ -107,7 +109,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _announce('Checker selected on point ${pointIndex + 1}');
   }
 
-  void _onDestinationTapped(int toPoint) {
+  Future<void> _onDestinationTapped(int toPoint) async {
+    if (_animationInProgress) return;
     final gs = ref.read(gameProvider);
     if (!gs.isPlayerTurn) return;
 
@@ -115,27 +118,37 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final move = gs.availableMovesForSelected
         .where((m) => m.toPoint == toPoint)
         .firstOrNull;
+    SfxType? landingSfx;
     if (move != null) {
       if (move.isHit) {
-        _audio.playSfx(SfxType.checkerHit);
-        HapticFeedback.heavyImpact();
+        landingSfx = SfxType.checkerHit;
         _announce('Hit! Opponent checker sent to bar.');
       } else if (move.isBearOff) {
-        _audio.playSfx(SfxType.checkerBearOff);
-        HapticFeedback.mediumImpact();
+        landingSfx = SfxType.checkerBearOff;
         _announce('Checker borne off.');
       } else if (move.isBarEntry) {
-        _audio.playSfx(SfxType.checkerBarEntry);
-        HapticFeedback.mediumImpact();
+        landingSfx = SfxType.checkerBarEntry;
         _announce('Entered from bar to point ${toPoint + 1}.');
       } else {
-        _audio.playSfx(SfxType.checkerPlace);
-        HapticFeedback.lightImpact();
+        landingSfx = SfxType.checkerPlace;
         _announce('Moved to point ${toPoint + 1}.');
       }
     }
 
+    // Apply the move — state updates immediately.
     ref.read(gameProvider.notifier).makeMove(toPoint);
+
+    // Wait for checker animation to complete, then play landing sound.
+    _animationInProgress = true;
+    try {
+      await _game.updateBoardState(ref.read(gameProvider).board);
+      if (landingSfx != null) {
+        _audio.playSfx(landingSfx);
+        HapticFeedback.lightImpact();
+      }
+    } finally {
+      _animationInProgress = false;
+    }
 
     // Post-move teaching feedback (Easy+Help).
     if (widget.difficulty.isTeaching) {
@@ -326,9 +339,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     if (aiTurn != null) {
       for (final move in aiTurn.moves) {
-        await Future.delayed(const Duration(milliseconds: 350));
+        await Future.delayed(const Duration(milliseconds: 150));
         if (!mounted) { _aiThinking = false; return; }
 
+        // Apply via notifier — selectChecker + makeMove.
+        notifier.selectChecker(move.fromPoint);
+        notifier.makeMove(move.toPoint);
+
+        // Animate the checker sliding to its new position.
+        final currentBoard = ref.read(gameProvider).board;
+        await _game.updateBoardState(currentBoard);
+        if (!mounted) { _aiThinking = false; return; }
+
+        // Play landing SFX after animation completes.
         if (move.isHit) {
           _audio.playSfx(SfxType.checkerHit);
           _dialogue.trigger(DialogueEvent.mikhailHit, widget.difficulty, personality: _personality);
@@ -338,10 +361,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         } else {
           _audio.playSfx(SfxType.checkerPlace);
         }
-
-        // Apply via notifier — selectChecker + makeMove.
-        notifier.selectChecker(move.fromPoint);
-        notifier.makeMove(move.toPoint);
 
         final current = ref.read(gameProvider);
         if (current.phase == GamePhase.gameOver) {
@@ -405,9 +424,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Widget build(BuildContext context) {
     final gs = ref.watch(gameProvider);
 
-    // Sync Flame.
+    // Sync Flame visuals (highlights, dice).
+    // Board state sync: always push state to Flame so undo, turn transitions,
+    // and other non-animated state changes are reflected immediately.
+    // The differ inside TavliGame handles animation vs instant based on context.
     if (_game.isLoaded) {
-      _game.updateBoardState(gs.board);
+      if (!_animationInProgress && !_aiThinking) {
+        _game.syncBoardState(gs.board);
+      }
 
       if (gs.selectedPoint != null && gs.availableMovesForSelected.isNotEmpty) {
         _game.showHighlights(
@@ -473,8 +497,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               Column(
                 children: [
                   _buildTopBar(gs),
-                  if (_aiThinking) _buildBotThinkingBanner(),
-                  Expanded(child: GameWidget(game: _game)),
+                  Expanded(
+                    child: Stack(
+                      children: [
+                        GameWidget(game: _game),
+                        if (_aiThinking)
+                          Positioned(
+                            top: 0, left: 0, right: 0,
+                            child: _buildBotThinkingBanner(),
+                          ),
+                      ],
+                    ),
+                  ),
                   _buildDialogueBar(),
                   _buildActionArea(gs),
                   _buildBottomBar(gs),

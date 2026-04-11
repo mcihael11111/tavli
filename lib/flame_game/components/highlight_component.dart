@@ -19,7 +19,8 @@ export '../../features/game/domain/engine/move_quality.dart';
 /// For bear-off (-2), falls back to a glowing oval.
 /// In teaching mode, the border color reflects move quality:
 /// gold = best, silver = good, bronze = acceptable, dim = poor.
-class HighlightComponent extends PositionComponent with TapCallbacks {
+class HighlightComponent extends PositionComponent
+    with TapCallbacks, HasPaint {
   final int pointIndex;
   final int dieValue;
   final bool isHit;
@@ -122,22 +123,24 @@ class HighlightComponent extends PositionComponent with TapCallbacks {
 
   @override
   void render(Canvas canvas) {
+    final op = opacity;
+
     if (_isBearOff) {
-      _renderBearOffHighlight(canvas);
+      _renderBearOffHighlight(canvas, op);
       return;
     }
 
     // ── Filled triangle ────────────────────────────────────────
     canvas.drawPath(
       _trianglePath,
-      Paint()..color = _fillColor.withValues(alpha: 0.45),
+      Paint()..color = _fillColor.withValues(alpha: 0.45 * op),
     );
 
     // ── Soft glow behind triangle ──────────────────────────────
     canvas.drawPath(
       _trianglePath,
       Paint()
-        ..color = _fillColor.withValues(alpha: 0.25)
+        ..color = _fillColor.withValues(alpha: 0.25 * op)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
     );
 
@@ -145,14 +148,14 @@ class HighlightComponent extends PositionComponent with TapCallbacks {
     canvas.drawPath(
       _trianglePath,
       Paint()
-        ..color = _borderColor.withValues(alpha: 0.8)
+        ..color = _borderColor.withValues(alpha: 0.8 * op)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.5,
     );
 
     // ── Die value badge near the tip ───────────────────────────
     if (dieValue > 0) {
-      _drawDieBadge(canvas, _badgeCenter);
+      _drawDieBadge(canvas, _badgeCenter, op);
     }
 
     // ── Hit marker ─────────────────────────────────────────────
@@ -161,7 +164,7 @@ class HighlightComponent extends PositionComponent with TapCallbacks {
       final cx = (_localVerts[0].dx + _localVerts[1].dx + _localVerts[2].dx) / 3;
       final cy = (_localVerts[0].dy + _localVerts[1].dy + _localVerts[2].dy) / 3;
       final xPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.7)
+        ..color = Colors.white.withValues(alpha: 0.7 * op)
         ..strokeWidth = 2
         ..strokeCap = StrokeCap.round;
       const s = 6.0;
@@ -170,7 +173,7 @@ class HighlightComponent extends PositionComponent with TapCallbacks {
     }
   }
 
-  void _renderBearOffHighlight(Canvas canvas) {
+  void _renderBearOffHighlight(Canvas canvas, double op) {
     final r = size.x / 2;
     final cx = r;
     final cy = r;
@@ -182,42 +185,42 @@ class HighlightComponent extends PositionComponent with TapCallbacks {
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy), width: r * 2.2, height: eh * 2.2),
       Paint()
-        ..color = color.withValues(alpha: 0.3)
+        ..color = color.withValues(alpha: 0.3 * op)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
     );
 
     // Solid indicator.
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy), width: r * 1.4, height: eh * 1.4),
-      Paint()..color = color.withValues(alpha: 0.5),
+      Paint()..color = color.withValues(alpha: 0.5 * op),
     );
 
     // Ring.
     canvas.drawOval(
       Rect.fromCenter(center: Offset(cx, cy), width: r * 1.6, height: eh * 1.6),
       Paint()
-        ..color = _borderColor.withValues(alpha: 0.8)
+        ..color = _borderColor.withValues(alpha: 0.8 * op)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
 
     // Die badge.
     if (dieValue > 0) {
-      _drawDieBadge(canvas, Offset(cx, cy));
+      _drawDieBadge(canvas, Offset(cx, cy), op);
     }
   }
 
-  void _drawDieBadge(Canvas canvas, Offset center) {
+  void _drawDieBadge(Canvas canvas, Offset center, double op) {
     const badgeR = 10.0;
     final badgeColor = isHit ? TavliColors.moveHighlightHit : _fillColor;
 
     // Badge background.
-    canvas.drawCircle(center, badgeR, Paint()..color = badgeColor);
+    canvas.drawCircle(center, badgeR, Paint()..color = badgeColor.withValues(alpha: op));
     canvas.drawCircle(
       center,
       badgeR,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.25)
+        ..color = Colors.white.withValues(alpha: 0.25 * op)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1,
     );
@@ -226,8 +229,8 @@ class HighlightComponent extends PositionComponent with TapCallbacks {
     final textPainter = TextPainter(
       text: TextSpan(
         text: '$dieValue',
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: op),
           fontSize: 12,
           fontWeight: FontWeight.bold,
         ),

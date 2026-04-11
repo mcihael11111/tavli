@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' show Colors;
 import 'package:flutter/painting.dart' show TextPainter, TextSpan, TextStyle, TextDirection, FontWeight;
 import '../../core/constants/colors.dart';
 import '../rendering/lighting.dart';
+import '../sprite_manager.dart';
 import 'board_layout.dart';
 
 /// 3D-rendered dice with visible cube faces, drilled pips, and shadows.
@@ -16,6 +17,12 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   final BoardLayout boardLayout;
   final void Function()? onTap;
   final int diceSet;
+
+  /// Sprite-based rendering (null = use procedural fallback).
+  DiceSprites? _sprites;
+
+  /// Set sprite assets for this dice component.
+  set sprites(DiceSprites? value) => _sprites = value;
 
   static const double _dieSize = 38;
   static const double _gap = 14;
@@ -81,8 +88,42 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     final die2Count = remaining.where((d) => d == die2).length;
     final die2Available = die1 == die2 ? die2Count >= 2 : die2Count >= 1;
 
+    if (_sprites != null) {
+      _drawSpriteDie(canvas, const Offset(0, 0), die1, die1Available);
+      _drawSpriteDie(canvas, const Offset(_dieSize + _gap, 0), die2, die2Available);
+      return;
+    }
+
     _draw3DDie(canvas, const Offset(0, 0), die1, die1Available);
     _draw3DDie(canvas, const Offset(_dieSize + _gap, 0), die2, die2Available);
+  }
+
+  void _drawSpriteDie(Canvas canvas, Offset offset, int value, bool isAvailable) {
+    final sprite = _sprites!.getFace(value);
+    if (sprite == null) {
+      _draw3DDie(canvas, offset, value, isAvailable);
+      return;
+    }
+
+    final paint = Paint();
+    if (!isAvailable) {
+      paint.colorFilter = const ColorFilter.matrix(<double>[
+        0.299, 0.587, 0.114, 0, 0,
+        0.299, 0.587, 0.114, 0, 0,
+        0.299, 0.587, 0.114, 0, 0,
+        0, 0, 0, 0.55, 0,
+      ]);
+    }
+
+    canvas.save();
+    canvas.translate(offset.dx, offset.dy);
+    sprite.render(
+      canvas,
+      position: Vector2.zero(),
+      size: Vector2.all(_dieSize),
+      overridePaint: paint,
+    );
+    canvas.restore();
   }
 
   void _draw3DDie(Canvas canvas, Offset offset, int value, bool isAvailable) {

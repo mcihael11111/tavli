@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' show Colors;
 import '../../core/constants/colors.dart';
 import '../rendering/lighting.dart';
 import '../rendering/wood_texture_renderer.dart';
+import '../sprite_manager.dart';
 import 'board_layout.dart';
 
 /// 3D-rendered backgammon board with wood grain, frame depth, and lighting.
@@ -14,7 +15,11 @@ import 'board_layout.dart';
 class BoardComponent extends PositionComponent {
   late BoardLayout layout;
 
-  // Board set colors.
+  // Sprite-based rendering (null = use procedural fallback).
+  Sprite? _boardSprite;
+  Sprite? _shadowSprite;
+
+  // Board set colors (used for procedural fallback).
   Color _frameColor = TavliColors.mahoganyDark;
   Color _frameGrain = const Color(0xFF6B2D15);
   Color _surfaceColor = TavliColors.oliveWoodLight;
@@ -30,10 +35,24 @@ class BoardComponent extends PositionComponent {
   }
 
   void onResize(Vector2 gameSize) {
-    layout = BoardLayout(gameSize);
+    layout = BoardLayout(gameSize, useSpriteLayout: _boardSprite != null);
+  }
+
+  /// Load sprite assets for the current board set.
+  /// If sprites aren't available for the set, clears them (procedural fallback).
+  /// Recalculates layout proportions to match sprite geometry.
+  Future<void> loadSprites(SpriteManager manager, int setIndex) async {
+    _boardSprite = await manager.loadBoardSprite(setIndex);
+    _shadowSprite = await manager.loadBoardShadowSprite(setIndex);
+    // Recalculate layout with sprite-aware proportions.
+    layout = BoardLayout(layout.gameSize, useSpriteLayout: _boardSprite != null);
   }
 
   void setBoardSet(int setIndex) {
+    // Clear sprites — they'll be reloaded via loadSprites() if available.
+    _boardSprite = null;
+    _shadowSprite = null;
+
     switch (setIndex) {
       case 1:
         _frameColor = TavliColors.mahoganyDark;
@@ -61,6 +80,11 @@ class BoardComponent extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
+    if (_boardSprite != null) {
+      _renderWithSprites(canvas);
+      return;
+    }
+
     _drawTableSurface(canvas);
     _drawBoardShadow(canvas);
     _drawFrameBase(canvas);
@@ -72,6 +96,35 @@ class BoardComponent extends PositionComponent {
     _drawPointNotches(canvas);
     _drawFrameInnerEdge(canvas);
     _drawHinges(canvas);
+  }
+
+  /// Render the board using designer-provided sprite assets.
+  void _renderWithSprites(Canvas canvas) {
+    // Dark table surface underneath.
+    _drawTableSurface(canvas);
+
+    // Board shadow (use sprite shadow if available, else procedural).
+    if (_shadowSprite != null) {
+      // The shadow sprite has a black background — render it underneath
+      // slightly offset for the drop-shadow effect.
+      final shadowRect = Rect.fromLTWH(
+        layout.boardLeft + 2,
+        layout.boardTop + 3,
+        layout.boardWidth + 2,
+        layout.boardHeight + 2,
+      );
+      _shadowSprite!.render(canvas, position: Vector2(shadowRect.left, shadowRect.top),
+          size: Vector2(shadowRect.width, shadowRect.height));
+    } else {
+      _drawBoardShadow(canvas);
+    }
+
+    // Main board sprite — scaled to fit the layout dimensions exactly.
+    _boardSprite!.render(
+      canvas,
+      position: Vector2(layout.boardLeft, layout.boardTop),
+      size: Vector2(layout.boardWidth, layout.boardHeight),
+    );
   }
 
   /// Dark table underneath the board.
