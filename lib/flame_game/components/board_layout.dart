@@ -92,7 +92,7 @@ class BoardLayout {
   }
 
   /// Get the position for a checker stacked at [stackPosition] on [pointIndex].
-  Vector2 checkerPosition(int pointIndex, int stackPosition, int player) {
+  Vector2 checkerPosition(int pointIndex, int stackPosition, int player, {int? totalOnPoint}) {
     // Bar position.
     if (pointIndex == -1) {
       return _barPosition(stackPosition, player);
@@ -106,15 +106,24 @@ class BoardLayout {
     final isTop = pointIndex >= 12;
 
     // Stack direction: top points stack downward, bottom points stack upward.
-    final stackOffset = checkerRadius * 2.0 * 0.85; // slight overlap
+    final normalOffset = checkerRadius * 2.0 * 0.85; // slight overlap
     const maxVisible = 5;
-    final effectiveStack = stackPosition < maxVisible ? stackPosition : maxVisible;
+
+    // Compress stacking when more than maxVisible checkers on a point.
+    final total = totalOnPoint ?? (stackPosition + 1);
+    final double stackOffset;
+    if (total <= maxVisible) {
+      stackOffset = normalOffset;
+    } else {
+      // Fit all checkers in the space of maxVisible.
+      stackOffset = normalOffset * maxVisible / total;
+    }
 
     double y;
     if (isTop) {
-      y = base.y + effectiveStack * stackOffset + checkerRadius;
+      y = base.y + stackPosition * stackOffset + checkerRadius;
     } else {
-      y = base.y - effectiveStack * stackOffset - checkerRadius;
+      y = base.y - stackPosition * stackOffset - checkerRadius;
     }
 
     return Vector2(base.x, y);

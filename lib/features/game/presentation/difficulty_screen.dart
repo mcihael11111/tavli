@@ -42,7 +42,7 @@ class _DifficultyScreenState extends State<DifficultyScreen> {
       ),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
+          padding: const EdgeInsets.fromLTRB(
             TavliSpacing.md, kToolbarHeight + TavliSpacing.xl, TavliSpacing.md, TavliSpacing.md,
           ),
           children: [
@@ -59,9 +59,8 @@ class _DifficultyScreenState extends State<DifficultyScreen> {
                 child: Center(
                   child: Text(
                     SettingsService.instance.botPersonality.avatarInitial,
-                    style: const TextStyle(
+                    style: Theme.of(context).textTheme.headlineLarge!.copyWith(
                       color: TavliColors.primary,
-                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -152,8 +151,7 @@ class _DifficultyCard extends StatelessWidget {
                 children: [
                   Text(
                     '(${level.englishName})',
-                    style: TextStyle(
-                      fontSize: 14,
+                    style: theme.textTheme.bodyMedium!.copyWith(
                       color: TavliColors.light.withValues(alpha: 0.8),
                     ),
                   ),
@@ -162,7 +160,7 @@ class _DifficultyCard extends StatelessWidget {
               const SizedBox(height: TavliSpacing.xxs),
               Text(
                 level.description,
-                style: TextStyle(
+                style: theme.textTheme.bodySmall!.copyWith(
                   fontSize: 13,
                   color: TavliColors.light.withValues(alpha: 0.8),
                 ),
@@ -171,11 +169,11 @@ class _DifficultyCard extends StatelessWidget {
                 const SizedBox(height: TavliSpacing.xxs),
                 Row(
                   children: [
-                    Icon(Icons.lock_outline, size: 12, color: TavliColors.error),
+                    const Icon(Icons.lock_outline, size: 12, color: TavliColors.error),
                     const SizedBox(width: 4),
                     Text(
                       level.unlockCondition!,
-                      style: const TextStyle(fontSize: 11, color: TavliColors.error),
+                      style: theme.textTheme.labelSmall!.copyWith(color: TavliColors.error),
                     ),
                   ],
                 ),
@@ -186,9 +184,8 @@ class _DifficultyCard extends StatelessWidget {
                   children: [
                     Text(
                       '${stats.wins}W\u2013${stats.losses}L',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: TavliColors.light.withValues(alpha: 0.7),
+                      style: theme.textTheme.labelSmall!.copyWith(
+                        color: TavliColors.disabledOnPrimary,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -196,8 +193,7 @@ class _DifficultyCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Text(
                         '${stats.currentStreak} streak',
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: theme.textTheme.labelSmall!.copyWith(
                           color: accent.withValues(alpha: 0.7),
                           fontWeight: FontWeight.w500,
                         ),

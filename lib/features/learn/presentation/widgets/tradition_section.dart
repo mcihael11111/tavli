@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../shared/providers/accessibility_providers.dart';
 import '../../../../core/constants/tradition.dart';
 import '../../data/models/lesson.dart';
 import '../../data/models/lesson_progress.dart';
@@ -40,10 +40,12 @@ class _TraditionSectionWidgetState extends State<TraditionSectionWidget>
     super.initState();
     _expanded = widget.initiallyExpanded;
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 200),
       vsync: this,
       value: _expanded ? 1.0 : 0.0,
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.duration = ReducedMotion.duration(context, const Duration(milliseconds: 200));
+    });
     _expandAnimation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeInOut,
@@ -76,9 +78,12 @@ class _TraditionSectionWidgetState extends State<TraditionSectionWidget>
       mainAxisSize: MainAxisSize.min,
       children: [
         // Header — tappable to expand/collapse.
-        GestureDetector(
-          onTap: _toggle,
-          child: Container(
+        Semantics(
+          button: true,
+          label: '${_expanded ? 'Collapse' : 'Expand'} ${widget.tradition.displayName} section',
+          child: GestureDetector(
+            onTap: _toggle,
+            child: Container(
             padding: const EdgeInsets.symmetric(
               horizontal: TavliSpacing.md,
               vertical: TavliSpacing.sm,
@@ -100,18 +105,15 @@ class _TraditionSectionWidgetState extends State<TraditionSectionWidget>
                     children: [
                       Text(
                         '${widget.tradition.displayName} — ${widget.tradition.regionLabel}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontFamily: TavliTheme.serifFamily,
+                        style: Theme.of(context).textTheme.titleMedium!.copyWith(
                           fontWeight: FontWeight.w600,
                           color: TavliColors.light,
                         ),
                       ),
                       Text(
                         '$total variants \u2022 $completed complete',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: TavliColors.light.withValues(alpha: 0.7),
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: TavliColors.disabledOnPrimary,
                         ),
                       ),
                     ],
@@ -119,15 +121,16 @@ class _TraditionSectionWidgetState extends State<TraditionSectionWidget>
                 ),
                 AnimatedRotation(
                   turns: _expanded ? 0.5 : 0.0,
-                  duration: const Duration(milliseconds: 200),
+                  duration: ReducedMotion.duration(context, const Duration(milliseconds: 200)),
                   child: Icon(
                     Icons.expand_more,
-                    color: TavliColors.light.withValues(alpha: 0.7),
+                    color: TavliColors.disabledOnPrimary,
                     size: 24,
                   ),
                 ),
               ],
             ),
+          ),
           ),
         ),
 
@@ -140,7 +143,7 @@ class _TraditionSectionWidgetState extends State<TraditionSectionWidget>
             child: Column(
               children: [
                 for (int i = 0; i < widget.section.lessons.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
+                  if (i > 0) const SizedBox(height: TavliSpacing.sm),
                   LessonListItem(
                     lesson: widget.section.lessons[i],
                     status: widget.lessonStatuses[widget.section.lessons[i].id] ??

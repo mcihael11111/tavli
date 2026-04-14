@@ -84,21 +84,25 @@ class ShellScreen extends StatelessWidget {
                           children: [
                             _NavItem(
                               icon: Icons.home,
+                              label: 'Navigate to Home',
                               active: index == 0,
                               onTap: () => context.go('/home'),
                             ),
                             _NavItem(
                               icon: Icons.person,
+                              label: 'Navigate to Profile',
                               active: index == 1,
                               onTap: () => context.go('/profile'),
                             ),
                             _NavItem(
                               icon: Icons.palette,
+                              label: 'Navigate to Customize',
                               active: index == 2,
                               onTap: () => context.go('/customize'),
                             ),
                             _NavItem(
                               icon: Icons.settings,
+                              label: 'Navigate to Settings',
                               active: index == 3,
                               onTap: () => context.go('/settings'),
                             ),
@@ -119,11 +123,13 @@ class ShellScreen extends StatelessWidget {
 
 class _NavItem extends StatelessWidget {
   final IconData icon;
+  final String label;
   final bool active;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
+    required this.label,
     required this.active,
     required this.onTap,
   });
@@ -144,26 +150,31 @@ class _NavItem extends StatelessWidget {
         ? (barHeight - activeSize) / 2 // vertically center in bar, protrusion handles the rise
         : (barHeight - inactiveSize) / 2;
 
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: activeSize + 8, // tap target
-        height: barHeight + protrusion,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              bottom: bottomOffset,
-              left: (activeSize + 8 - size) / 2,
-              child: active
-                  ? Transform.translate(
-                      offset: const Offset(0, -protrusion),
-                      child: _buildCircle(size, iconSize),
-                    )
-                  : _buildCircle(size, iconSize),
-            ),
-          ],
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: activeSize + 8, // tap target
+          height: barHeight + protrusion,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned(
+                bottom: bottomOffset,
+                left: (activeSize + 8 - size) / 2,
+                child: active
+                    ? Transform.translate(
+                        offset: const Offset(0, -protrusion),
+                        child: _buildCircle(size, iconSize),
+                      )
+                    : _buildCircle(size, iconSize),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -191,7 +202,7 @@ class _NavItem extends StatelessWidget {
         size: iconSize,
         color: active
             ? TavliColors.light
-            : TavliColors.light.withValues(alpha: 0.7),
+            : TavliColors.disabledOnPrimary,
       ),
     );
   }

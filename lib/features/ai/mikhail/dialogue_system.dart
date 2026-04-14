@@ -10,7 +10,7 @@ class DialogueSystem {
   final Random _rng;
 
   /// Minimum time between any two dialogue lines.
-  static const _globalCooldown = Duration(seconds: 6);
+  static const _globalCooldown = Duration(seconds: 12);
 
   /// Minimum time before repeating the same line.
   static const _repeatCooldown = Duration(minutes: 5);
@@ -51,17 +51,19 @@ class DialogueSystem {
     if (candidates.isEmpty) return null;
 
     // Filter out recently used lines.
-    final available = candidates.where((line) {
+    var available = candidates.where((line) {
       final lastUsed = _recentLines[line.text];
       if (lastUsed == null) return true;
       return now.difference(lastUsed) >= _repeatCooldown;
     }).toList();
 
     if (available.isEmpty) {
-      // All lines on cooldown — clear oldest and retry.
+      // All lines on cooldown — clear and retry from full candidates (no recursion).
       _recentLines.clear();
-      return trigger(event, difficulty, personality: personality);
+      available = List.of(candidates);
     }
+
+    if (available.isEmpty) return null; // safety: no candidates at all
 
     // Pick a random line from available.
     final selected = available[_rng.nextInt(available.length)];

@@ -4,8 +4,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/providers/accessibility_providers.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../../shared/widgets/content_module.dart';
@@ -57,7 +57,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _next() {
     if (_currentPage < _pageCount - 1) {
       _controller.nextPage(
-        duration: const Duration(milliseconds: 400),
+        duration: ReducedMotion.duration(context, const Duration(milliseconds: 400)),
         curve: Curves.easeInOut,
       );
     } else {
@@ -72,6 +72,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return GradientScaffold(
@@ -134,7 +135,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       // Pagination dots.
                       for (int i = 0; i < _pageCount; i++)
                         AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
+                          duration: ReducedMotion.duration(context, const Duration(milliseconds: 200)),
                           curve: Curves.easeInOut,
                           width: _currentPage == i ? 24 : 8,
                           height: 8,
@@ -170,10 +171,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             _currentPage < _pageCount - 1
                                 ? 'Next'
                                 : 'Get Started',
-                            style: TextStyle(
-                              fontFamily: TavliTheme.serifFamily,
+                            style: theme.textTheme.titleMedium!.copyWith(
                               fontWeight: FontWeight.w600,
-                              fontSize: 16,
                             ),
                           ),
                         ),
@@ -195,6 +194,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class _WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Column(
@@ -217,7 +217,7 @@ class _WelcomePage extends StatelessWidget {
                   height: 36,
                   decoration: BoxDecoration(
                     border: Border.all(color: TavliColors.primary, width: 2),
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(TavliRadius.xs),
                   ),
                 ),
               ),
@@ -226,34 +226,30 @@ class _WelcomePage extends StatelessWidget {
           const SizedBox(height: TavliSpacing.xl),
           Text(
             'Tables',
-            style: TextStyle(
+            style: theme.textTheme.displayMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
               fontWeight: FontWeight.w400,
               letterSpacing: -0.64,
               height: 1.25,
             ),
           ),
           const SizedBox(height: TavliSpacing.sm),
-          const Text(
+          Text(
             'Backgammon Traditions',
-            style: TextStyle(
+            style: theme.textTheme.headlineMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 20,
               fontWeight: FontWeight.w400,
               height: 1.4,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: TavliSpacing.xxs),
-          const Text(
+          Text(
             'One game. Many cultures.\n'
             'Choose your tradition and play the way\n'
             'your family taught you.',
-            style: TextStyle(
+            style: theme.textTheme.bodyLarge!.copyWith(
               color: TavliColors.light,
-              fontSize: 16,
               height: 1.5,
             ),
             textAlign: TextAlign.center,
@@ -299,21 +295,18 @@ class _UsernamePageState extends State<_UsernamePage> {
           const SizedBox(height: TavliSpacing.lg),
           Text(
             'What Should We\nCall You?',
-            style: TextStyle(
+            style: theme.textTheme.displayMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
               fontWeight: FontWeight.w400,
               letterSpacing: -0.64,
               height: 1.25,
             ),
           ),
           const SizedBox(height: TavliSpacing.sm),
-          const Text(
+          Text(
             'This is how others see you\nin online games.',
-            style: TextStyle(
+            style: theme.textTheme.titleLarge!.copyWith(
               color: TavliColors.light,
-              fontSize: 18,
               height: 1.4,
             ),
           ),
@@ -361,6 +354,7 @@ class _UsernamePageState extends State<_UsernamePage> {
 class _HistoryPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Column(
@@ -369,10 +363,8 @@ class _HistoryPage extends StatelessWidget {
           const SizedBox(height: TavliSpacing.lg),
           Text(
             '5,000 Years of Play',
-            style: TextStyle(
+            style: theme.textTheme.displayMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
               fontWeight: FontWeight.w400,
               letterSpacing: -0.64,
               height: 1.25,
@@ -452,6 +444,7 @@ class _TraditionPickPageState extends State<_TraditionPickPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Column(
@@ -460,21 +453,18 @@ class _TraditionPickPageState extends State<_TraditionPickPage> {
           const SizedBox(height: TavliSpacing.lg),
           Text(
             'Where Do You Play?',
-            style: TextStyle(
+            style: theme.textTheme.displayMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
               fontWeight: FontWeight.w400,
               letterSpacing: -0.64,
               height: 1.25,
             ),
           ),
           const SizedBox(height: TavliSpacing.sm),
-          const Text(
+          Text(
             'Each tradition has its own variants,\nopponents, and atmosphere.',
-            style: TextStyle(
+            style: theme.textTheme.titleLarge!.copyWith(
               color: TavliColors.light,
-              fontSize: 18,
               height: 1.4,
             ),
           ),
@@ -483,6 +473,7 @@ class _TraditionPickPageState extends State<_TraditionPickPage> {
           // Tradition list.
           Expanded(
             child: ListView(
+              padding: const EdgeInsets.only(bottom: TavliSpacing.xxl + 24),
               children: [
                 for (final tradition in Tradition.values) ...[
                   _SelectionCard(
@@ -496,7 +487,7 @@ class _TraditionPickPageState extends State<_TraditionPickPage> {
                       widget.onChanged();
                     },
                     leading: Text(tradition.flagEmoji,
-                        style: const TextStyle(fontSize: 28)),
+                        style: theme.textTheme.displaySmall),
                     title: tradition.displayName,
                     titleTrailing: tradition.nativeName,
                     subtitle:
@@ -528,6 +519,7 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final tradition = SettingsService.instance.tradition;
     final personalities = BotPersonality.forTradition(tradition);
 
@@ -544,10 +536,8 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
           const SizedBox(height: TavliSpacing.lg),
           Text(
             'Choose Your Opponent',
-            style: TextStyle(
+            style: theme.textTheme.displayMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
               fontWeight: FontWeight.w400,
               letterSpacing: -0.64,
               height: 1.25,
@@ -555,11 +545,10 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: TavliSpacing.sm),
-          const Text(
+          Text(
             'You can change this anytime in Settings.',
-            style: TextStyle(
+            style: theme.textTheme.titleLarge!.copyWith(
               color: TavliColors.light,
-              fontSize: 18,
               height: 1.4,
             ),
             textAlign: TextAlign.center,
@@ -568,6 +557,7 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
 
           Expanded(
             child: ListView(
+              padding: const EdgeInsets.only(bottom: TavliSpacing.xxl + 24),
               children: [
                 for (final personality in personalities) ...[
                   _SelectionCard(
@@ -586,8 +576,7 @@ class _PersonalityPickPageState extends State<_PersonalityPickPage> {
                       child: Center(
                         child: Text(
                           personality.avatarInitial,
-                          style: const TextStyle(
-                            fontSize: 21,
+                          style: theme.textTheme.headlineMedium!.copyWith(
                             fontWeight: FontWeight.bold,
                             color: TavliColors.light,
                           ),
@@ -638,6 +627,7 @@ class _SelectionCardState extends State<_SelectionCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final isSelected = widget.selected;
 
     final bg = _pressed
@@ -648,85 +638,84 @@ class _SelectionCardState extends State<_SelectionCard> {
     final borderWidth = isSelected ? 2.0 : 1.0;
     final textColor = TavliColors.light.withValues(alpha: isSelected ? 1.0 : 0.7);
 
-    return GestureDetector(
-      onTap: widget.onTap,
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
-        curve: Curves.easeIn,
-        transform: _pressed
-            ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
-            : Matrix4.identity(),
-        transformAlignment: Alignment.center,
-        padding: const EdgeInsets.all(TavliSpacing.md),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(TavliRadius.lg),
-          color: bg,
-          border: Border.all(color: border, width: borderWidth),
-          boxShadow: isSelected ? TavliShadows.xsmall : null,
-        ),
-        child: Row(
-          children: [
-            if (widget.leading != null) ...[
-              widget.leading!,
-              const SizedBox(width: TavliSpacing.sm),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        widget.title,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 18,
-                          fontFamily: TavliTheme.serifFamily,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      if (widget.titleTrailing != null) ...[
-                        const SizedBox(width: TavliSpacing.xs),
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: 'Select ${widget.title}',
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedContainer(
+          duration: ReducedMotion.duration(context, const Duration(milliseconds: 100)),
+          curve: Curves.easeIn,
+          transform: _pressed
+              ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
+              : Matrix4.identity(),
+          transformAlignment: Alignment.center,
+          padding: const EdgeInsets.all(TavliSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(TavliRadius.lg),
+            color: bg,
+            border: Border.all(color: border, width: borderWidth),
+            boxShadow: isSelected ? TavliShadows.xsmall : null,
+          ),
+          child: Row(
+            children: [
+              if (widget.leading != null) ...[
+                widget.leading!,
+                const SizedBox(width: TavliSpacing.sm),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
                         Text(
-                          widget.titleTrailing!,
-                          style: TextStyle(
-                            color: textColor.withValues(alpha: 0.7),
-                            fontSize: 14,
+                          widget.title,
+                          style: theme.textTheme.titleLarge!.copyWith(
+                            color: textColor,
                           ),
                         ),
+                        if (widget.titleTrailing != null) ...[
+                          const SizedBox(width: TavliSpacing.xs),
+                          Text(
+                            widget.titleTrailing!,
+                            style: theme.textTheme.bodyMedium!.copyWith(
+                              color: textColor.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
                       ],
+                    ),
+                    if (widget.subtitle != null) ...[
+                      const SizedBox(height: TavliSpacing.xxs),
+                      Text(
+                        widget.subtitle!,
+                        style: theme.textTheme.bodyMedium!.copyWith(
+                          color: textColor.withValues(alpha: 0.8),
+                        ),
+                      ),
                     ],
-                  ),
-                  if (widget.subtitle != null) ...[
-                    const SizedBox(height: TavliSpacing.xxs),
-                    Text(
-                      widget.subtitle!,
-                      style: TextStyle(
-                        color: textColor.withValues(alpha: 0.8),
-                        fontSize: 14,
+                    if (widget.detail != null) ...[
+                      const SizedBox(height: TavliSpacing.xxxs),
+                      Text(
+                        widget.detail!,
+                        style: theme.textTheme.bodySmall!.copyWith(
+                          color: textColor.withValues(alpha: 0.7),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
-                  if (widget.detail != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      widget.detail!,
-                      style: TextStyle(
-                        color: textColor.withValues(alpha: 0.7),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ],
+                ),
               ),
-            ),
-            if (isSelected)
-              const Icon(Icons.check_circle, color: TavliColors.light,
-                  size: 22),
-          ],
+              if (isSelected)
+                const Icon(Icons.check_circle, color: TavliColors.light,
+                    size: 22),
+            ],
+          ),
         ),
       ),
     );
@@ -741,79 +730,56 @@ class _LanguageLevelPage extends StatefulWidget {
 }
 
 class _LanguageLevelPageState extends State<_LanguageLevelPage> {
-  double _level = SettingsService.instance.languageLevel;
+  LanguageTier _tier = SettingsService.instance.languageTier;
 
-  String get _title {
-    final tradition = SettingsService.instance.tradition;
-    return switch (tradition) {
-      Tradition.tavli => 'How Greek Should I Be?',
-      Tradition.tavla => 'How Turkish Should I Be?',
-      Tradition.nardy => 'How Russian Should I Be?',
-      Tradition.sheshBesh => 'How Much Local Flavor?',
-    };
-  }
+  Tradition get _tradition => SettingsService.instance.tradition;
 
-  String get _subtitle {
-    final tradition = SettingsService.instance.tradition;
-    return switch (tradition) {
-      Tradition.tavli => 'Adjust the amount of Greek I use.',
-      Tradition.tavla => 'Adjust the amount of Turkish I use.',
-      Tradition.nardy => 'Adjust the amount of Russian I use.',
-      Tradition.sheshBesh => 'Adjust the mix of Hebrew and Arabic.',
-    };
-  }
+  /// Example pairs per tradition: English and native heading/body.
+  ({String engHeading, String natHeading, String engBody, String natBody})
+      get _example => switch (_tradition) {
+            Tradition.tavli => (
+                engHeading: 'Play vs Bot',
+                natHeading: 'Παίξε με Bot',
+                engBody: 'Challenge the AI opponent',
+                natBody: 'Πρόκληση εναντίον AI',
+              ),
+            Tradition.tavla => (
+                engHeading: 'Play Online',
+                natHeading: 'Online Oyna',
+                engBody: 'Quick match or invite a friend',
+                natBody: 'Hızlı maç veya arkadaş davet et',
+              ),
+            Tradition.nardy => (
+                engHeading: 'Learn to Play',
+                natHeading: 'Учитесь играть',
+                engBody: 'Interactive tutorial',
+                natBody: 'Интерактивное обучение',
+              ),
+            Tradition.sheshBesh => (
+                engHeading: 'My Collection',
+                natHeading: 'האוסף שלי',
+                engBody: 'Boards, checkers, and dice sets',
+                natBody: 'לוחות, כלים וקוביות',
+              ),
+            Tradition.tawla => (
+                engHeading: 'Play vs Bot',
+                natHeading: 'العب ضد البوت',
+                engBody: 'Challenge the AI opponent',
+                natBody: 'تحدّى الذكاء الاصطناعي',
+              ),
+          };
 
-  String get _fluentLabel {
-    final tradition = SettingsService.instance.tradition;
-    return switch (tradition) {
-      Tradition.tavli => 'Fluent Greek',
-      Tradition.tavla => 'Fluent Turkish',
-      Tradition.nardy => 'Fluent Russian',
-      Tradition.sheshBesh => 'Full Immersion',
-    };
-  }
-
-  List<_LangExample> get _examples {
-    final tradition = SettingsService.instance.tradition;
-    return switch (tradition) {
-      Tradition.tavli => const [
-          _LangExample('Ready to play', 'Michael will lose'),
-          _LangExample('Έτοιμο to play', 'Michael θα lose'),
-          _LangExample('Έτοιμο να παίξει', 'Ο Michael θα χάσει'),
-          _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
-          _LangExample('Έτοιμο να παίξει', 'Ο Μάικλ θα χάσει'),
-        ],
-      Tradition.tavla => const [
-          _LangExample('Ready to play', 'Good roll!'),
-          _LangExample('Hazır to play', 'Güzel roll!'),
-          _LangExample('Hazır oynamaya', 'Güzel atış!'),
-          _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
-          _LangExample('Hazır oynamaya', 'Güzel atış, maşallah!'),
-        ],
-      Tradition.nardy => const [
-          _LangExample('Ready to play', 'Nice move!'),
-          _LangExample('Готов to play', 'Хороший move!'),
-          _LangExample('Готов играть', 'Хороший ход!'),
-          _LangExample('Готов играть', 'Отличный ход, молодец!'),
-          _LangExample('Готов играть', 'Отличный ход, молодец!'),
-        ],
-      Tradition.sheshBesh => const [
-          _LangExample('Ready to play', 'Good move!'),
-          _LangExample('מוכן to play', 'Good move, yalla!'),
-          _LangExample('מוכן לשחק', '!יאללה, מהלך טוב'),
-          _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
-          _LangExample('מוכן לשחק', '!יאללה, מהלך מעולה'),
-        ],
-    };
-  }
-
-  _LangExample get _currentExample {
-    final idx = (_level * (_examples.length - 1)).round();
-    return _examples[idx];
+  void _select(LanguageTier tier) {
+    setState(() => _tier = tier);
+    SettingsService.instance.languageLevel = tier.value;
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final lang = _tradition.languageName;
+    final ex = _example;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Column(
@@ -821,11 +787,9 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
         children: [
           const SizedBox(height: TavliSpacing.lg + TavliSpacing.sm),
           Text(
-            _title,
-            style: TextStyle(
+            'How $lang Should I Be?',
+            style: theme.textTheme.displayMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
               fontWeight: FontWeight.w400,
               letterSpacing: -0.64,
               height: 1.25,
@@ -833,139 +797,41 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
           ),
           const SizedBox(height: TavliSpacing.sm),
           Text(
-            _subtitle,
-            style: const TextStyle(
+            'Choose how much $lang to mix in.',
+            style: theme.textTheme.titleLarge!.copyWith(
               color: TavliColors.light,
-              fontSize: 18,
               height: 1.4,
             ),
           ),
 
-          const SizedBox(height: TavliSpacing.xl),
+          const SizedBox(height: TavliSpacing.lg),
 
-          // Slider with endpoint labels.
-          Column(
-            children: [
-              SliderTheme(
-                data: SliderTheme.of(context).copyWith(
-                  activeTrackColor: TavliColors.background,
-                  inactiveTrackColor: TavliColors.background,
-                  thumbColor: TavliColors.background,
-                  overlayColor:
-                      TavliColors.background.withValues(alpha: 0.2),
-                  trackHeight: 4,
-                  thumbShape: _LangSliderThumb(),
-                ),
-                child: Slider(
-                  value: _level,
-                  divisions: 4,
-                  onChanged: (v) {
-                    setState(() => _level = v);
-                    SettingsService.instance.languageLevel = v;
-                  },
-                ),
-              ),
-              const SizedBox(height: TavliSpacing.sm),
-
-              // Labels.
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'English Only',
-                          style: TextStyle(
-                            color: TavliColors.light,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        SizedBox(height: TavliSpacing.xxs),
-                        Text(
-                          "Can't read the script",
-                          style: TextStyle(
-                            color: TavliColors.background,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          _fluentLabel,
-                          style: const TextStyle(
-                            color: TavliColors.light,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.right,
-                        ),
-                        const SizedBox(height: TavliSpacing.xxs),
-                        const Text(
-                          'Can read and write',
-                          style: TextStyle(
-                            color: TavliColors.background,
-                            fontSize: 12,
-                          ),
-                          textAlign: TextAlign.right,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: TavliSpacing.md),
-
-              // Example card.
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(TavliSpacing.sm),
-                decoration: BoxDecoration(
-                  color: TavliColors.surface,
-                  borderRadius: BorderRadius.circular(TavliRadius.md),
-                  border: Border.all(color: TavliColors.primary),
-                  boxShadow: TavliShadows.xsmall,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Example',
-                      style: TextStyle(
-                        color: TavliColors.background,
-                        fontSize: 12,
-                      ),
-                    ),
-                    const SizedBox(height: TavliSpacing.xs),
-                    Text(
-                      _currentExample.line1,
-                      style: const TextStyle(
-                        color: TavliColors.text,
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: TavliSpacing.xxs),
-                    Text(
-                      _currentExample.line2,
-                      style: const TextStyle(
-                        color: TavliColors.text,
-                        fontSize: 14,
-                        height: 1.57,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          // Three tier cards.
+          _LanguageTierCard(
+            selected: _tier == LanguageTier.english,
+            onTap: () => _select(LanguageTier.english),
+            label: 'English',
+            description: 'Everything in English',
+            heading: ex.engHeading,
+            body: ex.engBody,
+          ),
+          const SizedBox(height: TavliSpacing.sm),
+          _LanguageTierCard(
+            selected: _tier == LanguageTier.mixed,
+            onTap: () => _select(LanguageTier.mixed),
+            label: 'Mixed',
+            description: 'Headings in $lang, body in English',
+            heading: ex.natHeading,
+            body: ex.engBody,
+          ),
+          const SizedBox(height: TavliSpacing.sm),
+          _LanguageTierCard(
+            selected: _tier == LanguageTier.fluent,
+            onTap: () => _select(LanguageTier.fluent),
+            label: 'Fluent $lang',
+            description: 'Everything in $lang',
+            heading: ex.natHeading,
+            body: ex.natBody,
           ),
 
           const Spacer(),
@@ -975,55 +841,129 @@ class _LanguageLevelPageState extends State<_LanguageLevelPage> {
   }
 }
 
-class _LangSliderThumb extends SliderComponentShape {
-  @override
-  Size getPreferredSize(bool isEnabled, bool isDiscrete) =>
-      const Size(28, 28);
+/// A single language tier option card with example preview.
+class _LanguageTierCard extends StatefulWidget {
+  final bool selected;
+  final VoidCallback onTap;
+  final String label;
+  final String description;
+  final String heading;
+  final String body;
+
+  const _LanguageTierCard({
+    required this.selected,
+    required this.onTap,
+    required this.label,
+    required this.description,
+    required this.heading,
+    required this.body,
+  });
 
   @override
-  void paint(
-    PaintingContext context,
-    Offset center, {
-    required Animation<double> activationAnimation,
-    required Animation<double> enableAnimation,
-    required bool isDiscrete,
-    required TextPainter labelPainter,
-    required RenderBox parentBox,
-    required SliderThemeData sliderTheme,
-    required TextDirection textDirection,
-    required double value,
-    required double textScaleFactor,
-    required Size sizeWithOverflow,
-  }) {
-    final canvas = context.canvas;
-
-    canvas.drawCircle(
-      center,
-      14,
-      Paint()
-        ..color = TavliColors.background
-        ..style = PaintingStyle.fill,
-    );
-    canvas.drawCircle(
-      center,
-      14,
-      Paint()
-        ..color = TavliColors.text
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-    canvas.drawCircle(
-      center,
-      6,
-      Paint()..color = TavliColors.text,
-    );
-  }
+  State<_LanguageTierCard> createState() => _LanguageTierCardState();
 }
 
-class _LangExample {
-  final String line1;
-  final String line2;
-  const _LangExample(this.line1, this.line2);
+class _LanguageTierCardState extends State<_LanguageTierCard> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isSelected = widget.selected;
+
+    final bg = _pressed
+        ? (isSelected ? TavliColors.primaryActive : TavliColors.surfaceActive)
+        : (isSelected ? TavliColors.primary : TavliColors.surface);
+    final border = isSelected ? TavliColors.background : TavliColors.primary;
+    final borderWidth = isSelected ? 2.0 : 1.0;
+    final textColor =
+        TavliColors.light.withValues(alpha: isSelected ? 1.0 : 0.7);
+
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      label: 'Select ${widget.label} language level',
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onTapDown: (_) => setState(() => _pressed = true),
+        onTapUp: (_) => setState(() => _pressed = false),
+        onTapCancel: () => setState(() => _pressed = false),
+        child: AnimatedContainer(
+          duration: ReducedMotion.duration(context, const Duration(milliseconds: 100)),
+          curve: Curves.easeIn,
+          transform: _pressed
+              ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
+              : Matrix4.identity(),
+          transformAlignment: Alignment.center,
+          padding: const EdgeInsets.all(TavliSpacing.md),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(TavliRadius.lg),
+            color: bg,
+            border: Border.all(color: border, width: borderWidth),
+            boxShadow: isSelected ? TavliShadows.xsmall : null,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: label + check icon.
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      widget.label,
+                      style: theme.textTheme.titleMedium!.copyWith(
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  if (isSelected)
+                    const Icon(Icons.check_circle, color: TavliColors.light,
+                        size: 20),
+                ],
+              ),
+
+              // Description.
+              const SizedBox(height: TavliSpacing.xxs),
+              Text(
+                widget.description,
+                style: theme.textTheme.bodySmall!.copyWith(
+                  color: textColor.withValues(alpha: 0.7),
+                ),
+              ),
+
+              // Divider.
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: TavliSpacing.xs),
+                child: Divider(
+                  height: 1,
+                  color: textColor.withValues(alpha: 0.15),
+                ),
+              ),
+
+              // Example preview.
+              Text(
+                widget.heading,
+                style: theme.textTheme.titleMedium!.copyWith(
+                  color: textColor,
+                  fontSize: 15,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: TavliSpacing.xxxs),
+              Text(
+                widget.body,
+                style: theme.textTheme.bodySmall!.copyWith(
+                  color: textColor.withValues(alpha: 0.8),
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Screen 7: Ready to Play ────────────────────────────────────
@@ -1034,6 +974,7 @@ class _ReadyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final personality = SettingsService.instance.botPersonality;
     final tradition = SettingsService.instance.tradition;
 
@@ -1054,9 +995,8 @@ class _ReadyPage extends StatelessWidget {
             child: Center(
               child: Text(
                 personality.avatarInitial,
-                style: TextStyle(
+                style: theme.textTheme.displayLarge!.copyWith(
                   fontSize: 44,
-                  fontFamily: TavliTheme.serifFamily,
                   fontWeight: FontWeight.w400,
                   color: TavliColors.light,
                   letterSpacing: -0.88,
@@ -1067,10 +1007,8 @@ class _ReadyPage extends StatelessWidget {
           const SizedBox(height: TavliSpacing.lg),
           Text(
             'Ready to play',
-            style: TextStyle(
+            style: theme.textTheme.displayMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 32,
-              fontFamily: TavliTheme.serifFamily,
               fontWeight: FontWeight.w400,
               letterSpacing: -0.64,
               height: 1.25,
@@ -1080,9 +1018,9 @@ class _ReadyPage extends StatelessWidget {
           Text(
             'Play ${tradition.displayName} against ${personality.displayName}, '
             'challenge friends online or learn the game with an interactive tool',
-            style: const TextStyle(
+            style: theme.textTheme.headlineMedium!.copyWith(
               color: TavliColors.light,
-              fontSize: 20,
+              fontWeight: FontWeight.w400,
               height: 1.4,
             ),
             textAlign: TextAlign.center,
@@ -1106,7 +1044,7 @@ class _ReadyPage extends StatelessWidget {
                 const SizedBox(width: TavliSpacing.xs),
                 Text(
                   'Visit the Shop to unlock boards, dice & more',
-                  style: TextStyle(
+                  style: theme.textTheme.bodySmall!.copyWith(
                     color: TavliColors.light.withValues(alpha: 0.9),
                     fontSize: 13,
                     height: 1.3,
@@ -1129,11 +1067,7 @@ class _ReadyPage extends StatelessWidget {
               icon: const Icon(Icons.school_outlined, size: 20),
               label: Text(
                 'Learn to Play',
-                style: TextStyle(
-                  fontFamily: TavliTheme.serifFamily,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: theme.textTheme.titleMedium,
               ),
             ),
           ),

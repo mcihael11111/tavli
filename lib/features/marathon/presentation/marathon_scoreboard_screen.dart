@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../../shared/widgets/content_module.dart';
@@ -18,6 +17,7 @@ class MarathonScoreboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final marathon = ref.watch(marathonProvider);
     if (marathon == null) {
       // Marathon ended — go home.
@@ -54,9 +54,8 @@ class MarathonScoreboardScreen extends ConsumerWidget {
                 isComplete
                     ? (playerWon ? 'Marathon Victory!' : 'Marathon Defeat')
                     : '${marathon.tradition.displayName} Marathon',
-                style: TextStyle(
+                style: theme.textTheme.displaySmall!.copyWith(
                   fontSize: 28,
-                  fontFamily: TavliTheme.serifFamily,
                   fontWeight: FontWeight.w700,
                   color: isComplete ? TavliColors.light : TavliColors.text,
                   letterSpacing: 1,
@@ -83,10 +82,9 @@ class MarathonScoreboardScreen extends ConsumerWidget {
                         ),
                         Text(
                           'vs',
-                          style: TextStyle(
-                            fontSize: 18,
+                          style: theme.textTheme.titleLarge!.copyWith(
                             color: isComplete
-                                ? TavliColors.light.withValues(alpha: 0.5)
+                                ? TavliColors.disabledOnPrimary
                                 : TavliColors.primary,
                           ),
                         ),
@@ -101,10 +99,10 @@ class MarathonScoreboardScreen extends ConsumerWidget {
                     const SizedBox(height: TavliSpacing.sm),
                     Text(
                       'First to ${marathon.targetScore} points',
-                      style: TextStyle(
+                      style: theme.textTheme.bodySmall!.copyWith(
                         fontSize: 13,
                         color: isComplete
-                            ? TavliColors.light.withValues(alpha: 0.6)
+                            ? TavliColors.disabledOnPrimary
                             : TavliColors.primary,
                       ),
                     ),
@@ -135,25 +133,21 @@ class MarathonScoreboardScreen extends ConsumerWidget {
               if (!isComplete) ...[
                 Text(
                   'Next game:',
-                  style: TextStyle(
-                    fontSize: 14,
+                  style: theme.textTheme.bodyMedium!.copyWith(
                     color: TavliColors.primary,
                   ),
                 ),
                 const SizedBox(height: TavliSpacing.xs),
                 Text(
                   marathon.currentVariant.displayName,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontFamily: TavliTheme.serifFamily,
+                  style: theme.textTheme.headlineLarge!.copyWith(
                     fontWeight: FontWeight.w700,
                     color: TavliColors.text,
                   ),
                 ),
                 Text(
                   marathon.currentVariant.nativeName,
-                  style: const TextStyle(
-                    fontSize: 16,
+                  style: theme.textTheme.bodyLarge!.copyWith(
                     color: TavliColors.primary,
                   ),
                 ),
@@ -171,10 +165,9 @@ class MarathonScoreboardScreen extends ConsumerWidget {
                       foregroundColor: TavliColors.light,
                       padding: const EdgeInsets.symmetric(vertical: TavliSpacing.md),
                     ),
-                    child: const Text('Continue', style: TextStyle(
+                    child: Text('Continue', style: theme.textTheme.bodyLarge!.copyWith(
                       fontWeight: FontWeight.w700,
                       letterSpacing: 2,
-                      fontSize: 16,
                     )),
                   ),
                 ),
@@ -232,18 +225,18 @@ class _ScoreColumn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       children: [
         Text(
           label,
-          style: TextStyle(fontSize: 14, color: textColor.withValues(alpha: 0.7)),
+          style: theme.textTheme.bodyMedium!.copyWith(color: textColor.withValues(alpha: 0.7)),
         ),
         const SizedBox(height: TavliSpacing.xs),
         Text(
           '$score',
-          style: TextStyle(
+          style: theme.textTheme.displayLarge!.copyWith(
             fontSize: 48,
-            fontFamily: TavliTheme.serifFamily,
             fontWeight: FontWeight.w700,
             color: isLeading ? TavliColors.success : textColor,
           ),
@@ -266,6 +259,7 @@ class _GameHistoryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final playerWon = record.result.winner == 1;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
@@ -275,13 +269,13 @@ class _GameHistoryRow extends StatelessWidget {
             width: 24,
             child: Text(
               '$index.',
-              style: TextStyle(fontSize: 12, color: textColor.withValues(alpha: 0.5)),
+              style: theme.textTheme.bodySmall!.copyWith(color: textColor.withValues(alpha: 0.5)),
             ),
           ),
           Expanded(
             child: Text(
               record.variant.displayName,
-              style: TextStyle(fontSize: 13, color: textColor),
+              style: theme.textTheme.bodySmall!.copyWith(fontSize: 13, color: textColor),
             ),
           ),
           Icon(
@@ -292,7 +286,7 @@ class _GameHistoryRow extends StatelessWidget {
           const SizedBox(width: 6),
           Text(
             '+${record.result.points}',
-            style: TextStyle(
+            style: theme.textTheme.bodySmall!.copyWith(
               fontSize: 13,
               fontWeight: FontWeight.w600,
               color: playerWon ? TavliColors.success : TavliColors.error,

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/providers/accessibility_providers.dart';
 import '../../../shared/services/copy_service.dart';
 import '../../../shared/widgets/gradient_scaffold.dart';
 import '../data/shop_items.dart';
@@ -202,7 +202,7 @@ class _ShopTabBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 40,
+      height: 48,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: categories.length,
@@ -210,48 +210,51 @@ class _ShopTabBar extends StatelessWidget {
         itemBuilder: (context, index) {
           final isSelected = index == selectedIndex;
           final cat = categories[index];
-          return GestureDetector(
-            onTap: () => onChanged(index),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
-              curve: Curves.easeInOut,
-              padding: const EdgeInsets.symmetric(
-                horizontal: TavliSpacing.md,
-              ),
-              decoration: BoxDecoration(
-                color:
-                    isSelected ? TavliColors.primary : TavliColors.surface,
-                borderRadius: BorderRadius.circular(TavliRadius.lg),
-                border: Border.all(
-                  color: isSelected ? TavliColors.background : TavliColors.primary,
-                  width: isSelected ? 2 : 1,
+          return Semantics(
+            button: true,
+            selected: isSelected,
+            label: 'Select ${cat.$2} category',
+            child: GestureDetector(
+              onTap: () => onChanged(index),
+              child: AnimatedContainer(
+                duration: ReducedMotion.duration(context, const Duration(milliseconds: 150)),
+                curve: Curves.easeInOut,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: TavliSpacing.md,
                 ),
-                boxShadow: isSelected ? TavliShadows.xsmall : null,
-              ),
-              alignment: Alignment.center,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    cat.$3,
-                    size: 16,
-                    color: isSelected
-                        ? TavliColors.light
-                        : TavliColors.light.withValues(alpha: 0.7),
+                decoration: BoxDecoration(
+                  color:
+                      isSelected ? TavliColors.primary : TavliColors.surface,
+                  borderRadius: BorderRadius.circular(TavliRadius.lg),
+                  border: Border.all(
+                    color: isSelected ? TavliColors.background : TavliColors.primary,
+                    width: isSelected ? 2 : 1,
                   ),
-                  const SizedBox(width: TavliSpacing.xxs),
-                  Text(
-                    cat.$2,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: TavliTheme.serifFamily,
+                  boxShadow: isSelected ? TavliShadows.xsmall : null,
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      cat.$3,
+                      size: 16,
                       color: isSelected
                           ? TavliColors.light
-                          : TavliColors.light.withValues(alpha: 0.7),
+                          : TavliColors.disabledOnPrimary,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: TavliSpacing.xxs),
+                    Text(
+                      cat.$2,
+                      style: Theme.of(context).textTheme.labelLarge!.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: isSelected
+                            ? TavliColors.light
+                            : TavliColors.disabledOnPrimary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -296,13 +299,16 @@ class _ShopItemCardState extends State<_ShopItemCard> {
           : (isDark ? TavliModule.fillDark : TavliModule.fill),
     );
 
-    return GestureDetector(
-      onTap: isOwned ? null : widget.onPurchase,
-      onTapDown: isOwned ? null : (_) => setState(() => _pressed = true),
-      onTapUp: isOwned ? null : (_) => setState(() => _pressed = false),
-      onTapCancel: isOwned ? null : () => setState(() => _pressed = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
+    return Semantics(
+      button: !isOwned,
+      label: '${widget.item.name}${isOwned ? ', owned' : ', ${widget.item.priceCoins} coins'}',
+      child: GestureDetector(
+        onTap: isOwned ? null : widget.onPurchase,
+        onTapDown: isOwned ? null : (_) => setState(() => _pressed = true),
+        onTapUp: isOwned ? null : (_) => setState(() => _pressed = false),
+        onTapCancel: isOwned ? null : () => setState(() => _pressed = false),
+        child: AnimatedContainer(
+        duration: ReducedMotion.duration(context, const Duration(milliseconds: 100)),
         curve: Curves.easeIn,
         transform: _pressed
             ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
@@ -354,10 +360,8 @@ class _ShopItemCardState extends State<_ShopItemCard> {
             // Name (serif, matching ContentModule title style)
             Text(
               widget.item.name,
-              style: TextStyle(
-                fontSize: 16,
+              style: theme.textTheme.titleMedium!.copyWith(
                 fontWeight: FontWeight.w600,
-                fontFamily: TavliTheme.serifFamily,
                 color: TavliColors.light,
               ),
               maxLines: 1,
@@ -368,7 +372,7 @@ class _ShopItemCardState extends State<_ShopItemCard> {
             Text(
               widget.item.nameGreek,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: TavliColors.light.withValues(alpha: 0.6),
+                color: TavliColors.disabledOnPrimary,
                 fontStyle: FontStyle.italic,
               ),
               maxLines: 1,
@@ -381,7 +385,7 @@ class _ShopItemCardState extends State<_ShopItemCard> {
             Text(
               widget.item.description,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: TavliColors.light.withValues(alpha: 0.7),
+                color: TavliColors.disabledOnPrimary,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
@@ -418,6 +422,7 @@ class _ShopItemCardState extends State<_ShopItemCard> {
               ),
           ],
         ),
+      ),
       ),
     );
   }

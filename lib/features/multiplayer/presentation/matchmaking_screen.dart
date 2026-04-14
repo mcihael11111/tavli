@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
+import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../game/domain/engine/variants/game_variant.dart';
@@ -37,6 +38,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
   int _elapsedSeconds = 0;
   Timer? _elapsedTimer;
   bool _matched = false;
+  bool _profileError = false;
 
   Tradition get _tradition => SettingsService.instance.tradition;
   GameVariant get _variant =>
@@ -53,7 +55,11 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
 
   Future<void> _startSearching() async {
     final profileAsync = await ref.read(currentPlayerProfileProvider.future);
-    if (profileAsync == null || !mounted) return;
+    if (!mounted) return;
+    if (profileAsync == null) {
+      setState(() => _profileError = true);
+      return;
+    }
 
     _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _elapsedSeconds++);
@@ -131,7 +137,15 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
           onPressed: _cancel,
         ),
       ),
-      body: Center(
+      body: _profileError
+          ? ErrorStateWidget(
+              message: 'Could not load your profile.',
+              onRetry: () {
+                setState(() => _profileError = false);
+                _startSearching();
+              },
+            )
+          : Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -143,7 +157,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
                 valueColor: AlwaysStoppedAnimation(colors.primary),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: TavliSpacing.xl),
             Text(
               _searchText,
               style: theme.textTheme.headlineSmall?.copyWith(
@@ -151,7 +165,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: TavliSpacing.xs),
             Text(
               timeText,
               style: theme.textTheme.bodyLarge?.copyWith(
@@ -159,7 +173,7 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: TavliSpacing.xs),
             Text(
               _elapsedSeconds < 10
                   ? 'Looking for players near your rating...'
@@ -170,12 +184,12 @@ class _MatchmakingScreenState extends ConsumerState<MatchmakingScreen> {
                 color: colors.onSurface.withValues(alpha: 0.5),
               ),
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: TavliSpacing.xxl),
             OutlinedButton(
               onPressed: _cancel,
               style: OutlinedButton.styleFrom(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                    const EdgeInsets.symmetric(horizontal: TavliSpacing.xl, vertical: 14),
               ),
               child: const Text('Cancel'),
             ),

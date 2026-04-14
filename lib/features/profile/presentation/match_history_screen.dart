@@ -137,17 +137,16 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.history, size: 48, color: TavliColors.light.withValues(alpha: 0.5)),
-          const SizedBox(height: 12),
+          Icon(Icons.history, size: 48, color: TavliColors.disabledOnPrimary),
+          const SizedBox(height: TavliSpacing.sm),
           Text('No games yet', style: theme.textTheme.headlineMedium?.copyWith(
             color: TavliColors.light,
           )),
-          const SizedBox(height: 4),
+          const SizedBox(height: TavliSpacing.xxs),
           Text(
             "Play a game and it'll show up here!",
-            style: TextStyle(
-              fontSize: 14,
-              color: TavliColors.light.withValues(alpha: 0.7),
+            style: theme.textTheme.bodyMedium!.copyWith(
+              color: TavliColors.disabledOnPrimary,
             ),
           ),
         ],
@@ -157,12 +156,12 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
 
   Widget _buildList(ThemeData theme) {
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, kToolbarHeight + TavliSpacing.md, 12, 12),
+      padding: const EdgeInsets.fromLTRB(TavliSpacing.sm, kToolbarHeight + TavliSpacing.md, TavliSpacing.sm, TavliSpacing.sm),
       itemCount: _records.length,
       itemBuilder: (context, index) {
         final r = _records[index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.only(bottom: TavliSpacing.xs),
           child: ContentModule(
             leading: CircleAvatar(
               radius: 20,
@@ -183,8 +182,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
               children: [
                 Text(
                   r.playerWon ? 'WIN' : 'LOSS',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: theme.textTheme.labelMedium!.copyWith(
                     fontWeight: FontWeight.w700,
                     color: r.playerWon ? TavliColors.success : TavliColors.error,
                     letterSpacing: 1,
@@ -192,9 +190,8 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
                 ),
                 Text(
                   _timeAgo(r.timestamp),
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: TavliColors.light.withValues(alpha: 0.5),
+                  style: theme.textTheme.labelSmall!.copyWith(
+                    color: TavliColors.disabledOnPrimary,
                   ),
                 ),
               ],

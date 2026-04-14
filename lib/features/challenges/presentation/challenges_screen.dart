@@ -17,6 +17,7 @@ class ChallengesScreen extends StatefulWidget {
 class _ChallengesScreenState extends State<ChallengesScreen> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final service = ChallengeService.instance;
     final challenges = service.activeChallenges;
 
@@ -30,7 +31,7 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
       appBar: AppBar(title: Text(TavliCopy.weeklyChallenges)),
       body: SafeArea(
         child: ListView(
-          padding: EdgeInsets.fromLTRB(
+          padding: const EdgeInsets.fromLTRB(
             TavliSpacing.md, kToolbarHeight + TavliSpacing.xl, TavliSpacing.md, TavliSpacing.md,
           ),
           children: [
@@ -43,15 +44,13 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
                 children: [
                   Text(
                     'Streak',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: TavliColors.light.withValues(alpha: 0.6),
+                    style: theme.textTheme.bodySmall!.copyWith(
+                      color: TavliColors.disabledOnPrimary,
                     ),
                   ),
                   Text(
                     '${service.currentStreak}',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    style: theme.textTheme.headlineSmall!.copyWith(
                       fontWeight: FontWeight.w700,
                       color: TavliColors.warning,
                     ),
@@ -70,9 +69,8 @@ class _ChallengesScreenState extends State<ChallengesScreen> {
                   child: Text(
                     'No challenges available.\nCheck back next week!',
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: TavliColors.light.withValues(alpha: 0.6),
+                    style: theme.textTheme.bodyLarge!.copyWith(
+                      color: TavliColors.disabledOnPrimary,
                     ),
                   ),
                 ),
@@ -118,6 +116,7 @@ class _ChallengeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final prog = progress;
     final isComplete = prog?.completed ?? false;
     final isClaimed = prog?.rewardClaimed ?? false;
@@ -146,18 +145,16 @@ class _ChallengeCard extends StatelessWidget {
                     children: [
                       Text(
                         challenge.title,
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: theme.textTheme.bodyLarge!.copyWith(
                           fontWeight: FontWeight.w700,
                           color: TavliColors.light,
                         ),
                       ),
                       Text(
                         challenge.titleGreek,
-                        style: TextStyle(
-                          fontSize: 12,
+                        style: theme.textTheme.bodySmall!.copyWith(
                           fontStyle: FontStyle.italic,
-                          color: TavliColors.light.withValues(alpha: 0.6),
+                          color: TavliColors.disabledOnPrimary,
                         ),
                       ),
                     ],
@@ -181,7 +178,7 @@ class _ChallengeCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '${challenge.rewardCoins}',
-                        style: const TextStyle(
+                        style: theme.textTheme.bodySmall!.copyWith(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: TavliColors.warning,
@@ -197,9 +194,8 @@ class _ChallengeCard extends StatelessWidget {
 
             Text(
               challenge.description,
-              style: TextStyle(
-                fontSize: 14,
-                color: TavliColors.light.withValues(alpha: 0.7),
+              style: theme.textTheme.bodyMedium!.copyWith(
+                color: TavliColors.disabledOnPrimary,
               ),
             ),
 
@@ -225,10 +221,9 @@ class _ChallengeCard extends StatelessWidget {
                   const SizedBox(width: TavliSpacing.sm),
                   Text(
                     '${prog.current}/${prog.target}',
-                    style: TextStyle(
-                      fontSize: 12,
+                    style: theme.textTheme.labelMedium!.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: TavliColors.light.withValues(alpha: 0.8),
+                      color: TavliColors.disabledOnPrimary,
                     ),
                   ),
                 ],

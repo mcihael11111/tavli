@@ -41,7 +41,8 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
 
   /// When true, the board is rendered from player 2's perspective
   /// (point indices are mirrored via 23 - index).
-  final bool flipped;
+  bool _flipped;
+  bool get flipped => _flipped;
 
   /// Checker set index (1, 2, or 3) for color customization.
   final int _checkerSetIndex;
@@ -57,17 +58,25 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
     int boardSet = 1,
     int checkerSet = 1,
     int diceSet = 1,
-    this.flipped = false,
-  })  : _boardState = boardState,
+    bool flipped = false,
+  })  : _flipped = flipped,
+        _boardState = boardState,
         _boardSetIndex = boardSet,
         _checkerSetIndex = checkerSet,
         _diceSetIndex = diceSet;
+
+  /// Flip the board perspective at runtime (e.g., for pass-and-play turns).
+  void setFlipped(bool value) {
+    if (_flipped == value) return;
+    _flipped = value;
+    if (isLoaded) _rebuildCheckers();
+  }
 
   /// Map a logical point index to a visual point index.
   /// When flipped, mirrors the board so player 2 sees their home board
   /// in the same position player 1 normally does.
   int _visualPoint(int logicalPoint) {
-    if (!flipped || logicalPoint < 0) return logicalPoint;
+    if (!_flipped || logicalPoint < 0) return logicalPoint;
     return 23 - logicalPoint;
   }
 
@@ -271,8 +280,9 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
 
         // Compute new visual position.
         final visualTo = _visualPoint(toLoc);
-        final newStackPos = newCounts[toLoc]! - 1; // top of the destination stack
-        final targetPos = layout.checkerPosition(visualTo, newStackPos, playerNum);
+        final totalAtDest = newCounts[toLoc]!;
+        final newStackPos = totalAtDest - 1; // top of the destination stack
+        final targetPos = layout.checkerPosition(visualTo, newStackPos, playerNum, totalOnPoint: totalAtDest);
 
         // Update the checker's logical state.
         checker.updateLogicalPosition(
@@ -308,11 +318,12 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
             .where((c) => c.pointIndex == visualIdx && c.player == playerNum)
             .toList();
 
+        final totalHere = checkersOnPoint.length;
         for (int j = 0; j < checkersOnPoint.length; j++) {
           final c = checkersOnPoint[j];
           if (c.stackPosition != j) {
             c.stackPosition = j;
-            final newPos = layout.checkerPosition(visualIdx, j, playerNum);
+            final newPos = layout.checkerPosition(visualIdx, j, playerNum, totalOnPoint: totalHere);
             if (c.position.distanceTo(newPos) > 1) {
               animations.add(c.animateMoveTo(newPos, duration: 0.2));
             }
@@ -322,7 +333,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
     }
 
     if (animations.isNotEmpty) {
-      await Future.wait(animations);
+      await Future.wait(animations).timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => <void>[],
+      );
     }
     } finally {
       _animating = false;

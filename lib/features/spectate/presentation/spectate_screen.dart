@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../multiplayer/data/game_room.dart';
 import '../data/spectate_service.dart';
@@ -69,7 +70,7 @@ class _SpectateListScreenState extends State<SpectateListScreen> {
           Text(
             'Check back when players are online!',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: TavliColors.light.withValues(alpha: 0.6),
+              color: TavliColors.disabledOnPrimary,
             ),
           ),
         ],
@@ -135,7 +136,7 @@ class _GameCard extends StatelessWidget {
                   Text(
                     'Rating: ${p1.rating} vs ${p2?.rating ?? "?"} · ${game.variant}',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: TavliColors.light.withValues(alpha: 0.6),
+                      color: TavliColors.disabledOnPrimary,
                     ),
                   ),
                 ],
@@ -157,8 +158,7 @@ class _GameCard extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(
                     'LIVE',
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: theme.textTheme.labelSmall!.copyWith(
                       fontWeight: FontWeight.w700,
                       color: TavliColors.success,
                     ),
@@ -188,6 +188,7 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
   StreamSubscription<GameRoom>? _subscription;
   GameRoom? _room;
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -196,9 +197,18 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
   }
 
   void _subscribe() {
-    _subscription = _service.watchGame(widget.gameRoomId).listen((room) {
-      if (mounted) setState(() { _room = room; _loading = false; });
-    });
+    _error = null;
+    _loading = true;
+    _subscription?.cancel();
+    _subscription = _service.watchGame(widget.gameRoomId).listen(
+      (room) {
+        if (mounted) setState(() { _room = room; _loading = false; });
+      },
+      onError: (error) {
+        debugPrint('Spectate stream error: $error');
+        if (mounted) setState(() { _error = error.toString(); _loading = false; });
+      },
+    );
   }
 
   @override
@@ -210,6 +220,13 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    if (_error != null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Spectating')),
+        body: ErrorStateWidget.syncError(onRetry: _subscribe),
+      );
+    }
 
     if (_loading || _room == null) {
       return Scaffold(
@@ -239,10 +256,9 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
                     color: TavliColors.warning.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(TavliRadius.sm),
                   ),
-                  child: const Text(
+                  child: Text(
                     'FINISHED',
-                    style: TextStyle(
-                      fontSize: 11,
+                    style: theme.textTheme.labelSmall!.copyWith(
                       fontWeight: FontWeight.w700,
                       color: TavliColors.warning,
                     ),
@@ -275,10 +291,9 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
                         ),
                       ),
                       const SizedBox(width: 4),
-                      const Text(
+                      Text(
                         'LIVE',
-                        style: TextStyle(
-                          fontSize: 11,
+                        style: theme.textTheme.labelSmall!.copyWith(
                           fontWeight: FontWeight.w700,
                           color: TavliColors.success,
                         ),
@@ -326,8 +341,7 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
               ),
               child: Text(
                 '${room.doublingCube.value}',
-                style: const TextStyle(
-                  fontSize: 14,
+                style: theme.textTheme.bodyMedium!.copyWith(
                   fontWeight: FontWeight.w800,
                   color: TavliColors.text,
                 ),
@@ -362,17 +376,15 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
         children: [
           Text(
             name,
-            style: TextStyle(
-              fontSize: 14,
+            style: Theme.of(context).textTheme.bodyMedium!.copyWith(
               fontWeight: FontWeight.w600,
               color: TavliColors.light,
             ),
           ),
           Text(
             '$rating',
-            style: TextStyle(
-              fontSize: 11,
-              color: TavliColors.light.withValues(alpha: 0.6),
+            style: Theme.of(context).textTheme.labelSmall!.copyWith(
+              color: TavliColors.disabledOnPrimary,
             ),
           ),
         ],
@@ -480,7 +492,7 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
       child: Center(
         child: Text(
           '$value',
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.headlineMedium!.copyWith(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: TavliColors.text,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../game/data/models/board_state.dart';
 import '../../game/data/models/dice_roll.dart';
@@ -27,6 +28,9 @@ class OnlineGameNotifier extends StateNotifier<OnlineGameState> {
 
   StreamSubscription<room.GameRoom>? _roomSubscription;
   Timer? _heartbeatTimer;
+  Timer? _reconnectTimer;
+  int _reconnectAttempts = 0;
+  static const _maxReconnectAttempts = 5;
 
   /// Track if we've already processed the current board state from Firestore.
   Map<String, dynamic>? _lastProcessedBoardJson;
@@ -50,12 +54,33 @@ class OnlineGameNotifier extends StateNotifier<OnlineGameState> {
   }
 
   void _startWatching(String gameId) {
+    _reconnectAttempts = 0;
+    _reconnectTimer?.cancel();
     _roomSubscription = _service.watchRoom(gameId).listen(
-      _onRoomUpdate,
+      (room) {
+        _reconnectAttempts = 0;
+        _reconnectTimer?.cancel();
+        _onRoomUpdate(room);
+      },
       onError: (error) {
-        state = state.copyWith(
-          connectionStatus: ConnectionStatus.reconnecting,
-        );
+        debugPrint('Room stream error: $error');
+        _reconnectAttempts++;
+        if (_reconnectAttempts >= _maxReconnectAttempts) {
+          state = state.copyWith(
+            connectionStatus: ConnectionStatus.disconnected,
+          );
+          _reconnectTimer?.cancel();
+        } else {
+          state = state.copyWith(
+            connectionStatus: ConnectionStatus.reconnecting,
+          );
+          // Auto-retry after 6 seconds.
+          _reconnectTimer?.cancel();
+          _reconnectTimer = Timer(const Duration(seconds: 6), () {
+            _roomSubscription?.cancel();
+            _startWatching(gameId);
+          });
+        }
       },
     );
   }
@@ -425,16 +450,22 @@ class OnlineGameNotifier extends StateNotifier<OnlineGameState> {
   /// Offer a double before rolling.
   Future<void> offerDouble() async {
     if (!state.canOfferDouble) return;
-    await _service.offerDouble(state.gameRoomId, state.localPlayerKey);
-    state = state.copyWith(
-      phase: GamePhase.doubleOffered,
-      pendingDoubleFrom: state.localPlayerKey,
-    );
+    try {
+      await _service.offerDouble(state.gameRoomId, state.localPlayerKey);
+      state = state.copyWith(
+        phase: GamePhase.doubleOffered,
+        pendingDoubleFrom: state.localPlayerKey,
+      );
+    } catch (e) {
+      debugPrint('offerDouble failed: $e');
+    }
   }
 
   /// Accept a pending double from the opponent.
   Future<void> acceptDouble() async {
     if (state.pendingDoubleFrom == null) return;
+    // Can only accept a double from the opponent, not from self.
+    if (state.pendingDoubleFrom == state.localPlayerKey) return;
 
     final newValue = state.doublingCube.value * 2;
     final newOwner = state.localPlayerKey; // Accepting player gets ownership.
@@ -456,6 +487,7 @@ class OnlineGameNotifier extends StateNotifier<OnlineGameState> {
   /// Decline a pending double — lose the game.
   Future<void> declineDouble() async {
     if (state.pendingDoubleFrom == null) return;
+    if (state.pendingDoubleFrom == state.localPlayerKey) return;
 
     await _service.respondToDouble(
       gameId: state.gameRoomId,
@@ -491,6 +523,7 @@ class OnlineGameNotifier extends StateNotifier<OnlineGameState> {
   void dispose() {
     _roomSubscription?.cancel();
     _heartbeatTimer?.cancel();
+    _reconnectTimer?.cancel();
     super.dispose();
   }
 

@@ -26,22 +26,32 @@ class _DualBoardPairingScreenState extends State<DualBoardPairingScreen> {
   @override
   void initState() {
     super.initState();
-    _stateSubscription = _bleService.connectionStateStream.listen((state) {
-      if (mounted) setState(() => _connectionState = state);
-      if (state == BleConnectionState.connected) {
-        _navigateToGame();
-      }
-    });
-    _deviceSubscription =
-        _bleService.discoveredDevices.listen((device) {
-      if (mounted) {
-        setState(() {
-          if (!_devices.any((d) => d.id == device.id)) {
-            _devices.add(device);
-          }
-        });
-      }
-    });
+    _stateSubscription = _bleService.connectionStateStream.listen(
+      (state) {
+        if (mounted) setState(() => _connectionState = state);
+        if (state == BleConnectionState.connected) {
+          _navigateToGame();
+        }
+      },
+      onError: (error) {
+        debugPrint('BLE connection state error: $error');
+        if (mounted) setState(() => _connectionState = BleConnectionState.idle);
+      },
+    );
+    _deviceSubscription = _bleService.discoveredDevices.listen(
+      (device) {
+        if (mounted) {
+          setState(() {
+            if (!_devices.any((d) => d.id == device.id)) {
+              _devices.add(device);
+            }
+          });
+        }
+      },
+      onError: (error) {
+        debugPrint('BLE device discovery error: $error');
+      },
+    );
   }
 
   @override
@@ -106,7 +116,7 @@ class _DualBoardPairingScreenState extends State<DualBoardPairingScreen> {
                   Text(
                     'Each phone shows half the board.\nOne phone hosts, the other joins.',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: TavliColors.light.withValues(alpha: 0.7),
+                      color: TavliColors.disabledOnPrimary,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -162,10 +172,9 @@ class _DualBoardPairingScreenState extends State<DualBoardPairingScreen> {
               ),
               const SizedBox(height: TavliSpacing.md),
               if (_devices.isNotEmpty) ...[
-                const Text(
+                Text(
                   'FOUND DEVICES',
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: theme.textTheme.labelMedium!.copyWith(
                     letterSpacing: 1.5,
                     fontWeight: FontWeight.w600,
                     color: TavliColors.light,
@@ -239,7 +248,7 @@ class _DualBoardPairingScreenState extends State<DualBoardPairingScreen> {
           Text(
             subtitle,
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: TavliColors.light.withValues(alpha: 0.6),
+              color: TavliColors.disabledOnPrimary,
             ),
           ),
           if (showProgress) ...[
@@ -295,8 +304,12 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
       DeviceOrientation.landscapeRight,
     ]);
 
-    _messageSubscription =
-        widget.bleService.incomingMessages.listen(_onMessage);
+    _messageSubscription = widget.bleService.incomingMessages.listen(
+      _onMessage,
+      onError: (error) {
+        debugPrint('BLE message stream error: $error');
+      },
+    );
   }
 
   @override
@@ -344,6 +357,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: TavliColors.surface,
       body: SafeArea(
@@ -368,8 +382,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
                   const SizedBox(width: 4),
                   Text(
                     _isHost ? 'Host · Points 1-12' : 'Client · Points 13-24',
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: theme.textTheme.labelSmall!.copyWith(
                       color: TavliColors.light,
                     ),
                   ),
@@ -377,8 +390,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
                   if (_die1 != null && _die2 != null)
                     Text(
                       'Dice: $_die1-$_die2',
-                      style: const TextStyle(
-                        fontSize: 11,
+                      style: theme.textTheme.labelSmall!.copyWith(
                         color: TavliColors.light,
                         fontWeight: FontWeight.w600,
                       ),
@@ -386,8 +398,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
                   const SizedBox(width: TavliSpacing.sm),
                   Text(
                     'Player $_activePlayer\'s turn',
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: theme.textTheme.labelSmall!.copyWith(
                       color: TavliColors.light,
                     ),
                   ),
@@ -423,7 +434,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
                               children: [
                                 Text(
                                   'Bar: $_bar1/$_bar2  Off: $_borneOff1/$_borneOff2',
-                                  style: const TextStyle(
+                                  style: theme.textTheme.labelSmall!.copyWith(
                                     fontSize: 10,
                                     color: TavliColors.light,
                                   ),
@@ -456,6 +467,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
   }
 
   Widget _buildHalfPoint(int index, bool isTop) {
+    final theme = Theme.of(context);
     final count = _points[index];
     final isP1 = count > 0;
     final absCount = count.abs();
@@ -497,7 +509,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
                   ? Center(
                       child: Text(
                         '$absCount',
-                        style: TextStyle(
+                        style: theme.textTheme.labelSmall!.copyWith(
                           fontSize: 10,
                           fontWeight: FontWeight.w700,
                           color: isP1 ? TavliColors.light : TavliColors.text,
@@ -512,7 +524,7 @@ class _DualBoardGameScreenState extends State<DualBoardGameScreen> {
             padding: const EdgeInsets.only(bottom: 2, top: 2),
             child: Text(
               '${index + 1}',
-              style: const TextStyle(fontSize: 8, color: TavliColors.primary),
+              style: theme.textTheme.labelSmall!.copyWith(fontSize: 8, color: TavliColors.primary),
             ),
           ),
         ],

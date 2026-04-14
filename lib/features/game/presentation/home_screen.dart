@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/providers/accessibility_providers.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/services/copy_service.dart';
@@ -82,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
     final tradition = SettingsService.instance.tradition;
     final variants = tradition.variants;
@@ -98,9 +99,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // Dynamic title — tradition name.
               Text(
                 tradition.displayName,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontFamily: TavliTheme.serifFamily,
+                style: theme.textTheme.displayMedium!.copyWith(
                   fontWeight: FontWeight.w400,
                   color: TavliColors.light,
                   letterSpacing: -0.64,
@@ -128,9 +127,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Center(
                     child: Text(
                       SettingsService.instance.botPersonality.avatarInitial,
-                      style: const TextStyle(
+                      style: theme.textTheme.headlineMedium!.copyWith(
                         color: TavliColors.primary,
-                        fontSize: 21,
                         fontWeight: FontWeight.w400,
                         letterSpacing: -0.41,
                       ),
@@ -147,10 +145,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Choose Your Game',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: TavliTheme.serifFamily,
-                    fontWeight: FontWeight.w600,
+                  style: theme.textTheme.headlineSmall!.copyWith(
                     color: TavliColors.light,
                   ),
                 ),
@@ -190,10 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Play',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: TavliTheme.serifFamily,
-                    fontWeight: FontWeight.w600,
+                  style: theme.textTheme.headlineSmall!.copyWith(
                     color: TavliColors.light,
                   ),
                 ),
@@ -241,10 +233,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'More',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: TavliTheme.serifFamily,
-                    fontWeight: FontWeight.w600,
+                  style: theme.textTheme.headlineSmall!.copyWith(
                     color: TavliColors.light,
                   ),
                 ),
@@ -333,12 +322,11 @@ class _VariantCardState extends State<_VariantCard> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final selected = widget.selected;
     final bg = _pressed
         ? (selected ? TavliColors.primaryActive : TavliColors.surfaceActive)
         : (selected ? TavliColors.primary : TavliColors.surface);
-    final contentAlpha = selected ? 1.0 : 0.7;
-
     return Expanded(
       child: Semantics(
         button: true,
@@ -350,7 +338,7 @@ class _VariantCardState extends State<_VariantCard> {
           onTapUp: (_) => setState(() => _pressed = false),
           onTapCancel: () => setState(() => _pressed = false),
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
+            duration: ReducedMotion.duration(context, const Duration(milliseconds: 150)),
             curve: Curves.easeInOut,
             transform: _pressed
                 ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
@@ -374,25 +362,22 @@ class _VariantCardState extends State<_VariantCard> {
                 Icon(
                   _mechanicIcon,
                   size: 24,
-                  color: TavliColors.light.withValues(alpha: contentAlpha),
+                  color: selected ? TavliColors.light : TavliColors.disabledOnPrimary,
                 ),
                 const SizedBox(height: TavliSpacing.xs),
                 Text(
                   widget.variant.nativeName,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontFamily: TavliTheme.serifFamily,
+                  style: theme.textTheme.titleMedium!.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: TavliColors.light.withValues(alpha: contentAlpha),
+                    color: selected ? TavliColors.light : TavliColors.disabledOnPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: TavliSpacing.xxxs),
                 Text(
                   _mechanicLabel,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: TavliColors.light.withValues(alpha: selected ? 0.8 : 0.5),
+                  style: theme.textTheme.labelSmall!.copyWith(
+                    color: selected ? TavliColors.light : TavliColors.disabledOnPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -417,6 +402,7 @@ class _ExploreTraditionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final otherTraditions =
         Tradition.values.where((t) => t != currentTradition).toList();
 
@@ -446,13 +432,12 @@ class _ExploreTraditionsCard extends StatelessWidget {
                     children: [
                       Text(
                         otherTraditions[i].flagEmoji,
-                        style: const TextStyle(fontSize: 22),
+                        style: theme.textTheme.headlineMedium,
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: TavliSpacing.xxs),
                       Text(
                         otherTraditions[i].displayName,
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: theme.textTheme.labelMedium!.copyWith(
                           fontWeight: FontWeight.w600,
                           color: TavliColors.light,
                         ),

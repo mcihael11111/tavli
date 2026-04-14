@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../shared/services/copy_service.dart';
@@ -33,6 +32,9 @@ final mikhailLanguageProvider = StateProvider<String>((ref) {
 });
 final botPersonalityProvider = StateProvider<BotPersonality>((ref) {
   return SettingsService.instance.botPersonality;
+});
+final languageLevelProvider = StateProvider<double>((ref) {
+  return SettingsService.instance.languageLevel;
 });
 final showPipCountProvider = StateProvider<bool>((ref) {
   return SettingsService.instance.showPipCount;
@@ -70,9 +72,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: TavliSpacing.xxl),
             Text(
               TavliCopy.settings,
-              style: TextStyle(
-                fontSize: 32,
-                fontFamily: TavliTheme.serifFamily,
+              style: Theme.of(context).textTheme.displayMedium!.copyWith(
                 fontWeight: FontWeight.w400,
                 color: TavliColors.light,
                 letterSpacing: -0.64,
@@ -95,9 +95,37 @@ class SettingsScreen extends ConsumerWidget {
                 title: Text(SettingsService.instance.tradition.displayName,
                     style: const TextStyle(color: TavliColors.light)),
                 subtitle: Text(SettingsService.instance.tradition.regionLabel,
-                    style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                    style: const TextStyle(color: TavliColors.disabledOnPrimary)),
                 trailing: const Icon(Icons.chevron_right, color: TavliColors.light),
                 onTap: () => _showTraditionPicker(context, ref),
+              ),
+            ),
+            const SizedBox(height: TavliSpacing.sm),
+
+            // ── Language Level ────────────────────
+            ContentModule(
+              icon: Icons.translate,
+              title: 'Language Level',
+              child: SizedBox(
+                width: double.infinity,
+                child: SegmentedButton<double>(
+                  segments: [
+                    const ButtonSegment(
+                        value: 0.0, label: Text('English')),
+                    const ButtonSegment(
+                        value: 0.5, label: Text('Mixed')),
+                    ButtonSegment(
+                        value: 1.0,
+                        label: Text(
+                            'Fluent ${SettingsService.instance.tradition.languageName}')),
+                  ],
+                  selected: {ref.watch(languageLevelProvider)},
+                  onSelectionChanged: (v) => _update(
+                      ref, languageLevelProvider, v.first,
+                      (s, val) => s.languageLevel = val),
+                  style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact),
+                ),
               ),
             ),
             const SizedBox(height: TavliSpacing.sm),
@@ -112,8 +140,8 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Show Pip Count',
                         style: TextStyle(color: TavliColors.light)),
-                    subtitle: Text('Display remaining pip count during games',
-                        style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                    subtitle: const Text('Display remaining pip count during games',
+                        style: TextStyle(color: TavliColors.disabledOnPrimary)),
                     value: ref.watch(showPipCountProvider),
                     onChanged: (v) => _update(ref, showPipCountProvider, v,
                         (s, val) => s.showPipCount = val),
@@ -122,8 +150,8 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Move Confirmation',
                         style: TextStyle(color: TavliColors.light)),
-                    subtitle: Text('Require tap to confirm each move',
-                        style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                    subtitle: const Text('Require tap to confirm each move',
+                        style: TextStyle(color: TavliColors.disabledOnPrimary)),
                     value: ref.watch(moveConfirmationProvider),
                     onChanged: (v) => _update(ref, moveConfirmationProvider, v,
                         (s, val) => s.moveConfirmation = val),
@@ -143,8 +171,8 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Automatic Doubles',
                         style: TextStyle(color: TavliColors.light)),
-                    subtitle: Text('Matching first rolls double the stakes',
-                        style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                    subtitle: const Text('Matching first rolls double the stakes',
+                        style: TextStyle(color: TavliColors.disabledOnPrimary)),
                     value: ref.watch(autoDoublesProvider),
                     onChanged: (v) => _update(ref, autoDoublesProvider, v,
                         (s, val) => s.autoDoubles = val),
@@ -153,8 +181,8 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Beavers',
                         style: TextStyle(color: TavliColors.light)),
-                    subtitle: Text('Immediate redouble after being doubled',
-                        style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                    subtitle: const Text('Immediate redouble after being doubled',
+                        style: TextStyle(color: TavliColors.disabledOnPrimary)),
                     value: ref.watch(beaversProvider),
                     onChanged: (v) => _update(ref, beaversProvider, v,
                         (s, val) => s.beavers = val),
@@ -164,7 +192,7 @@ class SettingsScreen extends ConsumerWidget {
                     title: const Text('Jacoby Rule',
                         style: TextStyle(color: TavliColors.light)),
                     subtitle: Text('Gammons only count if cube was offered',
-                        style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                        style: const TextStyle(color: TavliColors.disabledOnPrimary)),
                     value: ref.watch(jacobyRuleProvider),
                     onChanged: (v) => _update(ref, jacobyRuleProvider, v,
                         (s, val) => s.jacobyRule = val),
@@ -193,7 +221,7 @@ class SettingsScreen extends ConsumerWidget {
                 title: Text(ref.watch(botPersonalityProvider).displayName,
                     style: const TextStyle(color: TavliColors.light)),
                 subtitle: Text(ref.watch(botPersonalityProvider).subtitle,
-                    style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                    style: const TextStyle(color: TavliColors.disabledOnPrimary)),
                 trailing: const Icon(Icons.chevron_right, color: TavliColors.light),
                 onTap: () => _showPersonalityPicker(context, ref),
               ),
@@ -229,7 +257,7 @@ class SettingsScreen extends ConsumerWidget {
                     title: const Text('Bot Language',
                         style: TextStyle(color: TavliColors.light)),
                     subtitle: Text(_languageLabel(ref.watch(mikhailLanguageProvider)),
-                        style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                        style: const TextStyle(color: TavliColors.disabledOnPrimary)),
                     trailing: DropdownButton<String>(
                       value: ref.watch(mikhailLanguageProvider),
                       underline: const SizedBox.shrink(),
@@ -260,8 +288,8 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Theme',
-                      style: TextStyle(color: TavliColors.light, fontSize: 16)),
+                  Text('Theme',
+                      style: Theme.of(context).textTheme.bodyLarge!.copyWith(color: TavliColors.light)),
                   const SizedBox(height: TavliSpacing.sm),
                   SizedBox(
                     width: double.infinity,
@@ -293,7 +321,7 @@ class SettingsScreen extends ConsumerWidget {
                     title: const Text('Version',
                         style: TextStyle(color: TavliColors.light)),
                     trailing: Text(AppInfo.fullVersion,
-                        style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+                        style: const TextStyle(color: TavliColors.disabledOnPrimary)),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -321,7 +349,7 @@ class SettingsScreen extends ConsumerWidget {
                         style: TextStyle(color: TavliColors.light)),
                     subtitle: Text('Sign out of your account',
                         style: TextStyle(
-                            color: TavliColors.light.withValues(alpha: 0.7))),
+                            color: TavliColors.disabledOnPrimary)),
                     onTap: () => _confirmSignOut(context, ref),
                   ),
                   ListTile(
@@ -331,7 +359,7 @@ class SettingsScreen extends ConsumerWidget {
                         style: TextStyle(color: TavliColors.light)),
                     subtitle: Text('Restart the welcome flow',
                         style: TextStyle(
-                            color: TavliColors.light.withValues(alpha: 0.7))),
+                            color: TavliColors.disabledOnPrimary)),
                     onTap: () => _confirmResetOnboarding(context),
                   ),
                   ListTile(
@@ -590,7 +618,7 @@ class _VolumeSlider extends StatelessWidget {
       title: Text(label, style: const TextStyle(color: TavliColors.light)),
       subtitle: Slider(value: value, onChanged: onChanged),
       trailing: Text('${(value * 100).round()}%',
-          style: TextStyle(color: TavliColors.light.withValues(alpha: 0.7))),
+          style: const TextStyle(color: TavliColors.disabledOnPrimary)),
     );
   }
 }

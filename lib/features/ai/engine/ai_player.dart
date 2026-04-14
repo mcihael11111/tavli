@@ -175,9 +175,11 @@ class AiPlayer {
   /// Uses a simple equity threshold: double if position equity > 0.15
   /// (i.e. the AI believes it's winning by a meaningful margin).
   /// At lower difficulties, the AI is less aggressive with doubling.
-  bool shouldOfferDouble(BoardState state, DifficultyLevel difficulty) {
+  bool shouldOfferDouble(BoardState state, DifficultyLevel difficulty, {
+    GameVariant variant = GameVariant.portes,
+  }) {
     final player = state.activePlayer;
-    final equity = _evaluator.evaluate(state, player);
+    final equity = _evaluateForVariant(state, player, variant);
 
     // Threshold varies by difficulty — harder AI doubles more aggressively.
     final threshold = switch (difficulty) {
@@ -197,9 +199,11 @@ class AiPlayer {
   ///
   /// Uses the standard 25% "take point" heuristic: accept if win probability
   /// is roughly >= 25% (equity >= -0.50 on our scale).
-  bool shouldAcceptDouble(BoardState state, DifficultyLevel difficulty) {
+  bool shouldAcceptDouble(BoardState state, DifficultyLevel difficulty, {
+    GameVariant variant = GameVariant.portes,
+  }) {
     final player = state.activePlayer == 1 ? 2 : 1; // AI is the non-active player
-    final equity = _evaluator.evaluate(state, player);
+    final equity = _evaluateForVariant(state, player, variant);
 
     // Drop threshold: if position is worse than this, decline.
     final dropThreshold = switch (difficulty) {
@@ -220,19 +224,20 @@ class AiPlayer {
     BoardState stateBefore,
     BoardState stateAfter,
     DiceRoll roll,
-    int player,
-  ) {
+    int player, {
+    GameVariant variant = GameVariant.portes,
+  }) {
     final turns = _generator.generateAllLegalTurns(stateBefore, roll);
     if (turns.isEmpty) return 0;
 
     double bestEquity = double.negativeInfinity;
     for (final turn in turns) {
       final resultBoard = _engine.applyMoves(stateBefore, turn.moves);
-      final equity = _evaluator.evaluate(resultBoard, player);
+      final equity = _evaluateForVariant(resultBoard, player, variant);
       if (equity > bestEquity) bestEquity = equity;
     }
 
-    final actualEquity = _evaluator.evaluate(stateAfter, player);
+    final actualEquity = _evaluateForVariant(stateAfter, player, variant);
     return (bestEquity - actualEquity).clamp(0, 2.0);
   }
 

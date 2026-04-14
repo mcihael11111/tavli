@@ -127,6 +127,20 @@ abstract final class TavliColors {
   static const ashLight = Color(0xFFC4B28E);
   static const ashDark = Color(0xFFA89970);
 
+  // ── Disabled / Muted Semantic Colors ─────────────────────────
+  /// Muted text/icon on primary backgrounds — WCAG AA compliant (≥4.5:1).
+  /// Use instead of light.withOpacity(0.5–0.7) on primary/surface.
+  static const disabledOnPrimary = Color(0xFFCDC4BB);
+
+  /// Dark-mode counterpart for disabled text on primary.
+  static const disabledOnPrimaryDark = Color(0xFF5C4A3A);
+
+  /// De-emphasized text on light backgrounds (background/light) — WCAG AA.
+  static const mutedOnSurface = Color(0xFF4A3A2D);
+
+  /// Dark-mode counterpart for muted text on surface.
+  static const mutedOnSurfaceDark = Color(0xFFB8A898);
+
   // ── Legacy Aliases (backward compatibility for existing code) ──
   static const cream = light;
   static const tan = Color(0xFFE6CCB2);
@@ -157,6 +171,7 @@ abstract final class TavliColors {
 /// Spacing tokens — 4px base unit.
 /// Design system: docs/design/01_DESIGN_SYSTEM.md#spacing-system
 abstract final class TavliSpacing {
+  static const double xxxs = 2;
   static const double xxs = 4;
   static const double xs = 8;
   static const double sm = 12;

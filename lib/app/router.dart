@@ -223,7 +223,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/replay',
         name: 'replay',
         builder: (context, state) {
-          final recording = state.extra as GameRecording;
+          final recording = state.extra as GameRecording?;
+          if (recording == null) {
+            return const Scaffold(body: Center(child: Text('No recording')));
+          }
           return ReplayScreen(recording: recording);
         },
       ),

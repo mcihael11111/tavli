@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../app/theme.dart';
 import '../../core/constants/colors.dart';
+import '../providers/accessibility_providers.dart';
 
 /// Translucent content module — the signature depth card pattern.
 ///
@@ -152,7 +153,7 @@ class _TappableModuleState extends State<_TappableModule> {
       },
       onTapCancel: () => setState(() => _pressed = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 100),
+        duration: ReducedMotion.duration(context, const Duration(milliseconds: 100)),
         curve: Curves.easeIn,
         padding: widget.padding,
         transform: _pressed

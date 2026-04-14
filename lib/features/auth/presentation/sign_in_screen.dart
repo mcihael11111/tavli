@@ -67,19 +67,19 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
       ),
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xl),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(Icons.public, size: 64, color: colors.primary),
-              const SizedBox(height: 16),
+              const SizedBox(height: TavliSpacing.md),
               Text(
                 'Play Online',
                 style: theme.textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: TavliSpacing.xs),
               Text(
                 'Sign in to play against opponents worldwide',
                 style: theme.textTheme.bodyMedium?.copyWith(
@@ -107,7 +107,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: TavliSpacing.md),
 
               // Divider.
               Row(
@@ -118,7 +118,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
                     child: Text(
                       'or',
                       style: TextStyle(
@@ -134,7 +134,7 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ],
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: TavliSpacing.md),
 
               // Guest button.
               SizedBox(
@@ -152,25 +152,27 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
                 ),
               ),
 
-              const SizedBox(height: 8),
+              const SizedBox(height: TavliSpacing.xs),
               Text(
                 'Guest accounts can be upgraded later',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: colors.onSurface.withValues(alpha: 0.5),
-                  fontSize: 12,
                 ),
               ),
 
               if (_loading) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: TavliSpacing.lg),
                 const CircularProgressIndicator(),
               ],
 
               if (_error != null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: TavliSpacing.md),
                 Text(
                   _error!,
-                  style: TextStyle(color: colors.error, fontSize: 13),
+                  style: theme.textTheme.bodySmall!.copyWith(
+                    color: colors.error,
+                    fontSize: 13,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],

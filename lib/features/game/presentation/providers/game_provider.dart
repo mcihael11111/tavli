@@ -330,6 +330,11 @@ class GameNotifier extends StateNotifier<GameState> {
     );
   }
 
+  /// Clear the current checker selection and highlights.
+  void clearSelection() {
+    state = state.copyWith(clearSelectedPoint: true);
+  }
+
   /// Execute a move to [toPoint].
   void makeMove(int toPoint) {
     if (state.selectedPoint == null) return;
@@ -427,6 +432,14 @@ class GameNotifier extends StateNotifier<GameState> {
       undoStack: newUndo,
       clearSelectedPoint: true,
     );
+
+    // Check if any legal moves remain after undo — prevent soft-lock.
+    final hasLegal = newRemaining.toSet().any(
+      (die) => _generateMovesForDie(previousBoard, die).isNotEmpty,
+    );
+    if (!hasLegal) {
+      state = state.copyWith(phase: GamePhase.turnComplete);
+    }
   }
 
   /// Player offers a double before rolling.

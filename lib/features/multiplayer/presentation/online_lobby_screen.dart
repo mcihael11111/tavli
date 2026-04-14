@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../../shared/widgets/content_module.dart';
+import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../auth/presentation/auth_provider.dart';
 
@@ -15,6 +15,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
     final profileAsync = ref.watch(currentPlayerProfileProvider);
 
     return GradientScaffold(
@@ -37,7 +38,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
       ),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
+          padding: const EdgeInsets.fromLTRB(
             TavliSpacing.lg, kToolbarHeight + TavliSpacing.xl, TavliSpacing.lg, TavliSpacing.lg,
           ),
           child: Column(
@@ -55,9 +56,8 @@ class OnlineLobbyScreen extends ConsumerWidget {
                         profile.displayName.isNotEmpty
                             ? profile.displayName[0].toUpperCase()
                             : 'P',
-                        style: const TextStyle(
+                        style: theme.textTheme.headlineMedium!.copyWith(
                           color: TavliColors.light,
-                          fontSize: 22,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -68,7 +68,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
                       children: [
                         Text(
                           '${profile.wins}W',
-                          style: const TextStyle(
+                          style: theme.textTheme.bodySmall!.copyWith(
                             color: TavliColors.success,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -76,7 +76,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
                         ),
                         Text(
                           '${profile.losses}L',
-                          style: const TextStyle(
+                          style: theme.textTheme.bodySmall!.copyWith(
                             color: TavliColors.error,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -92,7 +92,10 @@ class OnlineLobbyScreen extends ConsumerWidget {
                     child: CircularProgressIndicator(),
                   ),
                 ),
-                error: (_, __) => const SizedBox.shrink(),
+                error: (_, __) => ErrorStateWidget(
+                  message: 'Could not load profile',
+                  onRetry: () => ref.invalidate(currentPlayerProfileProvider),
+                ),
               ),
 
               // Active game banner.
@@ -124,9 +127,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
               // ── My Tradition section ──────────────────────
               Text(
                 '${SettingsService.instance.tradition.displayName} \u2014 My Tradition',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontFamily: TavliTheme.serifFamily,
+                style: theme.textTheme.titleMedium!.copyWith(
                   fontWeight: FontWeight.w600,
                   color: TavliColors.light,
                 ),
@@ -147,9 +148,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
               // ── International section ─────────────────────
               Text(
                 'International',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontFamily: TavliTheme.serifFamily,
+                style: theme.textTheme.titleMedium!.copyWith(
                   fontWeight: FontWeight.w600,
                   color: TavliColors.light,
                 ),
@@ -172,9 +171,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
               // ── Private games ─────────────────────────────
               Text(
                 'Private Games',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontFamily: TavliTheme.serifFamily,
+                style: theme.textTheme.titleMedium!.copyWith(
                   fontWeight: FontWeight.w600,
                   color: TavliColors.light,
                 ),

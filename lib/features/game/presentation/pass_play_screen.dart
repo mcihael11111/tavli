@@ -59,16 +59,19 @@ class _PassPlayScreenState extends ConsumerState<PassPlayScreen> {
   }
 
   void _onCheckerTapped(int pointIndex) {
+    if (_showPassScreen) return;
     final gs = ref.read(gameProvider);
     if (gs.phase != GamePhase.movingCheckers) return;
     ref.read(gameProvider.notifier).selectChecker(pointIndex);
   }
 
   void _onDestinationTapped(int toPoint) {
+    if (_showPassScreen) return;
     ref.read(gameProvider.notifier).makeMove(toPoint);
   }
 
   void _onDiceRoll() {
+    if (_showPassScreen) return;
     final gs = ref.read(gameProvider);
     if (gs.phase != GamePhase.playerTurnStart) return;
     ref.read(gameProvider.notifier).rollDice();
@@ -135,11 +138,12 @@ class _PassPlayScreenState extends ConsumerState<PassPlayScreen> {
   }
 
   Widget _buildBar(GameState gs, {required bool isTop}) {
+    final theme = Theme.of(context);
     final player = isTop ? 2 : 1;
     final isActive = gs.board.activePlayer == player;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: 6),
       color: TavliColors.primary,
       child: Row(
         children: [
@@ -155,25 +159,25 @@ class _PassPlayScreenState extends ConsumerState<PassPlayScreen> {
             ),
             child: Center(child: Text(
               'P$player',
-              style: const TextStyle(
-                color: TavliColors.light, fontSize: 12, fontWeight: FontWeight.bold,
+              style: theme.textTheme.labelMedium!.copyWith(
+                color: TavliColors.light, fontWeight: FontWeight.bold,
               ),
             )),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: TavliSpacing.xs),
           Text(
             'Player $player',
-            style: const TextStyle(color: TavliColors.light, fontSize: 14),
+            style: theme.textTheme.bodyMedium!.copyWith(color: TavliColors.light),
           ),
           const Spacer(),
           Text(
             'Pips: ${gs.board.pipCount(player)}',
-            style: TextStyle(
-              color: TavliColors.light.withValues(alpha: 0.85), fontSize: 12,
+            style: theme.textTheme.bodySmall!.copyWith(
+              color: TavliColors.light.withValues(alpha: 0.85),
             ),
           ),
           if (!isTop) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: TavliSpacing.xs),
             if (gs.currentTurnMoves.isNotEmpty)
               IconButton(
                 onPressed: () => ref.read(gameProvider.notifier).undoMove(),
@@ -192,6 +196,7 @@ class _PassPlayScreenState extends ConsumerState<PassPlayScreen> {
   }
 
   Widget _buildPassInterstitial() {
+    final theme = Theme.of(context);
     return Container(
       color: TavliColors.primary,
       child: Center(
@@ -199,36 +204,35 @@ class _PassPlayScreenState extends ConsumerState<PassPlayScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(Icons.swap_horiz, color: TavliColors.surface, size: 48),
-            const SizedBox(height: 16),
+            const SizedBox(height: TavliSpacing.md),
             Text(
               'Pass to Player $_nextPlayer',
-              style: const TextStyle(
+              style: theme.textTheme.headlineLarge!.copyWith(
                 color: TavliColors.light,
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: TavliSpacing.xs),
             Text(
               'Tap when ready',
-              style: TextStyle(
-                color: TavliColors.light.withValues(alpha: 0.7),
-                fontSize: 16,
+              style: theme.textTheme.bodyLarge!.copyWith(
+                color: TavliColors.disabledOnPrimary,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: TavliSpacing.xl),
             ElevatedButton(
               onPressed: () {
                 setState(() => _showPassScreen = false);
                 ref.read(gameProvider.notifier).nextTurn();
+                // Flip board so each player sees their home at the bottom.
+                _game.setFlipped(_nextPlayer == 2);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: TavliColors.surface,
                 foregroundColor: TavliColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 16),
+                padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xxl, vertical: TavliSpacing.md),
               ),
-              child: const Text("I'm Ready", style: TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w600,
+              child: Text("I'm Ready", style: theme.textTheme.bodyLarge!.copyWith(
+                fontWeight: FontWeight.w600,
               )),
             ),
           ],

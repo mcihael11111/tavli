@@ -264,7 +264,7 @@ class _ReplayScreenState extends State<ReplayScreen> {
       ),
       child: Text(
         label,
-        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: color),
+        style: Theme.of(context).textTheme.labelSmall!.copyWith(fontWeight: FontWeight.w500, color: color),
       ),
     );
   }
@@ -312,8 +312,7 @@ class _ReplayScreenState extends State<ReplayScreen> {
                   : TavliColors.checkerLight,
               child: Text(
                 playerName[0],
-                style: TextStyle(
-                  fontSize: 12,
+                style: theme.textTheme.bodySmall!.copyWith(
                   color: turn.player == 1 ? TavliColors.light : TavliColors.text,
                 ),
               ),
@@ -332,7 +331,7 @@ class _ReplayScreenState extends State<ReplayScreen> {
                   Text(
                     movesText,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: TavliColors.light.withValues(alpha: 0.7),
+                      color: TavliColors.disabledOnPrimary,
                     ),
                   ),
                 ],
@@ -425,24 +424,28 @@ class _ReplayScreenState extends State<ReplayScreen> {
 
   Widget _buildSpeedButton(double speed) {
     final isActive = _playbackSpeed == speed;
-    return GestureDetector(
-      onTap: () => _setSpeed(speed),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        padding: const EdgeInsets.symmetric(
-          horizontal: TavliSpacing.xs,
-          vertical: TavliSpacing.xxs,
-        ),
-        decoration: BoxDecoration(
-          color: isActive ? TavliColors.primary : TavliColors.surface,
-          borderRadius: BorderRadius.circular(TavliRadius.sm),
-        ),
-        child: Text(
-          '${speed}x',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-            color: TavliColors.light,
+    return Semantics(
+      button: true,
+      selected: isActive,
+      label: 'Set playback speed to ${speed}x',
+      child: GestureDetector(
+        onTap: () => _setSpeed(speed),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          padding: const EdgeInsets.symmetric(
+            horizontal: TavliSpacing.xs,
+            vertical: TavliSpacing.xxs,
+          ),
+          decoration: BoxDecoration(
+            color: isActive ? TavliColors.primary : TavliColors.surface,
+            borderRadius: BorderRadius.circular(TavliRadius.sm),
+          ),
+          child: Text(
+            '${speed}x',
+            style: Theme.of(context).textTheme.labelSmall!.copyWith(
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
+              color: TavliColors.light,
+            ),
           ),
         ),
       ),

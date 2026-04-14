@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../shared/widgets/content_module.dart';
 import '../../../../shared/widgets/gradient_scaffold.dart';
@@ -23,6 +22,7 @@ class MechanicComparisonScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final comparison = _comparison;
 
     return GradientScaffold(
@@ -35,11 +35,9 @@ class MechanicComparisonScreen extends StatelessWidget {
         ),
         title: Text(
           comparison.title,
-          style: TextStyle(
+          style: theme.textTheme.titleLarge!.copyWith(
             color: TavliColors.light,
-            fontFamily: TavliTheme.serifFamily,
             fontWeight: FontWeight.w600,
-            fontSize: 18,
           ),
         ),
         centerTitle: true,
@@ -89,17 +87,15 @@ class MechanicComparisonScreen extends StatelessWidget {
                               const SizedBox(width: TavliSpacing.sm),
                               Text(
                                 '${variant.displayName} (${variant.nativeName})',
-                                style: const TextStyle(
-                                  fontSize: 14,
+                                style: theme.textTheme.bodyMedium!.copyWith(
                                   color: TavliColors.light,
                                 ),
                               ),
                               const Spacer(),
                               Text(
                                 variant.tradition.displayName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: TavliColors.light.withValues(alpha: 0.7),
+                                style: theme.textTheme.bodySmall!.copyWith(
+                                  color: TavliColors.disabledOnPrimary,
                                 ),
                               ),
                             ],

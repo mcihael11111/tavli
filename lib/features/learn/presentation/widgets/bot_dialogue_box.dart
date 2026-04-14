@@ -41,10 +41,9 @@ class BotDialogueBox extends StatelessWidget {
             child: Center(
               child: Text(
                 personality.avatarInitial,
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                   color: TavliColors.primary,
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
                 ),
               ),
             ),
@@ -53,9 +52,8 @@ class BotDialogueBox extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
+              style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                 color: TavliColors.light,
-                fontSize: 14,
                 fontStyle: FontStyle.italic,
                 height: 1.4,
               ),

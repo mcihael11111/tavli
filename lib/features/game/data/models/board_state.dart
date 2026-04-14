@@ -3,6 +3,9 @@ import '../../../../core/constants/game_constants.dart';
 import '../../../../core/constants/variants/variant_rules.dart';
 import '../../domain/engine/variants/game_variant.dart';
 
+/// Sentinel for distinguishing "not passed" from "explicitly null" in copyWith.
+const _absent = Object();
+
 /// Immutable representation of the backgammon board.
 ///
 /// Points are indexed 0-23.
@@ -188,7 +191,7 @@ class BoardState extends Equatable {
     int? borneOff1,
     int? borneOff2,
     int? doublingCubeValue,
-    int? cubeOwner,
+    Object? cubeOwner = _absent,
     int? activePlayer,
     Map<int, int>? pins,
   }) {
@@ -199,7 +202,7 @@ class BoardState extends Equatable {
       borneOff1: borneOff1 ?? this.borneOff1,
       borneOff2: borneOff2 ?? this.borneOff2,
       doublingCubeValue: doublingCubeValue ?? this.doublingCubeValue,
-      cubeOwner: cubeOwner,
+      cubeOwner: cubeOwner == _absent ? this.cubeOwner : cubeOwner as int?,
       activePlayer: activePlayer ?? this.activePlayer,
       pins: pins ?? Map.of(this.pins),
     );

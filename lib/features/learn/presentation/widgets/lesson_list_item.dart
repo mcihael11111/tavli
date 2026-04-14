@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/constants/colors.dart';
+import '../../../../shared/providers/accessibility_providers.dart';
 import '../../data/models/lesson.dart';
 import '../../data/models/lesson_progress.dart';
 
@@ -40,7 +40,7 @@ class _LessonListItemState extends State<LessonListItem> {
         onTapUp: isLocked ? null : (_) => setState(() => _pressed = false),
         onTapCancel: isLocked ? null : () => setState(() => _pressed = false),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
+          duration: ReducedMotion.duration(context, const Duration(milliseconds: 100)),
           curve: Curves.easeIn,
           transform: _pressed
               ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)
@@ -74,23 +74,20 @@ class _LessonListItemState extends State<LessonListItem> {
                       widget.lesson.nativeTitle != null
                           ? '${widget.lesson.title} (${widget.lesson.nativeTitle})'
                           : widget.lesson.title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontFamily: TavliTheme.serifFamily,
+                      style: Theme.of(context).textTheme.titleMedium!.copyWith(
                         fontWeight: FontWeight.w600,
                         color: isLocked
-                            ? TavliColors.light.withValues(alpha: 0.5)
+                            ? TavliColors.disabledOnPrimary
                             : TavliColors.light,
                       ),
                     ),
                     if (widget.lesson.mechanicFamily != null)
                       Text(
                         widget.lesson.mechanicFamily!.displayName,
-                        style: TextStyle(
-                          fontSize: 12,
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
                           color: isLocked
-                              ? TavliColors.light.withValues(alpha: 0.4)
-                              : TavliColors.light.withValues(alpha: 0.7),
+                              ? TavliColors.disabledOnPrimary
+                              : TavliColors.disabledOnPrimary,
                         ),
                       ),
                   ],
@@ -101,7 +98,7 @@ class _LessonListItemState extends State<LessonListItem> {
               if (!isLocked)
                 Icon(
                   Icons.chevron_right,
-                  color: TavliColors.light.withValues(alpha: 0.6),
+                  color: TavliColors.disabledOnPrimary,
                   size: 24,
                 ),
             ],
@@ -124,7 +121,7 @@ class _StatusIcon extends StatelessWidget {
       return Icon(
         Icons.lock_outline,
         size: 20,
-        color: TavliColors.light.withValues(alpha: 0.4),
+        color: TavliColors.disabledOnPrimary,
       );
     }
 
@@ -137,12 +134,12 @@ class _StatusIcon extends StatelessWidget {
       LessonStatus.inProgress => Icon(
           Icons.circle,
           size: 10,
-          color: TavliColors.light.withValues(alpha: 0.8),
+          color: TavliColors.disabledOnPrimary,
         ),
       LessonStatus.notStarted => Icon(
           Icons.circle_outlined,
           size: 20,
-          color: TavliColors.light.withValues(alpha: 0.5),
+          color: TavliColors.disabledOnPrimary,
         ),
     };
   }

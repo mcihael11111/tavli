@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/tradition.dart';
 import '../../../../shared/services/settings_service.dart';
@@ -87,9 +86,8 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
         ),
         title: Text(
           '${_currentIndex + 1} / $total',
-          style: const TextStyle(
+          style: Theme.of(context).textTheme.bodyLarge!.copyWith(
             color: TavliColors.light,
-            fontSize: 16,
           ),
         ),
         centerTitle: true,
@@ -138,9 +136,7 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
                               lesson.nativeTitle != null
                                   ? '${lesson.title} (${lesson.nativeTitle})'
                                   : lesson.title,
-                              style: TextStyle(
-                                fontSize: 22,
-                                fontFamily: TavliTheme.serifFamily,
+                              style: Theme.of(context).textTheme.headlineMedium!.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: TavliColors.light,
                               ),
@@ -148,9 +144,9 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
                             if (lesson.mechanicFamily != null)
                               Text(
                                 lesson.mechanicFamily!.displayName,
-                                style: TextStyle(
+                                style: Theme.of(context).textTheme.bodySmall!.copyWith(
                                   fontSize: 13,
-                                  color: TavliColors.light.withValues(alpha: 0.7),
+                                  color: TavliColors.disabledOnPrimary,
                                 ),
                               ),
                           ],

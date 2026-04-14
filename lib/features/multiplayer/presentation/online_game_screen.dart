@@ -88,21 +88,26 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
 
   void _startChatListener() {
     final service = ref.read(multiplayerServiceProvider);
-    _chatSubscription = service.watchChat(widget.gameRoomId).listen((messages) {
-      if (mounted) {
-        setState(() {
-          _chatHistory.clear();
-          _chatHistory.addAll(messages);
-        });
-        // Show toast for new opponent messages.
-        if (messages.isNotEmpty) {
-          final last = messages.last;
-          if (last.senderUid != widget.localPlayerUid) {
-            _showChatToast(last);
+    _chatSubscription = service.watchChat(widget.gameRoomId).listen(
+      (messages) {
+        if (mounted) {
+          setState(() {
+            _chatHistory.clear();
+            _chatHistory.addAll(messages);
+          });
+          // Show toast for new opponent messages.
+          if (messages.isNotEmpty) {
+            final last = messages.last;
+            if (last.senderUid != widget.localPlayerUid) {
+              _showChatToast(last);
+            }
           }
         }
-      }
-    });
+      },
+      onError: (error) {
+        debugPrint('Chat stream error: $error');
+      },
+    );
   }
 
   void _showChatToast(ChatMessage message) {
@@ -117,7 +122,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
         content: Text('${message.senderName}: ${chatMsg.text}'),
         duration: const Duration(seconds: 3),
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.only(bottom: 60, left: 16, right: 16),
+        margin: const EdgeInsets.only(bottom: 60, left: TavliSpacing.md, right: TavliSpacing.md),
       ),
     );
   }
@@ -216,9 +221,10 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   Widget build(BuildContext context) {
     final gs = ref.watch(onlineGameProvider(_params));
 
-    // Sync Flame board.
+    // Sync Flame board — use instant sync (not animated) in build() to avoid
+    // concurrent animations when Firestore snapshots arrive rapidly.
     if (_game.isLoaded) {
-      _game.updateBoardState(gs.board);
+      _game.syncBoardState(gs.board);
 
       if (gs.selectedPoint != null && gs.availableMovesForSelected.isNotEmpty) {
         _game.showHighlights(gs.availableMovesForSelected);
@@ -277,8 +283,9 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   }
 
   Widget _buildTopBar(OnlineGameState gs) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: 6),
       color: TavliColors.primary,
       child: Row(
         children: [
@@ -301,29 +308,25 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
                 gs.opponentName.isNotEmpty
                     ? gs.opponentName[0].toUpperCase()
                     : 'O',
-                style: const TextStyle(
+                style: theme.textTheme.headlineSmall!.copyWith(
                   color: TavliColors.light,
-                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: TavliSpacing.xs),
           Text(
             gs.opponentName,
-            style: const TextStyle(
+            style: theme.textTheme.titleSmall!.copyWith(
               color: TavliColors.light,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: TavliSpacing.xxs),
           Text(
             '(${gs.opponentRating})',
-            style: TextStyle(
-              color: TavliColors.light.withValues(alpha: 0.6),
-              fontSize: 12,
+            style: theme.textTheme.bodySmall!.copyWith(
+              color: TavliColors.disabledOnPrimary,
             ),
           ),
           const Spacer(),
@@ -334,16 +337,15 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
             ),
           // Cube indicator.
           if (gs.doublingCube.value > 1) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: TavliSpacing.xs),
             _buildCubeIndicator(gs),
           ],
-          const SizedBox(width: 8),
+          const SizedBox(width: TavliSpacing.xs),
           // Opponent pip count.
           Text(
             'Pips: ${gs.board.pipCount(gs.localPlayerNumber == 1 ? 2 : 1)}',
-            style: TextStyle(
+            style: theme.textTheme.bodySmall!.copyWith(
               color: TavliColors.light.withValues(alpha: 0.85),
-              fontSize: 12,
             ),
           ),
         ],
@@ -352,6 +354,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   }
 
   Widget _buildCubeIndicator(OnlineGameState gs) {
+    final theme = Theme.of(context);
     final ownerText = gs.doublingCube.owner == null
         ? ''
         : gs.doublingCube.owner == gs.localPlayerKey
@@ -361,15 +364,14 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: TavliColors.surface.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(TavliRadius.xs),
         border:
             Border.all(color: TavliColors.surface.withValues(alpha: 0.5)),
       ),
       child: Text(
         '${gs.doublingCube.value}x$ownerText',
-        style: const TextStyle(
+        style: theme.textTheme.labelSmall!.copyWith(
           color: TavliColors.surface,
-          fontSize: 11,
           fontWeight: FontWeight.w600,
         ),
       ),
@@ -377,8 +379,9 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   }
 
   Widget _buildBottomBar(OnlineGameState gs) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: 6),
       color: TavliColors.primary,
       child: Row(
         children: [
@@ -396,28 +399,26 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
                 width: 2,
               ),
             ),
-            child: const Center(
+            child: Center(
               child: Text(
                 'P',
-                style: TextStyle(
+                style: theme.textTheme.headlineSmall!.copyWith(
                   color: TavliColors.light,
-                  fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          const Text(
+          const SizedBox(width: TavliSpacing.xs),
+          Text(
             'You',
-            style: TextStyle(color: TavliColors.light, fontSize: 14),
+            style: theme.textTheme.bodyMedium!.copyWith(color: TavliColors.light),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: TavliSpacing.xs),
           Text(
             'Pips: ${gs.board.pipCount(gs.localPlayerNumber)}',
-            style: TextStyle(
+            style: theme.textTheme.bodySmall!.copyWith(
               color: TavliColors.light.withValues(alpha: 0.85),
-              fontSize: 12,
             ),
           ),
           const Spacer(),
@@ -427,10 +428,10 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
               onPressed: () =>
                   ref.read(onlineGameProvider(_params).notifier).offerDouble(),
               icon: const Icon(Icons.casino, size: 16),
-              label: const Text('Double', style: TextStyle(fontSize: 12)),
+              label: Text('Double', style: theme.textTheme.bodySmall),
               style: TextButton.styleFrom(
                 foregroundColor: TavliColors.surface,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xs),
                 minimumSize: const Size(0, 32),
               ),
             ),
@@ -462,28 +463,28 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   }
 
   void _showPauseMenu(BuildContext context) {
+    final theme = Theme.of(context);
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
       backgroundColor: TavliColors.primary,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(TavliRadius.lg)),
       ),
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(TavliSpacing.lg),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
+            Text(
               'MENU',
-              style: TextStyle(
+              style: theme.textTheme.headlineMedium!.copyWith(
                 color: TavliColors.light,
-                fontSize: 20,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 2,
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: TavliSpacing.md),
             _menuBtn('Resume', () => Navigator.pop(ctx)),
             _menuBtn('Resign', () {
               Navigator.pop(ctx);
@@ -526,16 +527,17 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   }
 
   Widget _buildDoubleOfferOverlay(OnlineGameState gs) {
+    final theme = Theme.of(context);
     final newValue = gs.doublingCube.value * 2;
     return Container(
       color: Colors.black54,
       child: Center(
         child: Container(
           margin: const EdgeInsets.symmetric(horizontal: 40),
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.all(TavliSpacing.lg),
           decoration: BoxDecoration(
             color: TavliColors.surfaceDark,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(TavliRadius.lg),
             border: Border.all(
               color: TavliColors.surface.withValues(alpha: 0.5),
               width: 2,
@@ -548,35 +550,30 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
                 gs.opponentName.isNotEmpty
                     ? gs.opponentName[0].toUpperCase()
                     : 'O',
-                style: const TextStyle(
+                style: theme.textTheme.displaySmall!.copyWith(
                   color: TavliColors.surface,
-                  fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: TavliSpacing.xs),
               Text(
                 '${gs.opponentName} offers a double!',
-                style: const TextStyle(
+                style: theme.textTheme.headlineSmall!.copyWith(
                   color: TavliColors.light,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 'Cube goes to ${newValue}x',
-                style: TextStyle(
-                  color: TavliColors.light.withValues(alpha: 0.7),
-                  fontSize: 14,
+                style: theme.textTheme.bodyMedium!.copyWith(
+                  color: TavliColors.disabledOnPrimary,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 'If you decline, you lose ${gs.doublingCube.value} point${gs.doublingCube.value > 1 ? 's' : ''}.',
-                style: TextStyle(
+                style: theme.textTheme.bodySmall!.copyWith(
                   color: TavliColors.error.withValues(alpha: 0.9),
-                  fontSize: 12,
                 ),
               ),
               const SizedBox(height: 20),
@@ -595,7 +592,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
                       child: const Text('Decline'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: TavliSpacing.sm),
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () => ref
@@ -619,6 +616,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
   }
 
   Widget _buildConnectionBanner(OnlineGameState gs) {
+    final theme = Theme.of(context);
     final text = switch (gs.connectionStatus) {
       ConnectionStatus.reconnecting => 'Reconnecting...',
       ConnectionStatus.opponentDisconnected => 'Opponent may have disconnected',
@@ -628,24 +626,24 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
 
     return Positioned(
       top: 60,
-      left: 16,
-      right: 16,
+      left: TavliSpacing.md,
+      right: TavliSpacing.md,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: 10),
         decoration: BoxDecoration(
           color: gs.connectionStatus == ConnectionStatus.opponentDisconnected
               ? TavliColors.error
               : Colors.orange.shade800,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(TavliRadius.sm),
         ),
         child: Row(
           children: [
             const Icon(Icons.wifi_off, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
+            const SizedBox(width: TavliSpacing.xs),
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: theme.textTheme.bodySmall!.copyWith(color: Colors.white, fontSize: 13),
               ),
             ),
             if (gs.connectionStatus ==
@@ -654,9 +652,9 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
                 onPressed: () => ref
                     .read(onlineGameProvider(_params).notifier)
                     .claimAbandonment(),
-                child: const Text(
+                child: Text(
                   'Claim Win',
-                  style: TextStyle(color: Colors.white, fontSize: 12),
+                  style: theme.textTheme.bodySmall!.copyWith(color: Colors.white),
                 ),
               ),
           ],
@@ -667,7 +665,7 @@ class _OnlineGameScreenState extends ConsumerState<OnlineGameScreen> {
 
   Widget _menuBtn(String label, VoidCallback onPressed) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: TavliSpacing.xxs),
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(

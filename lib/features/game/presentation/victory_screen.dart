@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/providers/accessibility_providers.dart';
 import '../../../shared/services/progression_service.dart';
 import '../../../shared/services/settings_service.dart';
 import '../data/models/game_result.dart';
@@ -46,65 +47,67 @@ class _VictoryScreenState extends State<VictoryScreen>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1000),
-    );
+    _controller = AnimationController(vsync: this);
     _bannerScale = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: const Interval(0, 0.6, curve: Curves.elasticOut)),
     );
     _detailsFade = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: const Interval(0.4, 1.0, curve: Curves.easeIn)),
     );
-    _controller.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.duration = ReducedMotion.duration(context, const Duration(milliseconds: 1000));
+      _controller.forward();
+    });
     _dialogue.trigger(
       _playerWon ? DialogueEvent.playerWin : DialogueEvent.mikhailWin,
       widget.difficulty,
       personality: SettingsService.instance.botPersonality,
     );
 
-    // Record result in progression tracking.
-    if (!widget.isOnline) {
-      ProgressionService.instance.recordGame(widget.difficulty, widget.result);
-    }
+    // Record results, achievements, and coins. Wrapped in try/catch so
+    // the victory screen never crashes — these are fire-and-forget saves.
+    try {
+      if (!widget.isOnline) {
+        ProgressionService.instance.recordGame(widget.difficulty, widget.result);
+      }
 
-    // Record match in history.
-    MatchHistoryService.record(MatchRecord(
-      timestamp: DateTime.now(),
-      difficulty: widget.isOnline ? null : widget.difficulty,
-      opponentName: widget.isOnline
-          ? (widget.opponentName ?? 'Opponent')
-          : '${SettingsService.instance.botPersonality.greekName} (${widget.difficulty.greekName})',
-      playerWon: _playerWon,
-      resultType: widget.result.type,
-      cubeValue: widget.result.cubeValue,
-      mode: widget.isOnline ? 'online' : 'bot',
-    ));
+      MatchHistoryService.record(MatchRecord(
+        timestamp: DateTime.now(),
+        difficulty: widget.isOnline ? null : widget.difficulty,
+        opponentName: widget.isOnline
+            ? (widget.opponentName ?? 'Opponent')
+            : '${SettingsService.instance.botPersonality.greekName} (${widget.difficulty.greekName})',
+        playerWon: _playerWon,
+        resultType: widget.result.type,
+        cubeValue: widget.result.cubeValue,
+        mode: widget.isOnline ? 'online' : 'bot',
+      ));
 
-    // Check and unlock achievements.
-    if (!widget.isOnline) {
-      final newlyUnlocked = AchievementService.instance.checkAndUnlock(
-        result: widget.result,
-        difficulty: widget.difficulty,
-      );
-      // Grant achievement coin rewards.
-      for (final a in newlyUnlocked) {
-        if (a.rewardCoins > 0) {
-          ShopService.instance.addCoins(a.rewardCoins);
-          _coinsEarned += a.rewardCoins;
+      if (!widget.isOnline) {
+        final newlyUnlocked = AchievementService.instance.checkAndUnlock(
+          result: widget.result,
+          difficulty: widget.difficulty,
+        );
+        for (final a in newlyUnlocked) {
+          if (a.rewardCoins > 0) {
+            ShopService.instance.addCoins(a.rewardCoins);
+            _coinsEarned += a.rewardCoins;
+          }
+        }
+        if (newlyUnlocked.isNotEmpty) {
+          _showAchievementToast(newlyUnlocked.first);
         }
       }
-      if (newlyUnlocked.isNotEmpty) {
-        _showAchievementToast(newlyUnlocked.first);
-      }
-    }
 
-    // Award coins for winning.
-    if (_playerWon) {
-      final winReward = _coinReward(widget.difficulty, widget.isOnline);
-      _coinsEarned += winReward;
-      if (winReward > 0) {
-        ShopService.instance.addCoins(winReward);
+      if (_playerWon) {
+        final winReward = _coinReward(widget.difficulty, widget.isOnline);
+        _coinsEarned += winReward;
+        if (winReward > 0) {
+          ShopService.instance.addCoins(winReward);
+        }
       }
+    } catch (e) {
+      debugPrint('Victory save error: $e');
     }
   }
 
@@ -152,6 +155,7 @@ class _VictoryScreenState extends State<VictoryScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     // Victory screen always uses the dark palette for drama.
     final bgColor = _playerWon
         ? TavliColors.primary
@@ -186,17 +190,15 @@ class _VictoryScreenState extends State<VictoryScreen>
                     const SizedBox(height: TavliSpacing.sm),
                     Text(
                       _playerWon ? TavliCopy.victoryBanner : TavliCopy.defeatBanner,
-                      style: TextStyle(
+                      style: theme.textTheme.displayLarge!.copyWith(
                         color: accentColor,
-                        fontSize: 42,
-                        fontWeight: FontWeight.w700,
                         letterSpacing: 6,
                       ),
                     ),
                     const SizedBox(height: TavliSpacing.xxs),
                     Text(
                       _playerWon ? TavliCopy.victory : TavliCopy.defeat,
-                      style: const TextStyle(color: textColor, fontSize: 18),
+                      style: theme.textTheme.titleLarge!.copyWith(color: textColor),
                     ),
                   ],
                 ),
@@ -217,12 +219,12 @@ class _VictoryScreenState extends State<VictoryScreen>
                   ),
                   child: Column(
                     children: [
-                      _scoreLine(TavliCopy.result, _resultLabel(widget.result.type), textColor),
-                      _scoreLine(TavliCopy.multiplier, '${_resultMul(widget.result.type)}x', textColor),
+                      _scoreLine(TavliCopy.result, _resultLabel(widget.result.type), textColor, theme),
+                      _scoreLine(TavliCopy.multiplier, '${_resultMul(widget.result.type)}x', textColor, theme),
                       if (widget.result.cubeValue > 1)
-                        _scoreLine('Cube', '${widget.result.cubeValue}x', textColor),
+                        _scoreLine('Cube', '${widget.result.cubeValue}x', textColor, theme),
                       Divider(color: accentColor.withValues(alpha: 0.3), height: TavliSpacing.lg),
-                      _scoreLine(TavliCopy.totalPoints, '${widget.result.points}', textColor, bold: true),
+                      _scoreLine(TavliCopy.totalPoints, '${widget.result.points}', textColor, theme, bold: true),
                       if (_coinsEarned > 0) ...[
                         const SizedBox(height: TavliSpacing.xs),
                         Row(
@@ -234,13 +236,12 @@ class _VictoryScreenState extends State<VictoryScreen>
                                     size: 16, color: TavliColors.warning),
                                 const SizedBox(width: 4),
                                 Text(TavliCopy.coinsEarned,
-                                    style: const TextStyle(color: TavliColors.light, fontSize: 14)),
+                                    style: theme.textTheme.bodyMedium!.copyWith(color: TavliColors.light)),
                               ],
                             ),
                             Text('+$_coinsEarned',
-                                style: const TextStyle(
+                                style: theme.textTheme.bodyLarge!.copyWith(
                                   color: TavliColors.warning,
-                                  fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                 )),
                           ],
@@ -263,15 +264,14 @@ class _VictoryScreenState extends State<VictoryScreen>
                         if (widget.opponentName != null)
                           Text(
                             'vs ${widget.opponentName}  ·  ',
-                            style: TextStyle(color: textColor.withValues(alpha: 0.7), fontSize: 14),
+                            style: theme.textTheme.bodyMedium!.copyWith(color: textColor.withValues(alpha: 0.7)),
                           ),
                         Text(
                           'Rating: ${widget.ratingDelta! >= 0 ? '+' : ''}${widget.ratingDelta}',
-                          style: TextStyle(
+                          style: theme.textTheme.bodyLarge!.copyWith(
                             color: widget.ratingDelta! >= 0
                                 ? TavliColors.success
                                 : TavliColors.error,
-                            fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -294,11 +294,11 @@ class _VictoryScreenState extends State<VictoryScreen>
                   ),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 18,
                         backgroundColor: TavliColors.surface,
-                        child: Text('Μ', style: TextStyle(
-                          color: TavliColors.primary, fontSize: 18, fontWeight: FontWeight.bold,
+                        child: Text('Μ', style: theme.textTheme.headlineSmall!.copyWith(
+                          color: TavliColors.primary, fontWeight: FontWeight.bold,
                         )),
                       ),
                       const SizedBox(width: TavliSpacing.sm),
@@ -307,8 +307,8 @@ class _VictoryScreenState extends State<VictoryScreen>
                           _dialogue.currentLine ?? (_playerWon
                               ? 'You beat me! We play again?'
                               : 'Better luck next time, φίλε μου!'),
-                          style: const TextStyle(
-                            color: textColor, fontSize: 14, fontStyle: FontStyle.italic,
+                          style: theme.textTheme.bodyMedium!.copyWith(
+                            color: textColor, fontStyle: FontStyle.italic,
                           ),
                         ),
                       ),
@@ -408,17 +408,18 @@ class _VictoryScreenState extends State<VictoryScreen>
     );
   }
 
-  Widget _scoreLine(String label, String value, Color textColor, {bool bold = false}) {
+  Widget _scoreLine(String label, String value, Color textColor, ThemeData theme, {bool bold = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: TavliSpacing.xxs),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: textColor, fontSize: 14)),
-          Text(value, style: TextStyle(
-            color: textColor, fontSize: bold ? 21 : 16,
-            fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-          )),
+          Text(label, style: theme.textTheme.bodyMedium!.copyWith(color: textColor)),
+          Text(value, style: bold
+              ? theme.textTheme.headlineMedium!.copyWith(
+                  color: textColor, fontWeight: FontWeight.w700,
+                )
+              : theme.textTheme.bodyLarge!.copyWith(color: textColor)),
         ],
       ),
     );

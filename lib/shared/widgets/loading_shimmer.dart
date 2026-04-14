@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/colors.dart';
+import '../providers/accessibility_providers.dart';
 
 /// Shimmer loading placeholder for content that's being fetched.
 class LoadingShimmer extends StatefulWidget {
@@ -36,10 +37,11 @@ class _LoadingShimmerState extends State<LoadingShimmer>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
+    _controller = AnimationController(vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.duration = ReducedMotion.duration(context, const Duration(milliseconds: 1500));
+      _controller.repeat();
+    });
   }
 
   @override

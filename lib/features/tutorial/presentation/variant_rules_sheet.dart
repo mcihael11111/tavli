@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../game/domain/engine/variants/game_variant.dart';
 
@@ -22,10 +21,11 @@ class VariantRulesSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final info = _VariantInfo.forVariant(variant);
 
     return Container(
-      margin: const EdgeInsets.all(12),
+      margin: const EdgeInsets.all(TavliSpacing.sm),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.75,
       ),
@@ -63,16 +63,14 @@ class VariantRulesSheet extends StatelessWidget {
                   children: [
                     Text(
                       '${variant.displayName} (${variant.nativeName})',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontFamily: TavliTheme.serifFamily,
+                      style: theme.textTheme.headlineMedium!.copyWith(
                         fontWeight: FontWeight.w600,
                         color: TavliColors.text,
                       ),
                     ),
                     Text(
                       '${variant.tradition.displayName} \u2022 ${variant.mechanicFamily.displayName}',
-                      style: const TextStyle(
+                      style: theme.textTheme.bodySmall!.copyWith(
                         fontSize: 13,
                         color: TavliColors.primary,
                       ),
@@ -84,28 +82,28 @@ class VariantRulesSheet extends StatelessWidget {
             const SizedBox(height: TavliSpacing.lg),
 
             // Setup section.
-            _sectionHeader('Setup'),
-            _bulletPoint(info.startingPosition),
-            _bulletPoint(info.movementDirection),
+            _sectionHeader(theme, 'Setup'),
+            _bulletPoint(theme, info.startingPosition),
+            _bulletPoint(theme, info.movementDirection),
 
             const SizedBox(height: TavliSpacing.md),
 
             // Core mechanic section.
-            _sectionHeader('Core Mechanic'),
-            for (final rule in info.coreMechanic) _bulletPoint(rule),
+            _sectionHeader(theme, 'Core Mechanic'),
+            for (final rule in info.coreMechanic) _bulletPoint(theme, rule),
 
             const SizedBox(height: TavliSpacing.md),
 
             // Special rules section.
             if (info.specialRules.isNotEmpty) ...[
-              _sectionHeader('Special Rules'),
-              for (final rule in info.specialRules) _bulletPoint(rule),
+              _sectionHeader(theme, 'Special Rules'),
+              for (final rule in info.specialRules) _bulletPoint(theme, rule),
               const SizedBox(height: TavliSpacing.md),
             ],
 
             // Scoring section.
-            _sectionHeader('Scoring'),
-            for (final rule in info.scoring) _bulletPoint(rule),
+            _sectionHeader(theme, 'Scoring'),
+            for (final rule in info.scoring) _bulletPoint(theme, rule),
 
             const SizedBox(height: TavliSpacing.lg),
 
@@ -123,14 +121,12 @@ class VariantRulesSheet extends StatelessWidget {
     );
   }
 
-  Widget _sectionHeader(String title) {
+  Widget _sectionHeader(ThemeData theme, String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: TavliSpacing.xs),
       child: Text(
         title,
-        style: TextStyle(
-          fontSize: 16,
-          fontFamily: TavliTheme.serifFamily,
+        style: theme.textTheme.titleMedium!.copyWith(
           fontWeight: FontWeight.w600,
           color: TavliColors.text,
         ),
@@ -138,9 +134,9 @@ class VariantRulesSheet extends StatelessWidget {
     );
   }
 
-  Widget _bulletPoint(String text) {
+  Widget _bulletPoint(ThemeData theme, String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.only(bottom: TavliSpacing.xxs),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -152,7 +148,7 @@ class VariantRulesSheet extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 14, height: 1.4, color: TavliColors.text),
+              style: theme.textTheme.bodyMedium!.copyWith(height: 1.4, color: TavliColors.text),
             ),
           ),
         ],
@@ -341,6 +337,34 @@ class _VariantInfo {
             'Mother piece rule: pinning opponent\'s last checker on start = immediate loss (2 pts)',
             'Both mothers pinned = draw',
             'Same rules as Plakoto from the Arabic tradition',
+          ],
+          scoring: ['Single: 1 pt', 'Gammon: 2 pts', 'Mother pinned: 2 pts'],
+        ),
+        GameVariant.tawla31 => const _VariantInfo(
+          icon: Icons.speed,
+          startingPosition: 'Standard backgammon setup',
+          movementDirection: 'Players move in opposite directions',
+          coreMechanic: [
+            'Hit lone opponent checkers to send them to the bar',
+            'Hit-and-run IS allowed — hit and continue moving past',
+          ],
+          specialRules: [
+            'Winner of opening roll re-rolls both dice',
+            'Points-race scoring — play to 31 points',
+          ],
+          scoring: ['Win: 1 pt', 'Mars (gammon): 2 pts', 'First to 31 wins'],
+        ),
+        GameVariant.mahbusaArab => const _VariantInfo(
+          icon: Icons.push_pin,
+          startingPosition: 'All 15 checkers on one point (opposite corners)',
+          movementDirection: 'Players move in opposite directions',
+          coreMechanic: [
+            'No hitting — land on a single opponent to PIN it',
+            'Pinned checkers cannot move until freed',
+          ],
+          specialRules: [
+            'Mother piece rule: pinning opponent\'s last checker on start = immediate loss (2 pts)',
+            'Both mothers pinned = draw',
           ],
           scoring: ['Single: 1 pt', 'Gammon: 2 pts', 'Mother pinned: 2 pts'],
         ),

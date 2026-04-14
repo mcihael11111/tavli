@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/constants/colors.dart';
 import '../../domain/mechanic_comparisons.dart';
 
@@ -11,6 +10,7 @@ class ComparisonTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -24,9 +24,7 @@ class ComparisonTable extends StatelessWidget {
                 Expanded(
                   child: Text(
                     variant.displayName,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontFamily: TavliTheme.serifFamily,
+                    style: theme.textTheme.labelSmall!.copyWith(
                       fontWeight: FontWeight.w600,
                       color: TavliColors.light,
                     ),
@@ -38,12 +36,12 @@ class ComparisonTable extends StatelessWidget {
         ),
 
         // Rows.
-        for (final row in comparison.rows) _buildRow(row),
+        for (final row in comparison.rows) _buildRow(theme, row),
       ],
     );
   }
 
-  Widget _buildRow(ComparisonRow row) {
+  Widget _buildRow(ThemeData theme, ComparisonRow row) {
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: TavliSpacing.xs,
@@ -60,8 +58,7 @@ class ComparisonTable extends StatelessWidget {
             width: 100,
             child: Text(
               row.rule,
-              style: const TextStyle(
-                fontSize: 12,
+              style: theme.textTheme.labelMedium!.copyWith(
                 fontWeight: FontWeight.w500,
                 color: TavliColors.light,
               ),
@@ -106,8 +103,7 @@ class _ValueCell extends StatelessWidget {
 
     return Text(
       value,
-      style: TextStyle(
-        fontSize: 11,
+      style: Theme.of(context).textTheme.labelSmall!.copyWith(
         color: value == '—'
             ? TavliColors.light.withValues(alpha: 0.3)
             : TavliColors.light.withValues(alpha: 0.8),

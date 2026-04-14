@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import '../../game/data/models/board_state.dart';
 import '../../game/domain/engine/variants/game_variant.dart';
@@ -107,7 +108,8 @@ class FirestoreMultiplayerService {
       }
 
       return result;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Firestore.joinRoom: $e');
       return false;
     }
   }
@@ -156,7 +158,8 @@ class FirestoreMultiplayerService {
         transaction.set(docRef, updated.toJson());
       });
       return true;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Firestore.submitTurn: $e');
       return false;
     }
   }
@@ -173,7 +176,8 @@ class FirestoreMultiplayerService {
         'turnStartedAt': DateTime.now().toIso8601String(),
       });
       return dice;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Firestore.rollDice: $e');
       return null;
     }
   }
@@ -194,9 +198,13 @@ class FirestoreMultiplayerService {
 
   /// Offer a double.
   Future<void> offerDouble(String gameId, String fromPlayer) async {
-    await _rooms.doc(gameId).update({
-      'pendingDoubleFrom': fromPlayer,
-    });
+    try {
+      await _rooms.doc(gameId).update({
+        'pendingDoubleFrom': fromPlayer,
+      });
+    } catch (e) {
+      debugPrint('Firestore.offerDouble: $e');
+    }
   }
 
   /// Respond to a double offer.
@@ -205,36 +213,44 @@ class FirestoreMultiplayerService {
     required bool accepted,
     required DoublingCubeState newCubeState,
   }) async {
-    if (accepted) {
-      await _rooms.doc(gameId).update({
-        'pendingDoubleFrom': null,
-        'doublingCube': newCubeState.toJson(),
-      });
-    } else {
-      // Declined — game over.
-      final room = await getRoom(gameId);
-      if (room == null) return;
+    try {
+      if (accepted) {
+        await _rooms.doc(gameId).update({
+          'pendingDoubleFrom': null,
+          'doublingCube': newCubeState.toJson(),
+        });
+      } else {
+        // Declined — game over.
+        final room = await getRoom(gameId);
+        if (room == null) return;
 
-      // The player who offered the double wins.
-      final winner = room.pendingDoubleFrom;
-      await _rooms.doc(gameId).update({
-        'pendingDoubleFrom': null,
-        'status': GameRoomStatus.finished.name,
-        'winner': winner,
-      });
+        // The player who offered the double wins.
+        final winner = room.pendingDoubleFrom;
+        await _rooms.doc(gameId).update({
+          'pendingDoubleFrom': null,
+          'status': GameRoomStatus.finished.name,
+          'winner': winner,
+        });
+      }
+    } catch (e) {
+      debugPrint('Firestore.respondToDouble: $e');
     }
   }
 
   /// End game with a winner.
   Future<void> endGame(String gameId, String winner) async {
-    await _rooms.doc(gameId).update({
-      'status': GameRoomStatus.finished.name,
-      'winner': winner,
-      'lastMoveAt': DateTime.now().toIso8601String(),
-    });
+    try {
+      await _rooms.doc(gameId).update({
+        'status': GameRoomStatus.finished.name,
+        'winner': winner,
+        'lastMoveAt': DateTime.now().toIso8601String(),
+      });
 
-    // Unsubscribe from game notifications.
-    await NotificationService.instance.unsubscribeFromGame(gameId);
+      // Unsubscribe from game notifications.
+      await NotificationService.instance.unsubscribeFromGame(gameId);
+    } catch (e) {
+      debugPrint('Firestore.endGame: $e');
+    }
   }
 
   /// Send a quick chat message.
@@ -244,12 +260,16 @@ class FirestoreMultiplayerService {
     required String senderName,
     required int messageIndex,
   }) async {
-    await _rooms.doc(gameId).collection('chat').add({
-      'senderUid': senderUid,
-      'senderName': senderName,
-      'messageIndex': messageIndex,
-      'timestamp': FieldValue.serverTimestamp(),
-    });
+    try {
+      await _rooms.doc(gameId).collection('chat').add({
+        'senderUid': senderUid,
+        'senderName': senderName,
+        'messageIndex': messageIndex,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('Firestore.sendChat: $e');
+    }
   }
 
   /// Watch chat messages for a game room.
@@ -266,21 +286,29 @@ class FirestoreMultiplayerService {
 
   /// Update heartbeat for disconnect detection.
   Future<void> updateHeartbeat(String gameId, String playerKey) async {
-    await _rooms.doc(gameId).update({
-      'heartbeats.$playerKey': DateTime.now().toIso8601String(),
-    });
+    try {
+      await _rooms.doc(gameId).update({
+        'heartbeats.$playerKey': DateTime.now().toIso8601String(),
+      });
+    } catch (e) {
+      debugPrint('Firestore.updateHeartbeat: $e');
+    }
   }
 
   /// Abandon a game (player disconnected too long).
   Future<void> abandonGame(String gameId, String abandonedByPlayer) async {
-    final winner = abandonedByPlayer == 'player1' ? 'player2' : 'player1';
-    await _rooms.doc(gameId).update({
-      'status': GameRoomStatus.abandoned.name,
-      'winner': winner,
-    });
+    try {
+      final winner = abandonedByPlayer == 'player1' ? 'player2' : 'player1';
+      await _rooms.doc(gameId).update({
+        'status': GameRoomStatus.abandoned.name,
+        'winner': winner,
+      });
 
-    // Unsubscribe from game notifications.
-    await NotificationService.instance.unsubscribeFromGame(gameId);
+      // Unsubscribe from game notifications.
+      await NotificationService.instance.unsubscribeFromGame(gameId);
+    } catch (e) {
+      debugPrint('Firestore.abandonGame: $e');
+    }
   }
 
   Map<String, dynamic> _boardStateToJson(BoardState state) => {

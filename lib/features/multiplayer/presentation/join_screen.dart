@@ -72,12 +72,12 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(TavliSpacing.md),
               child: Row(
                 children: [
-                  const Text(
+                  Text(
                     'Scan QR Code',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: Theme.of(ctx).textTheme.titleLarge!.copyWith(fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
                   IconButton(
@@ -132,19 +132,19 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
         ),
       ),
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xl),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.login, size: 48, color: TavliColors.primary),
-            const SizedBox(height: 24),
+            const SizedBox(height: TavliSpacing.lg),
             Text(
               'Enter Room Code',
               style: theme.textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: TavliSpacing.lg),
 
             // Code input.
             TextField(
@@ -162,25 +162,25 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
                   letterSpacing: 4,
                 ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(TavliRadius.md),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
+                  horizontal: TavliSpacing.md,
+                  vertical: TavliSpacing.md,
                 ),
               ),
               onSubmitted: (_) => _joinRoom(),
             ),
 
             if (_error != null) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: TavliSpacing.sm),
               Text(
                 _error!,
-                style: TextStyle(color: colors.error, fontSize: 13),
+                style: theme.textTheme.bodySmall!.copyWith(color: colors.error, fontSize: 13),
               ),
             ],
 
-            const SizedBox(height: 24),
+            const SizedBox(height: TavliSpacing.lg),
 
             // Join button.
             SizedBox(
@@ -200,7 +200,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
               ),
             ),
 
-            const SizedBox(height: 32),
+            const SizedBox(height: TavliSpacing.xl),
 
             // QR scan option.
             OutlinedButton.icon(
@@ -209,7 +209,7 @@ class _JoinScreenState extends ConsumerState<JoinScreen> {
               label: const Text('Scan QR Code'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
+                  horizontal: TavliSpacing.lg,
                   vertical: 14,
                 ),
               ),

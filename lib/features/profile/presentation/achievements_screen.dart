@@ -19,7 +19,7 @@ class AchievementsScreen extends StatelessWidget {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(TavliSpacing.md),
           children: [
             const SizedBox(height: kToolbarHeight + TavliSpacing.md),
 
@@ -28,7 +28,7 @@ class AchievementsScreen extends StatelessWidget {
               icon: Icons.emoji_events,
               title: '${service.unlockedCount} / ${service.totalCount} Unlocked',
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(TavliRadius.xs),
                 child: LinearProgressIndicator(
                   value: service.totalCount > 0
                       ? service.unlockedCount / service.totalCount
@@ -39,15 +39,15 @@ class AchievementsScreen extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: TavliSpacing.lg),
 
             // Unlocked.
             if (service.unlockedAchievements.isNotEmpty) ...[
-              _SectionLabel('Unlocked'),
-              const SizedBox(height: 8),
+              const _SectionLabel('Unlocked'),
+              const SizedBox(height: TavliSpacing.xs),
               for (final a in service.unlockedAchievements)
                 _AchievementTile(achievement: a, unlocked: true),
-              const SizedBox(height: 24),
+              const SizedBox(height: TavliSpacing.lg),
             ],
 
             // All locked achievements grouped.
@@ -67,11 +67,11 @@ class AchievementsScreen extends StatelessWidget {
       if (catAchievements.isEmpty) continue;
 
       widgets.add(_SectionLabel(_categoryLabel(cat)));
-      widgets.add(const SizedBox(height: 8));
+      widgets.add(const SizedBox(height: TavliSpacing.xs));
       for (final a in catAchievements) {
         widgets.add(_AchievementTile(achievement: a, unlocked: false));
       }
-      widgets.add(const SizedBox(height: 16));
+      widgets.add(const SizedBox(height: TavliSpacing.md));
     }
     return widgets;
   }
@@ -92,9 +92,9 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       text.toUpperCase(),
-      style: TextStyle(
-        fontSize: 12, letterSpacing: 1.5,
-        fontWeight: FontWeight.w600, color: TavliColors.light.withValues(alpha: 0.7),
+      style: Theme.of(context).textTheme.labelMedium!.copyWith(
+        letterSpacing: 1.5,
+        fontWeight: FontWeight.w600, color: TavliColors.disabledOnPrimary,
       ),
     );
   }
@@ -117,26 +117,24 @@ class _AchievementTile extends StatelessWidget {
             style: const TextStyle(fontSize: 24),
           ),
           title: achievement.name,
+          trailing: unlocked
+              ? const Icon(Icons.check_circle, color: TavliColors.light, size: 20)
+              : null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(achievement.nameGreek,
-                  style: TextStyle(
-                    fontSize: 12,
+                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
                     fontStyle: FontStyle.italic,
-                    color: TavliColors.light.withValues(alpha: 0.6),
+                    color: TavliColors.disabledOnPrimary,
                   )),
-              const SizedBox(height: 2),
+              const SizedBox(height: TavliSpacing.xxxs),
               Text(achievement.description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: TavliColors.light.withValues(alpha: 0.8),
+                  style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                    color: TavliColors.disabledOnPrimary,
                   )),
             ],
           ),
-          trailing: unlocked
-              ? const Icon(Icons.check_circle, color: TavliColors.light, size: 20)
-              : null,
         ),
       ),
     );

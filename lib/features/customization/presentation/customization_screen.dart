@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/providers/accessibility_providers.dart';
 import '../../../shared/services/copy_service.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../../shared/widgets/content_module.dart';
@@ -98,13 +99,17 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
 
             // Coin balance + shop link.
             Center(
-              child: GestureDetector(
-                onTap: () => context.push('/shop'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: TavliSpacing.md,
-                    vertical: TavliSpacing.xs,
-                  ),
+              child: Semantics(
+                button: true,
+                label: 'Open shop',
+                child: GestureDetector(
+                  onTap: () => context.push('/shop'),
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: TavliSpacing.md,
+                      vertical: TavliSpacing.xs,
+                    ),
                   decoration: BoxDecoration(
                     color: TavliColors.primary,
                     borderRadius: BorderRadius.circular(TavliRadius.full),
@@ -115,7 +120,7 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
                     children: [
                       const Icon(Icons.monetization_on,
                           size: 16, color: TavliColors.warning),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: TavliSpacing.xxs),
                       Text(
                         '${shop.coins}',
                         style: const TextStyle(
@@ -126,10 +131,10 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
                       const SizedBox(width: TavliSpacing.sm),
                       const Icon(Icons.storefront,
                           size: 16, color: TavliColors.light),
-                      const SizedBox(width: 4),
-                      const Text(
+                      const SizedBox(width: TavliSpacing.xxs),
+                      Text(
                         'Shop',
-                        style: TextStyle(
+                        style: theme.textTheme.bodySmall!.copyWith(
                           fontWeight: FontWeight.w600,
                           color: TavliColors.light,
                           fontSize: 13,
@@ -138,13 +143,14 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
                     ],
                   ),
                 ),
+                ),
               ),
             ),
 
             const SizedBox(height: TavliSpacing.lg),
 
             // ── Board section ──────────────────────────
-            _SectionHeader(icon: Icons.grid_on, title: 'Board'),
+            const _SectionHeader(icon: Icons.grid_on, title: 'Board'),
             const SizedBox(height: TavliSpacing.sm),
             SizedBox(
               height: 180,
@@ -199,7 +205,7 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
             const SizedBox(height: TavliSpacing.lg),
 
             // ── Checkers section ───────────────────────
-            _SectionHeader(icon: Icons.circle, title: 'Checkers'),
+            const _SectionHeader(icon: Icons.circle, title: 'Checkers'),
             const SizedBox(height: TavliSpacing.sm),
             SizedBox(
               height: 160,
@@ -259,7 +265,7 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
             const SizedBox(height: TavliSpacing.lg),
 
             // ── Dice section ───────────────────────────
-            _SectionHeader(icon: Icons.casino, title: 'Dice'),
+            const _SectionHeader(icon: Icons.casino, title: 'Dice'),
             const SizedBox(height: TavliSpacing.sm),
             SizedBox(
               height: 150,
@@ -314,8 +320,8 @@ class _CustomizationScreenState extends ConsumerState<CustomizationScreen> {
             const SizedBox(height: TavliSpacing.xl),
 
             // Info module.
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: TavliSpacing.md),
               child: ContentModule(
                 icon: Icons.info_outline,
                 title: 'Note',
@@ -340,6 +346,7 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md),
       child: Row(
@@ -348,10 +355,8 @@ class _SectionHeader extends StatelessWidget {
           const SizedBox(width: TavliSpacing.sm),
           Text(
             title,
-            style: TextStyle(
+            style: theme.textTheme.titleLarge!.copyWith(
               color: TavliColors.light,
-              fontSize: 18,
-              fontFamily: 'Poppins',
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -380,6 +385,7 @@ class _BoardOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return _OptionCard(
       selected: selected,
       owned: owned,
@@ -412,24 +418,22 @@ class _BoardOption extends StatelessWidget {
           const SizedBox(height: TavliSpacing.xs),
           Text(
             name,
-            style: TextStyle(
-              fontSize: 14,
+            style: theme.textTheme.labelLarge!.copyWith(
               fontWeight: FontWeight.w600,
-              color: owned ? TavliColors.light : TavliColors.light.withValues(alpha: 0.5),
+              color: owned ? TavliColors.light : TavliColors.disabledOnPrimary,
             ),
             textAlign: TextAlign.center,
           ),
           Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 11,
-              color: TavliColors.light.withValues(alpha: 0.6),
+            style: theme.textTheme.labelSmall!.copyWith(
+              color: TavliColors.disabledOnPrimary,
             ),
             textAlign: TextAlign.center,
           ),
           if (selected && owned)
             const Padding(
-              padding: EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: TavliSpacing.xxs),
               child: Icon(Icons.check_circle, size: 22, color: TavliColors.light),
             ),
         ],
@@ -459,6 +463,7 @@ class _CheckerOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return _OptionCard(
       selected: selected,
       owned: owned,
@@ -489,24 +494,22 @@ class _CheckerOption extends StatelessWidget {
           const SizedBox(height: TavliSpacing.xs),
           Text(
             name,
-            style: TextStyle(
-              fontSize: 14,
+            style: theme.textTheme.labelLarge!.copyWith(
               fontWeight: FontWeight.w600,
-              color: owned ? TavliColors.light : TavliColors.light.withValues(alpha: 0.5),
+              color: owned ? TavliColors.light : TavliColors.disabledOnPrimary,
             ),
             textAlign: TextAlign.center,
           ),
           Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 11,
-              color: TavliColors.light.withValues(alpha: 0.6),
+            style: theme.textTheme.labelSmall!.copyWith(
+              color: TavliColors.disabledOnPrimary,
             ),
             textAlign: TextAlign.center,
           ),
           if (selected && owned)
             const Padding(
-              padding: EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: TavliSpacing.xxs),
               child: Icon(Icons.check_circle, size: 22, color: TavliColors.light),
             ),
         ],
@@ -534,6 +537,7 @@ class _DiceOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return _OptionCard(
       selected: selected,
       owned: owned,
@@ -571,16 +575,15 @@ class _DiceOption extends StatelessWidget {
           const SizedBox(height: TavliSpacing.xs),
           Text(
             name,
-            style: TextStyle(
-              fontSize: 14,
+            style: theme.textTheme.labelLarge!.copyWith(
               fontWeight: FontWeight.w600,
-              color: owned ? TavliColors.light : TavliColors.light.withValues(alpha: 0.5),
+              color: owned ? TavliColors.light : TavliColors.disabledOnPrimary,
             ),
             textAlign: TextAlign.center,
           ),
           if (selected && owned)
             const Padding(
-              padding: EdgeInsets.only(top: 4),
+              padding: EdgeInsets.only(top: TavliSpacing.xxs),
               child: Icon(Icons.check_circle, size: 22, color: TavliColors.light),
             ),
         ],
@@ -633,7 +636,7 @@ class _OptionCardState extends State<_OptionCard> {
           child: SizedBox(
             width: _CustomizationScreenState._cardWidth,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 150),
+              duration: ReducedMotion.duration(context, const Duration(milliseconds: 150)),
               curve: Curves.easeInOut,
               transform: _pressed
                   ? Matrix4.diagonal3Values(0.98, 0.98, 1.0)

@@ -142,7 +142,7 @@ class _LearnHubScreenState extends ConsumerState<LearnHubScreen> {
                 _sectionHeader('Explore Other Traditions'),
                 const SizedBox(height: TavliSpacing.sm),
                 for (int i = 0; i < discoveries.length; i++) ...[
-                  if (i > 0) const SizedBox(height: 10),
+                  if (i > 0) const SizedBox(height: TavliSpacing.sm),
                   TraditionSectionWidget(
                     section: discoveries[i],
                     tradition: discoveries[i].tradition!,
@@ -176,9 +176,7 @@ class _LearnHubScreenState extends ConsumerState<LearnHubScreen> {
   Widget _sectionHeader(String text) {
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 18,
-        fontFamily: TavliTheme.serifFamily,
+      style: Theme.of(context).textTheme.titleLarge!.copyWith(
         fontWeight: FontWeight.w600,
         color: TavliColors.light,
       ),
@@ -189,7 +187,7 @@ class _LearnHubScreenState extends ConsumerState<LearnHubScreen> {
     return Column(
       children: [
         for (int i = 0; i < section.lessons.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
+          if (i > 0) const SizedBox(height: TavliSpacing.sm),
           LessonListItem(
             lesson: section.lessons[i],
             status: _statuses[section.lessons[i].id] ?? LessonStatus.notStarted,
@@ -204,7 +202,7 @@ class _LearnHubScreenState extends ConsumerState<LearnHubScreen> {
     return Column(
       children: [
         for (int i = 0; i < section.lessons.length; i++) ...[
-          if (i > 0) const SizedBox(height: 10),
+          if (i > 0) const SizedBox(height: TavliSpacing.sm),
           LessonListItem(
             lesson: section.lessons[i],
             status: _statuses[section.lessons[i].id] ?? LessonStatus.notStarted,

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/widgets/error_state.dart';
 import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../auth/presentation/auth_provider.dart';
 import '../../social/invite/invite_service.dart';
@@ -27,6 +28,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
   bool _creating = false;
   StreamSubscription<GameRoom>? _roomSubscription;
   bool _opponentJoined = false;
+  String? _roomError;
 
   @override
   void initState() {
@@ -54,12 +56,18 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
     });
 
     // Watch for opponent joining.
-    _roomSubscription = service.watchRoom(roomId).listen((room) {
-      if (room.status == GameRoomStatus.inProgress && !_opponentJoined) {
-        _opponentJoined = true;
-        _navigateToGame(profile.uid);
-      }
-    });
+    _roomSubscription = service.watchRoom(roomId).listen(
+      (room) {
+        if (room.status == GameRoomStatus.inProgress && !_opponentJoined) {
+          _opponentJoined = true;
+          _navigateToGame(profile.uid);
+        }
+      },
+      onError: (error) {
+        debugPrint('Invite room stream error: $error');
+        if (mounted) setState(() => _roomError = error.toString());
+      },
+    );
   }
 
   void _navigateToGame(String playerUid) {
@@ -90,11 +98,17 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
           onPressed: () => context.pop(),
         ),
       ),
-      body: _creating || _gameRoomId == null
+      body: _roomError != null
+          ? ErrorStateWidget(
+              title: 'Room error',
+              message: 'Could not watch for opponent.',
+              onRetry: _createRoom,
+            )
+          : _creating || _gameRoomId == null
           ? const Center(child: CircularProgressIndicator())
           : Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.xl),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -105,24 +119,27 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                         color: colors.onSurface.withValues(alpha: 0.6),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () {
-                        Clipboard.setData(
-                            ClipboardData(text: _gameRoomId!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Room code copied!'),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      child: Container(
+                    const SizedBox(height: TavliSpacing.xs),
+                    Semantics(
+                      button: true,
+                      label: 'Copy room code',
+                      child: GestureDetector(
+                        onTap: () {
+                          Clipboard.setData(
+                              ClipboardData(text: _gameRoomId!));
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Room code copied!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                        },
+                        child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 24, vertical: 12),
+                            horizontal: TavliSpacing.lg, vertical: TavliSpacing.sm),
                         decoration: BoxDecoration(
                           color: TavliColors.primary,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(TavliRadius.md),
                           border: Border.all(color: TavliColors.background),
                         ),
                         child: Row(
@@ -135,21 +152,22 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                                 letterSpacing: 4,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: TavliSpacing.xs),
                             const Icon(Icons.copy,
                                 size: 20, color: TavliColors.primary),
                           ],
                         ),
                       ),
+                      ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: TavliSpacing.xl),
 
                     // QR code.
                     Container(
-                      padding: const EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(TavliSpacing.md),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(TavliRadius.lg),
                       ),
                       child: QrImageView(
                         data: _inviteService.generateQrData(_gameRoomId!),
@@ -157,7 +175,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                         size: 200,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: TavliSpacing.lg),
 
                     // Share button.
                     SizedBox(
@@ -177,7 +195,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: TavliSpacing.xl),
 
                     // Waiting indicator.
                     Row(
@@ -192,7 +210,7 @@ class _InviteScreenState extends ConsumerState<InviteScreen> {
                                 AlwaysStoppedAnimation(colors.primary),
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: TavliSpacing.sm),
                         Text(
                           'Waiting for opponent to join...',
                           style: theme.textTheme.bodyMedium?.copyWith(

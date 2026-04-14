@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
+import '../../../shared/providers/accessibility_providers.dart';
 import '../../../core/constants/tradition.dart';
 import '../../../shared/services/settings_service.dart';
 import '../../../shared/widgets/gradient_scaffold.dart';
@@ -51,10 +51,7 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2400),
-    );
+    _controller = AnimationController(vsync: this);
 
     // Phase 1: Icon (0% – 35%).
     _iconFade = Tween<double>(begin: 0.0, end: 1.0).animate(
@@ -124,13 +121,16 @@ class _SplashScreenState extends State<SplashScreen>
         _nativeSubtitle = tradition.nativeName;
         _iconLetter = _iconLetterFor(tradition);
       }
-    } catch (_) {
+    } catch (e) {
       // SettingsService not yet initialized — use defaults (first launch).
+      debugPrint('Splash init: $e');
     }
 
-    if (mounted) setState(() {});
+    if (!mounted) return;
+    setState(() {});
 
     // Start the entrance animation.
+    _controller.duration = ReducedMotion.duration(context, const Duration(milliseconds: 2400));
     _controller.forward();
 
     // Start cycling for first launch.
@@ -152,6 +152,7 @@ class _SplashScreenState extends State<SplashScreen>
         Tradition.tavla => 'T',
         Tradition.nardy => 'Н',
         Tradition.sheshBesh => 'ש',
+        Tradition.tawla => 'ط',
       };
 
   /// On first launch, subtly cycle through tradition native names.
@@ -185,6 +186,7 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return GradientScaffold(
       gradient: TavliGradients.deepScaffold,
       body: Semantics(
@@ -218,10 +220,8 @@ class _SplashScreenState extends State<SplashScreen>
                           child: Center(
                             child: Text(
                               _iconLetter,
-                              style: TextStyle(
+                              style: theme.textTheme.displayLarge!.copyWith(
                                 fontSize: 52,
-                                fontWeight: FontWeight.w700,
-                                fontFamily: TavliTheme.serifFamily,
                                 color: TavliColors.light,
                               ),
                             ),
@@ -239,11 +239,9 @@ class _SplashScreenState extends State<SplashScreen>
                         offset: Offset(0, _titleSlide.value),
                         child: Text(
                           _displayName,
-                          style: TextStyle(
+                          style: theme.textTheme.displayLarge!.copyWith(
                             color: TavliColors.light,
                             fontSize: 40,
-                            fontFamily: TavliTheme.serifFamily,
-                            fontWeight: FontWeight.w700,
                             letterSpacing: 2,
                           ),
                         ),
@@ -257,13 +255,11 @@ class _SplashScreenState extends State<SplashScreen>
                       opacity: _subtitleFade.value,
                       child: AnimatedOpacity(
                         opacity: _isFirstLaunch ? _cycleOpacity : 1.0,
-                        duration: const Duration(milliseconds: 300),
+                        duration: ReducedMotion.duration(context, const Duration(milliseconds: 300)),
                         child: Text(
                           _nativeSubtitle,
-                          style: TextStyle(
+                          style: theme.textTheme.labelLarge!.copyWith(
                             color: TavliColors.background,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
                             letterSpacing: _isFirstLaunch ? 1 : 6,
                           ),
                         ),
@@ -332,10 +328,11 @@ class _PulsingDotsState extends State<_PulsingDots>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
+    _controller = AnimationController(vsync: this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _controller.duration = ReducedMotion.duration(context, const Duration(milliseconds: 1200));
+      _controller.repeat();
+    });
   }
 
   @override

@@ -50,8 +50,8 @@ enum DifficultyLevel {
 
   /// Noise factor added to evaluations (0.0 = perfect, 1.0 = random).
   double get noiseFactor => switch (this) {
-        easy => 0.30,
-        easyWithHelp => 0.30,
+        easy => 0.15,
+        easyWithHelp => 0.15,
         medium => 0.10,
         hard => 0.05,
         pappous => 0.02,

@@ -69,34 +69,24 @@ class PlakotoEngine {
       );
     }
 
-    // Place checker at destination.
+    // Place checker at destination — capture value before modifying for pin detection.
+    final destBefore = pts[move.toPoint];
+
     if (player == 1) {
       pts[move.toPoint]++;
-      // Check for pinning: if opponent has a single checker here.
-      if (pts[move.toPoint] == 1 && _opponentCount(pts, move.toPoint, 1) == 1) {
-        // We just arrived and opponent has 1 checker — pin it.
+      // P1 landed on exactly 1 P2 checker (net was -1) → pin P2.
+      if (destBefore == -1 && !state.isPinned(move.toPoint)) {
         pins[move.toPoint] = 2; // Player 2 is pinned.
       }
     } else {
       pts[move.toPoint]--;
-      if (pts[move.toPoint] == -1 && _opponentCount(pts, move.toPoint, 2) == 1) {
+      // P2 landed on exactly 1 P1 checker (net was +1) → pin P1.
+      if (destBefore == 1 && !state.isPinned(move.toPoint)) {
         pins[move.toPoint] = 1; // Player 1 is pinned.
       }
     }
 
     return state.copyWith(points: pts, pins: pins);
-  }
-
-  /// Count opponent's checkers at a point in Plakoto.
-  /// Since both players can have checkers on the same point (pin),
-  /// we need to check the pins map.
-  int _opponentCount(List<int> pts, int pointIndex, int player) {
-    // In Plakoto, the points array holds the NET value.
-    // When a pin exists, we track it separately.
-    // For simplicity: if a pin exists at this point for the OTHER player,
-    // there is 1 opponent checker there.
-    // This is a simplified model — real Plakoto would need separate counts.
-    return 0; // Handled via pins map instead.
   }
 
   /// Check if a point is open for the player to land on.

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../app/theme.dart';
 import '../../../../core/constants/colors.dart';
 
 /// A titled list of bullet points for rule display.
@@ -15,6 +14,7 @@ class RuleSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     if (items.isEmpty) return const SizedBox.shrink();
 
     return Column(
@@ -25,9 +25,7 @@ class RuleSection extends StatelessWidget {
           padding: const EdgeInsets.only(bottom: TavliSpacing.xs),
           child: Text(
             title,
-            style: TextStyle(
-              fontSize: 16,
-              fontFamily: TavliTheme.serifFamily,
+            style: theme.textTheme.titleMedium!.copyWith(
               fontWeight: FontWeight.w600,
               color: TavliColors.light,
             ),
@@ -47,8 +45,7 @@ class RuleSection extends StatelessWidget {
                 Expanded(
                   child: Text(
                     item,
-                    style: const TextStyle(
-                      fontSize: 14,
+                    style: theme.textTheme.bodyMedium!.copyWith(
                       height: 1.4,
                       color: TavliColors.light,
                     ),

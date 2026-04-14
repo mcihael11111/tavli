@@ -42,14 +42,14 @@ class ProgressOverviewCard extends StatelessWidget {
             children: [
               Text(
                 '$completed of $total lessons complete',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
                   fontSize: 13,
                   color: TavliColors.light.withValues(alpha: 0.8),
                 ),
               ),
               Text(
                 '$percent%',
-                style: const TextStyle(
+                style: Theme.of(context).textTheme.bodySmall!.copyWith(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: TavliColors.light,

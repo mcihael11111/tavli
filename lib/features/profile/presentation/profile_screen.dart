@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../../app/theme.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/services/progression_service.dart';
 import '../../../shared/services/copy_service.dart';
@@ -15,6 +14,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final progression = ProgressionService.instance;
     final overall = progression.overallStats;
 
@@ -32,9 +32,7 @@ class ProfileScreen extends StatelessWidget {
               // Title.
               Text(
                 TavliCopy.profile,
-                style: TextStyle(
-                  fontSize: 32,
-                  fontFamily: TavliTheme.serifFamily,
+                style: theme.textTheme.displayMedium!.copyWith(
                   fontWeight: FontWeight.w400,
                   color: TavliColors.light,
                   letterSpacing: -0.64,
@@ -67,16 +65,14 @@ class ProfileScreen extends StatelessWidget {
                     Text(
                       '${SettingsService.instance.tradition.flagEmoji} '
                       '${SettingsService.instance.tradition.displayName} Player',
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: theme.textTheme.bodyMedium!.copyWith(
                         color: TavliColors.light,
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: TavliSpacing.xxxs),
                     Text(
                       rankTitle,
-                      style: TextStyle(
-                        fontSize: 12,
+                      style: theme.textTheme.bodySmall!.copyWith(
                         color: TavliColors.light.withValues(alpha: 0.8),
                       ),
                     ),
@@ -110,7 +106,7 @@ class ProfileScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/match-history'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: TavliSpacing.sm),
               ContentModule(
                 icon: Icons.emoji_events_outlined,
                 iconSize: 32,
@@ -119,7 +115,7 @@ class ProfileScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/achievements'),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: TavliSpacing.sm),
               ContentModule(
                 icon: Icons.trending_up,
                 iconSize: 32,
@@ -128,7 +124,7 @@ class ProfileScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () {},
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: TavliSpacing.sm),
               for (final level in DifficultyLevel.values) ...[
                 ContentModule(
                   icon: isUnlockedIcon(progression, level),
@@ -138,7 +134,7 @@ class ProfileScreen extends StatelessWidget {
                   trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                   onTap: () {},
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: TavliSpacing.sm),
               ],
 
               // Extra padding for bottom nav gradient.
@@ -178,23 +174,21 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Expanded(
       child: Center(
         child: Column(
           children: [
             Text(
               value,
-              style: TextStyle(
-                fontSize: 18,
-                fontFamily: TavliTheme.serifFamily,
+              style: theme.textTheme.titleLarge!.copyWith(
                 fontWeight: FontWeight.w500,
                 color: TavliColors.light,
               ),
             ),
             Text(
               label,
-              style: TextStyle(
-                fontSize: 14,
+              style: theme.textTheme.bodyMedium!.copyWith(
                 color: TavliColors.light.withValues(alpha: 0.8),
               ),
             ),
