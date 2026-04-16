@@ -134,15 +134,19 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
     final cy = radius;
 
     // ── Drop shadow on board surface ─────────────────────────
-    final shadowOffsetY = 4.0 + stackPosition * 0.5;
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(cx + 3, cy + shadowOffsetY + _thickness),
-        width: radius * 2.15,
-        height: _ellipseH * 2.15,
-      ),
-      LightingSystem.dropShadowPaint(opacity: 0.45, blur: 6),
-    );
+    // Fade shadow for stacked checkers to avoid dark accumulation.
+    final shadowOpacity = stackPosition == 0 ? 0.45 : (0.15 / (stackPosition + 1));
+    if (shadowOpacity > 0.02) {
+      final shadowOffsetY = 4.0 + stackPosition * 0.5;
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(cx + 3, cy + shadowOffsetY + _thickness),
+          width: radius * 2.15,
+          height: _ellipseH * 2.15,
+        ),
+        LightingSystem.dropShadowPaint(opacity: shadowOpacity, blur: 6),
+      );
+    }
 
     // ── Side band (cylinder body) ────────────────────────────
     _drawCylinderSide(canvas, cx, cy);
@@ -373,7 +377,7 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
   /// Returns a Future that completes when the animation finishes.
   /// Cancels any in-progress animation first.
   Future<void> animateMoveTo(Vector2 target, {
-    double duration = 0.35,
+    double duration = 0.22,
     Curve curve = Curves.easeInOutCubic,
   }) {
     // Cancel any existing animation to prevent overlap.

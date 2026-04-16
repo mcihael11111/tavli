@@ -45,6 +45,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   bool _animationInProgress = false;
   bool _showOpeningResult = false;
 
+  /// Fixed reserved height for the action area (ROLL button / move controls).
+  /// Keeping this constant prevents the board from jumping when the button
+  /// content changes between ROLL, undo/complete, and empty.
+  static const double _actionAreaHeight = 72;
+
   BotPersonality get _personality => SettingsService.instance.botPersonality;
 
   @override
@@ -225,6 +230,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // Check if player has no legal moves after rolling.
     if (afterRoll.phase == GamePhase.turnComplete) {
       _announce('No legal moves. Your turn is skipped.');
+      // Visual feedback — previously the dialogue bar masked this; now we
+      // surface a transient SnackBar so sighted players know why the turn
+      // passes to the AI without action.
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(TavliCopy.noLegalMovesSkipped),
+            duration: const Duration(milliseconds: 1500),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       return;
     }
 
@@ -240,6 +257,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   /// Teaching mode: evaluate the player's last move and give feedback.
+  ///
+  /// After the dialogue bar was removed, the old `_dialogue.trigger(...)`
+  /// calls produced no visible feedback — teaching mode was effectively
+  /// broken for sighted players. We now surface the verdict via a transient
+  /// SnackBar (consistent with the turn-skip feedback pattern) AND keep the
+  /// dialogue triggers so the victory screen still has persona context.
   void _checkTeachingFeedback() {
     final gs = ref.read(gameProvider);
     if (gs.currentTurnMoves.isEmpty) return;
@@ -254,14 +277,36 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       variant: widget.variant,
     );
 
+    final String message;
+    final Color bg;
     if (equityLoss > 0.04) {
       _dialogue.trigger(DialogueEvent.teachingMistakeExplain, widget.difficulty, personality: _personality);
+      message = TavliCopy.teachingMistake;
+      bg = TavliColors.error;
+      _announce(message);
     } else if (equityLoss > 0.015) {
       _dialogue.trigger(DialogueEvent.playerBadMove, widget.difficulty, personality: _personality);
+      message = TavliCopy.teachingBadMove;
+      bg = TavliColors.surface;
+      _announce(message);
     } else {
       _dialogue.trigger(DialogueEvent.playerGoodMove, widget.difficulty, personality: _personality);
+      message = TavliCopy.teachingGoodMove;
+      bg = TavliColors.success;
+      _announce(message);
     }
-    if (mounted) setState(() {});
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          duration: const Duration(milliseconds: 1800),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: bg,
+        ),
+      );
+      setState(() {});
+    }
   }
 
   /// Teaching mode: compute move quality for each available move.
@@ -312,7 +357,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _navigatingToVictory = true;
 
     // Small delay so the player sees the final board state.
-    Future.delayed(const Duration(milliseconds: 800), () {
+    Future.delayed(const Duration(milliseconds: 500), () {
       if (!mounted) return;
       context.go('/victory', extra: {
         'result': gs.result,
@@ -326,7 +371,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _aiThinking = true;
     if (mounted) setState(() {});
 
-    await Future.delayed(const Duration(milliseconds: 600));
+    // Exception safety: if any awaited call throws (AI bug, bad state, etc.)
+    // we must clear _aiThinking or the game is stuck in "bot is thinking"
+    // forever. Existing inline resets stay for the legitimate early-return
+    // paths; the finally block only kicks in when code actually throws.
+    try {
+    // Brief "thinking" beat — enough to register intent, short enough to
+    // keep pace snappy. Was 600 ms; trimmed after pacing QA.
+    await Future.delayed(const Duration(milliseconds: 350));
     if (!mounted) { _aiThinking = false; return; }
 
     final notifier = ref.read(gameProvider.notifier);
@@ -347,7 +399,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // AI rolls.
     _audio.playSfx(SfxType.diceRoll);
     notifier.rollDice();
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Short breather so the player sees the dice before movement starts.
+    await Future.delayed(const Duration(milliseconds: 280));
     if (!mounted) { _aiThinking = false; return; }
 
     final afterRoll = ref.read(gameProvider);
@@ -356,7 +409,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       // No legal moves — announce and advance.
       _announce('${_personality.displayName} has no legal moves. Turn skipped.');
       _dialogue.trigger(DialogueEvent.mikhailRollBad, widget.difficulty, personality: _personality);
-      if (mounted) setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              TavliCopy.opponentNoMovesSkipped(_personality.displayName),
+            ),
+            duration: const Duration(milliseconds: 1500),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        setState(() {});
+      }
       if (afterRoll.phase == GamePhase.turnComplete) {
         notifier.nextTurn();
       }
@@ -380,7 +444,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     if (aiTurn != null) {
       for (final move in aiTurn.moves) {
-        await Future.delayed(const Duration(milliseconds: 150));
+        // Gap between successive AI moves — just long enough to be legible.
+        await Future.delayed(const Duration(milliseconds: 80));
         if (!mounted) { _aiThinking = false; return; }
 
         // Apply via notifier — selectChecker + makeMove.
@@ -415,7 +480,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       }
     }
 
-    await Future.delayed(const Duration(milliseconds: 200));
+    // Tiny settle beat before handing control back to the player.
+    await Future.delayed(const Duration(milliseconds: 120));
     if (!mounted) { _aiThinking = false; return; }
 
     final afterMoves = ref.read(gameProvider);
@@ -427,6 +493,16 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     _aiThinking = false;
     if (mounted) setState(() {});
+    } catch (e, stack) {
+      // Failsafe: guarantee the "thinking" flag clears so the player can act.
+      // Log to stderr; a real build pipes this through reportError/Crashlytics.
+      debugPrint('AI turn failed: $e\n$stack');
+    } finally {
+      if (_aiThinking) {
+        _aiThinking = false;
+        if (mounted) setState(() {});
+      }
+    }
   }
 
   Future<void> _handleAiDoubleResponse() async {
@@ -485,9 +561,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
       if (gs.currentRoll != null) {
         _game.showDice(gs.currentRoll!.die1, gs.currentRoll!.die2, gs.remainingDice);
-      } else if (gs.phase == GamePhase.playerTurnStart && gs.isPlayerTurn) {
-        _game.showRollPrompt();
       } else {
+        // Roll affordance during playerTurnStart is the Flutter ROLL button
+        // below the board (see _buildRollButton). Do NOT also show the on-board
+        // "TAP TO ROLL" pill — duplicate affordances confuse the player.
         _game.hideDice();
       }
     }
@@ -542,8 +619,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                       ],
                     ),
                   ),
-                  _buildDialogueBar(),
-                  _buildActionArea(gs),
+                  // Fixed-height action area prevents the board from shifting
+                  // as the ROLL button / move-controls appear and disappear.
+                  SizedBox(height: _actionAreaHeight, child: _buildActionArea(gs)),
                   _buildBottomBar(gs),
                 ],
               ),
@@ -647,16 +725,20 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           if (gs.currentTurnMoves.isNotEmpty)
             SizedBox(
               width: 48, height: 48,
-              child: ElevatedButton(
-                onPressed: () => ref.read(gameProvider.notifier).undoMove(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: TavliColors.surface,
-                  foregroundColor: TavliColors.light,
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(TavliRadius.sm)),
+              child: Semantics(
+                label: 'Undo last move',
+                button: true,
+                child: ElevatedButton(
+                  onPressed: () => ref.read(gameProvider.notifier).undoMove(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: TavliColors.surface,
+                    foregroundColor: TavliColors.light,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(TavliRadius.sm)),
+                  ),
+                  child: const Icon(Icons.undo, size: 24),
                 ),
-                child: const Icon(Icons.undo, size: 24),
               ),
             ),
         ],
@@ -747,30 +829,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
-  Widget _buildDialogueBar() {
-    final line = _dialogue.currentLine;
-    if (line == null) return const SizedBox.shrink();
-
-    final theme = Theme.of(context);
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: TavliSpacing.md, vertical: TavliSpacing.xs),
-      color: TavliColors.primary.withValues(alpha: 0.9),
-      child: Row(
-        children: [
-          Text('Μ ', style: theme.textTheme.labelLarge!.copyWith(
-            color: TavliColors.surface, fontWeight: FontWeight.bold)),
-          Expanded(
-            child: Text(line,
-              style: theme.textTheme.bodyMedium!.copyWith(
-                color: TavliColors.light, fontStyle: FontStyle.italic),
-              maxLines: 2, overflow: TextOverflow.ellipsis),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildBottomBar(GameState gs) {
     final theme = Theme.of(context);
     return Container(
@@ -818,6 +876,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             width: 44, height: 44,
             child: IconButton(
               onPressed: () => _showPauseMenu(context),
+              tooltip: 'Pause menu',
               icon: const Icon(Icons.menu, color: TavliColors.light), iconSize: 24,
             ),
           ),
