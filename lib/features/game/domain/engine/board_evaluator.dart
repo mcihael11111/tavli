@@ -16,17 +16,27 @@ class BoardEvaluator {
     double score = 0;
 
     // ── Pip count advantage ──────────────────────────────────
+    // Base weight: 0.005 per pip. Non-linear boost when ahead in the race
+    // so the leader is rewarded for running home instead of keeping contact
+    // — breaks the 1-ply hitting-war stalemate where equal hits cancel out.
     final myPips = state.pipCount(player);
     final oppPips = state.pipCount(opp);
-    score += (oppPips - myPips) * 0.002;
+    final pipDelta = oppPips - myPips;
+    score += pipDelta * 0.005;
+    if (pipDelta > 10) {
+      score += (pipDelta - 10) * 0.008;
+    }
 
     // ── Borne off advantage ──────────────────────────────────
     score += state.borneOffCount(player) * 0.06;
     score -= state.borneOffCount(opp) * 0.06;
 
     // ── Bar penalty ──────────────────────────────────────────
-    score -= state.barCount(player) * 0.18;
-    score += state.barCount(opp) * 0.18;
+    // 0.06 is enough to prefer not being on the bar but small enough that
+    // the pip-swing from a hit (+25 pips) still dominates any fixed reward.
+    // Prevents the AI from hitting purely for the bar-bonus.
+    score -= state.barCount(player) * 0.06;
+    score += state.barCount(opp) * 0.06;
 
     // ── Home board strength ──────────────────────────────────
     score += _homeStrength(state, player) * 0.12;

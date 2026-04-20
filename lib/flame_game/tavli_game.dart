@@ -173,8 +173,17 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   /// Clear all highlights.
   void clearHighlights() => _clearHighlights();
 
-  /// Show dice with values.
+  /// Last rendered dice values — used to decide whether a showDice() call
+  /// is a brand-new roll (→ rattle) or just a mid-turn remaining-dice update.
+  int? _lastShownDie1;
+  int? _lastShownDie2;
+
+  /// Show dice with values. Rattles briefly when the values are new.
   void showDice(int die1, int die2, List<int> remaining) {
+    final isNewRoll = die1 != _lastShownDie1 || die2 != _lastShownDie2;
+    _lastShownDie1 = die1;
+    _lastShownDie2 = die2;
+
     _diceComponent?.removeFromParent();
     _diceComponent = DiceComponent(
       die1: die1,
@@ -183,6 +192,7 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
       boardLayout: _boardComponent.layout,
       onTap: () => onDiceRollRequested?.call(),
       diceSet: _diceSetIndex,
+      rattle: isNewRoll,
     )..sprites = _diceSprites;
     add(_diceComponent!);
   }
@@ -205,6 +215,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   void hideDice() {
     _diceComponent?.removeFromParent();
     _diceComponent = null;
+    // Reset tracking so the next roll (even with the same values as the
+    // previous turn's) re-triggers the rattle animation.
+    _lastShownDie1 = null;
+    _lastShownDie2 = null;
   }
 
   // ── Private ────────────────────────────────────────────────

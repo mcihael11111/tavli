@@ -9,6 +9,7 @@ LessonSection sectionForTradition(Tradition tradition) => switch (tradition) {
       Tradition.tavla => _tavlaSection,
       Tradition.nardy => _nardySection,
       Tradition.sheshBesh => _sheshBeshSection,
+      Tradition.tawla => _tawlaSection,
     };
 
 // ── Tavli (Greece) ──────────────────────────────────────────────
@@ -399,7 +400,7 @@ const _nardySection = LessonSection(
   ],
 );
 
-// ── Shesh Besh (Israel / Arab World) ────────────────────────────
+// ── Shesh Besh (Israel) ─────────────────────────────────────────
 
 const _sheshBeshSection = LessonSection(
   id: 'shesh_besh',
@@ -439,7 +440,7 @@ const _sheshBeshSection = LessonSection(
       uniquePoints: [
         'Hit-and-run is the defining rule — faster than Portes/Tavla',
         'The name means "six-five" — the best opening roll',
-        'Most popular variant in Israel and across the Arab world',
+        'Most popular variant in Israel',
       ],
     ),
     Lesson(
@@ -462,7 +463,7 @@ const _sheshBeshSection = LessonSection(
       specialRules: [
         'Mother piece rule: pinning opponent\'s last checker on start = 2 points (immediate loss)',
         'Both mothers pinned = draw',
-        'Same mechanic as Greek Plakoto from the Arabic tradition',
+        'Same mechanic as Greek Plakoto',
       ],
       scoring: [
         'Single: 1 point',
@@ -477,7 +478,91 @@ const _sheshBeshSection = LessonSection(
       uniquePoints: [
         'Functionally identical to Plakoto (including mother piece rule)',
         'The name "Mahbusa" (محبوسة) literally means "imprisoned"',
-        'Arabic backgammon tradition, played across the Levant and North Africa',
+        'Also played widely across the Levant and North Africa',
+      ],
+    ),
+  ],
+);
+
+// ── Tawla (Arab World) ─────────────────────────────────────────
+
+const _tawlaSection = LessonSection(
+  id: 'tawla_arab',
+  title: 'Tawla',
+  type: LessonSectionType.tradition,
+  tradition: Tradition.tawla,
+  prerequisiteSectionId: 'foundation',
+  lessons: [
+    Lesson(
+      id: 'tawla_tawla31',
+      title: 'Tawla 31',
+      nativeTitle: 'طاولة ٣١',
+      mechanicFamily: MechanicFamily.hitting,
+      tradition: Tradition.tawla,
+      variant: GameVariant.tawla31,
+      icon: Icons.speed,
+      botDialogue:
+          'Tawla is the classic Arab coffeehouse game! Hit your '
+          'opponent, race home, and play to 31 points.',
+      setup: 'Standard backgammon: 2 on 24-pt, 5 on 13-pt, 3 on 8-pt, 5 on 6-pt',
+      coreMechanic: [
+        'Hit lone opponent checkers to send them to the bar',
+        'Hit-and-run IS allowed — hit a blot and continue moving past',
+        'Points-race format — play multiple games to reach 31 points',
+      ],
+      specialRules: [
+        'Winner of opening roll re-rolls both dice',
+        'Cumulative scoring: 1 point per win, 2 for mars (gammon)',
+        'First player to reach 31 points wins the match',
+      ],
+      scoring: ['Win: 1 point', 'Mars (gammon): 2 points', 'First to 31 wins'],
+      strategyTips: [
+        'Hit-and-run allows aggressive play — hit and immediately advance',
+        'In a long match to 31, consistency matters more than single-game heroics',
+        'Blocking is crucial since hits are easy to execute',
+        'Manage risk differently when ahead vs behind in the match score',
+      ],
+      uniquePoints: [
+        'The points-race to 31 is the defining Arab coffeehouse format',
+        'Tawla (طاولة) literally means "table" — the universal Arab name for backgammon',
+        'Played across Egypt, the Levant, Iraq, and the Gulf',
+      ],
+    ),
+    Lesson(
+      id: 'tawla_mahbusa',
+      title: 'Mahbusa',
+      nativeTitle: 'محبوسة',
+      mechanicFamily: MechanicFamily.pinning,
+      tradition: Tradition.tawla,
+      variant: GameVariant.mahbusaArab,
+      icon: Icons.push_pin,
+      botDialogue:
+          'Mahbusa means "imprisoned" — and that\'s what you do! '
+          'Pin your opponent\'s lone checkers to trap them.',
+      setup: 'All 15 checkers on one point (opposite corners)',
+      coreMechanic: [
+        'Land on a single opponent checker to PIN it (no hitting)',
+        'Pinned checkers cannot move until the pinning checker leaves',
+        'Two of your checkers on a point blocks it completely',
+      ],
+      specialRules: [
+        'Mother piece rule: pinning opponent\'s last checker on start = 2 points (immediate loss)',
+        'Both mothers pinned = draw',
+      ],
+      scoring: [
+        'Single: 1 point',
+        'Gammon: 2 points',
+        'Mother pinned: 2 points (immediate loss)',
+      ],
+      strategyTips: [
+        'Rush your mother off the starting point early',
+        'Pin opponent checkers near their home to slow bearing off',
+        'Control the board with strategic checker placement',
+      ],
+      uniquePoints: [
+        'The name "Mahbusa" (محبوسة) literally means "imprisoned"',
+        'Originated in the Arab world, played across the Levant and North Africa',
+        'Same mechanic as Greek Plakoto — pinning, not hitting',
       ],
     ),
   ],

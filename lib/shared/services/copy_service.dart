@@ -368,6 +368,54 @@ class TavliCopy {
         Tradition.tawla: 'الرئيسية',
       }, 'Exit to Home');
 
+  static String get cancel => _c(const {
+        Tradition.tavli: 'Άκυρο',
+        Tradition.tavla: 'İptal',
+        Tradition.nardy: 'Отмена',
+        Tradition.sheshBesh: 'בטל',
+        Tradition.tawla: 'إلغاء',
+      }, 'Cancel');
+
+  static String get confirmResignBody => _c(const {
+        Tradition.tavli: 'Σίγουρα θέλεις να παραιτηθείς; Θα χάσεις το παιχνίδι.',
+        Tradition.tavla: 'Pes etmek istediğine emin misin? Oyunu kaybedeceksin.',
+        Tradition.nardy: 'Вы уверены, что хотите сдаться? Вы проиграете партию.',
+        Tradition.sheshBesh: 'האם אתה בטוח שברצונך להיכנע? תפסיד את המשחק.',
+        Tradition.tawla: 'هل أنت متأكد من الاستسلام؟ ستخسر المباراة.',
+      }, 'Are you sure you want to resign? You will lose the game.');
+
+  static String get confirmNewGameBody => _c(const {
+        Tradition.tavli: 'Να ξεκινήσει νέο παιχνίδι; Η τρέχουσα πρόοδος θα χαθεί.',
+        Tradition.tavla: 'Yeni oyun başlatılsın mı? Mevcut ilerleme kaybolacak.',
+        Tradition.nardy: 'Начать новую игру? Текущий прогресс будет потерян.',
+        Tradition.sheshBesh: 'להתחיל משחק חדש? ההתקדמות הנוכחית תאבד.',
+        Tradition.tawla: 'بدء لعبة جديدة؟ سيتم فقدان التقدم الحالي.',
+      }, 'Start a new game? Current progress will be lost.');
+
+  static String get you => _c(const {
+        Tradition.tavli: 'Εσύ',
+        Tradition.tavla: 'Sen',
+        Tradition.nardy: 'Вы',
+        Tradition.sheshBesh: 'את/ה',
+        Tradition.tawla: 'أنت',
+      }, 'You');
+
+  static String get pips => _c(const {
+        Tradition.tavli: 'Πόντοι',
+        Tradition.tavla: 'Puan',
+        Tradition.nardy: 'Очки',
+        Tradition.sheshBesh: 'נקודות',
+        Tradition.tawla: 'نقاط',
+      }, 'Pips');
+
+  static String get confirmExitBody => _c(const {
+        Tradition.tavli: 'Έξοδος από το παιχνίδι; Η τρέχουσα πρόοδος θα χαθεί.',
+        Tradition.tavla: 'Oyundan çıkılsın mı? Mevcut ilerleme kaybolacak.',
+        Tradition.nardy: 'Выйти из игры? Текущий прогресс будет потерян.',
+        Tradition.sheshBesh: 'לצאת מהמשחק? ההתקדמות הנוכחית תאבד.',
+        Tradition.tawla: 'الخروج من اللعبة؟ سيتم فقدان التقدم الحالي.',
+      }, 'Exit the game? Current progress will be lost.');
+
   static String get botThinking => _c(const {
         Tradition.tavli: 'Σκέφτεται...',
         Tradition.tavla: 'Düşünüyor...',

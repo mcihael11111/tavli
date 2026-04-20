@@ -29,7 +29,7 @@ class GameRoom {
   /// Game variant (portes, plakoto, fevga, tavla, tapa, etc.).
   final String variant;
 
-  /// Cultural tradition context (tavli, tavla, nardy, sheshBesh).
+  /// Cultural tradition context (tavli, tavla, nardy, sheshBesh, tawla).
   final String tradition;
 
   /// How the match was made (tradition or international).

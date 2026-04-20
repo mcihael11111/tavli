@@ -4,6 +4,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/tradition.dart';
 import '../../features/ai/personality/bot_personality.dart';
 
+/// The three language immersion tiers.
+enum LanguageTier {
+  /// Everything in English.
+  english(0.0),
+
+  /// Native headings + game terms, English body text.
+  mixed(0.5),
+
+  /// Everything in native language.
+  fluent(1.0);
+
+  final double value;
+  const LanguageTier(this.value);
+
+  /// Snaps any stored double (including legacy 5-tier values) to the nearest tier.
+  static LanguageTier fromDouble(double v) {
+    if (v < 0.25) return english;
+    if (v < 0.75) return mixed;
+    return fluent;
+  }
+}
+
 /// Persists user settings to SharedPreferences.
 class SettingsService {
   static const _themeKey = 'tavli_theme';
@@ -111,14 +133,19 @@ class SettingsService {
   set tradition(Tradition v) =>
       _prefs.setString(_traditionKey, v.toStorageKey());
 
-  // ── Language Level (0.0 = English only, 1.0 = Fluent) ─
-  /// Unified language level — replaces the old Greek-only level.
-  /// Falls back to greekLevel if the new key doesn't exist yet (migration).
-  double get languageLevel =>
-      _prefs.getDouble(_languageLevelKey) ??
-      _prefs.getDouble(_greekLevelKey) ??
-      0.5;
+  // ── Language Level (0.0 = English, 0.5 = Mixed, 1.0 = Fluent) ─
+  /// 3-tier language level. Snaps legacy 5-tier values on read.
+  double get languageLevel {
+    final raw = _prefs.getDouble(_languageLevelKey) ??
+        _prefs.getDouble(_greekLevelKey) ??
+        0.5;
+    return LanguageTier.fromDouble(raw).value;
+  }
+
   set languageLevel(double v) => _prefs.setDouble(_languageLevelKey, v);
+
+  /// Current language tier (convenience getter).
+  LanguageTier get languageTier => LanguageTier.fromDouble(languageLevel);
 
   // ── Player Display Name ─────────────────────────────────
   String get playerDisplayName => _prefs.getString(_playerNameKey) ?? '';

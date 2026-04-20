@@ -13,14 +13,15 @@ void main() {
     final layout = BoardLayout(gameSize, useSpriteLayout: true);
 
     test('sprite constants match calibrated values', () {
-      expect(layout.frameThickness, closeTo(layout.boardWidth * 0.044, 0.01));
-      expect(layout.barWidth, closeTo(layout.boardWidth * 0.040, 0.01));
-      expect(layout.bearOffWidth, closeTo(layout.boardWidth * 0.052, 0.01));
-      expect(layout.trianglePadTop, closeTo(layout.boardHeight * 0.060, 0.01));
-      expect(layout.trianglePadBottom, closeTo(layout.boardHeight * 0.060, 0.01));
+      // Measured from set1_board.png (2106 × 1954 px).
+      expect(layout.frameThickness, closeTo(layout.boardWidth * 0.031, 0.01));
+      expect(layout.barWidth, closeTo(layout.boardWidth * 0.031, 0.01));
+      expect(layout.bearOffWidth, closeTo(layout.boardWidth * 0.005, 0.01));
+      expect(layout.trianglePadTop, closeTo(layout.boardHeight * 0.028, 0.01));
+      expect(layout.trianglePadBottom, closeTo(layout.boardHeight * 0.028, 0.01));
       expect(layout.stackOverlapFactor, 0.75);
       expect(layout.stackAnchorNudge, 2.0);
-      expect(layout.pointHeight, closeTo(layout.boardHeight * 0.315, 0.01));
+      expect(layout.pointHeight, closeTo(layout.boardHeight * 0.32, 0.01));
     });
 
     test('top/bottom rows mirror horizontally', () {

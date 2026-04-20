@@ -4,13 +4,13 @@ import 'package:tavli/features/multiplayer/data/game_room.dart';
 void main() {
   group('GameRoom', () {
     final now = DateTime(2024, 6, 15, 12, 0, 0);
-    final player1 = const PlayerInfo(
+    const player1 = PlayerInfo(
       uid: 'uid1',
       name: 'Alice',
       color: 'white',
       rating: 1200,
     );
-    final player2 = const PlayerInfo(
+    const player2 = PlayerInfo(
       uid: 'uid2',
       name: 'Bob',
       color: 'black',

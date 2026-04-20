@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/widgets/content_module.dart';
 import '../../../shared/widgets/error_state.dart';
+import '../../../shared/services/copy_service.dart';
 import '../../../shared/widgets/gradient_scaffold.dart';
 import '../../multiplayer/data/game_room.dart';
 import '../data/spectate_service.dart';
@@ -42,7 +43,7 @@ class _SpectateListScreenState extends State<SpectateListScreen> {
 
     return GradientScaffold(
       appBar: AppBar(
-        title: const Text('Spectate'),
+        title: Text(TavliCopy.spectate),
         actions: [
           IconButton(
             onPressed: () { setState(() => _loading = true); _loadGames(); },

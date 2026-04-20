@@ -134,6 +134,18 @@ class VariantIntroSheet extends StatelessWidget {
           'Mother piece rule: if your last checker on start is pinned, you lose double!',
           'Similar to Plakoto from the Arabic tradition',
         ],
+        GameVariant.tawla31 => [
+          'Standard backgammon setup',
+          'Hit lone opponent checkers to send them to the bar',
+          'Hit-and-run IS allowed — hit and continue past',
+          'Points-race scoring — play to 31 points',
+        ],
+        GameVariant.mahbusaArab => [
+          'All 15 checkers start on a single point',
+          'Land on a lone opponent to PIN it (trap in place)',
+          'Mother piece rule: if your last checker on start is pinned, you lose double!',
+          'The classic Arab coffeehouse pinning game',
+        ],
       };
 
   @override

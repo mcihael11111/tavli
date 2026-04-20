@@ -122,7 +122,7 @@ class _TraditionSectionWidgetState extends State<TraditionSectionWidget>
                 AnimatedRotation(
                   turns: _expanded ? 0.5 : 0.0,
                   duration: ReducedMotion.duration(context, const Duration(milliseconds: 200)),
-                  child: Icon(
+                  child: const Icon(
                     Icons.expand_more,
                     color: TavliColors.disabledOnPrimary,
                     size: 24,

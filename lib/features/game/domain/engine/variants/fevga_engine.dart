@@ -36,8 +36,10 @@ class FevgaEngine {
     return val <= 0;
   }
 
-  /// Check if placing at target would create an illegal 6+ consecutive block.
-  bool wouldCreateIllegalPrime(BoardState state, int player, int targetPoint) {
+  /// Check if placing at target would create an illegal consecutive block.
+  /// [maxAllowed] defaults to 5 (standard Fevga/Nard rule: max 5 consecutive).
+  bool wouldCreateIllegalPrime(BoardState state, int player, int targetPoint,
+      {int maxAllowed = 5}) {
     final pts = List<int>.of(state.points);
     if (player == 1) {
       pts[targetPoint]++;
@@ -45,14 +47,16 @@ class FevgaEngine {
       pts[targetPoint]--;
     }
 
+    // Fevga's track is a loop, so a prime can wrap across index 23→0.
+    // Iterate twice around so a run that starts before index 0 and
+    // continues past it is counted as one contiguous stretch.
     int consecutive = 0;
-    // Check the full circle (need to wrap around).
-    for (int offset = 0; offset < 24; offset++) {
+    for (int offset = 0; offset < 48; offset++) {
       final i = offset % 24;
       final hasBlock = player == 1 ? pts[i] >= 1 : pts[i] <= -1;
       if (hasBlock) {
         consecutive++;
-        if (consecutive >= 6) return true;
+        if (consecutive > maxAllowed) return true;
       } else {
         consecutive = 0;
       }
@@ -360,6 +364,12 @@ class FevgaEngine {
   }
 
   /// Get game result.
+  ///
+  /// Fevga scoring:
+  ///  - Diplo (double): loser has borne off zero AND still has a checker
+  ///    in their own starting quadrant (P1: 0–5, P2: 12–17). Never started
+  ///    running, worth 2x — mapped to [GameResultType.gammon].
+  ///  - Single: otherwise.
   GameResult? getResult(BoardState state) {
     if (!isGameOver(state)) return null;
 
@@ -367,7 +377,7 @@ class FevgaEngine {
     final loser = winner == 1 ? 2 : 1;
     final loserBorneOff = state.borneOffCount(loser);
 
-    if (loserBorneOff == 0) {
+    if (loserBorneOff == 0 && _hasCheckerInStartingQuadrant(state, loser)) {
       return GameResult(
         winner: winner,
         type: GameResultType.gammon,
@@ -380,5 +390,13 @@ class FevgaEngine {
       type: GameResultType.single,
       cubeValue: state.doublingCubeValue,
     );
+  }
+
+  bool _hasCheckerInStartingQuadrant(BoardState state, int player) {
+    final start = player == 1 ? 0 : 12;
+    for (int i = start; i <= start + 5; i++) {
+      if (player == 1 ? state.points[i] > 0 : state.points[i] < 0) return true;
+    }
+    return false;
   }
 }

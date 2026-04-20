@@ -33,12 +33,19 @@ enum GameVariant {
   /// Short Nard — standard backgammon (Russian name).
   shortNard,
 
-  // ── Shesh Besh (Israel / Arab World) ──────────────────────
+  // ── Shesh Besh (Israel) ────────────────────────────────────
   /// Shesh Besh — standard hitting game.
   sheshBesh,
 
-  /// Mahbusa — Arabic pinning variant.
-  mahbusa;
+  /// Mahbusa — pinning variant (Israeli tradition).
+  mahbusa,
+
+  // ── Tawla (Arab World) ────────────────────────────────────
+  /// Tawla 31 — standard Arab hitting game with points-race scoring to 31.
+  tawla31,
+
+  /// Mahbusa — Arabic pinning variant (Arab tradition).
+  mahbusaArab;
 
   /// The tradition this variant belongs to.
   Tradition get tradition => switch (this) {
@@ -46,12 +53,13 @@ enum GameVariant {
         tavla || tapa || moultezim || gulBara => Tradition.tavla,
         longNard || shortNard => Tradition.nardy,
         sheshBesh || mahbusa => Tradition.sheshBesh,
+        tawla31 || mahbusaArab => Tradition.tawla,
       };
 
   /// The mechanic family.
   MechanicFamily get mechanicFamily => switch (this) {
-        portes || tavla || shortNard || sheshBesh => MechanicFamily.hitting,
-        plakoto || tapa || mahbusa => MechanicFamily.pinning,
+        portes || tavla || shortNard || sheshBesh || tawla31 => MechanicFamily.hitting,
+        plakoto || tapa || mahbusa || mahbusaArab => MechanicFamily.pinning,
         fevga || moultezim || longNard || gulBara => MechanicFamily.running,
       };
 
@@ -68,6 +76,8 @@ enum GameVariant {
         shortNard => 'Short Nard',
         sheshBesh => 'Shesh Besh',
         mahbusa => 'Mahbusa',
+        tawla31 => 'Tawla 31',
+        mahbusaArab => 'Mahbusa',
       };
 
   /// Name in native script.
@@ -83,6 +93,8 @@ enum GameVariant {
         shortNard => 'Короткие нарды',
         sheshBesh => 'שש בש',
         mahbusa => 'محبوسة',
+        tawla31 => 'طاولة ٣١',
+        mahbusaArab => 'محبوسة',
       };
 
   /// Complete rule configuration for this variant.
@@ -151,6 +163,27 @@ enum GameVariant {
           p2HomeStart: 0, p2HomeEnd: 5,
         ),
         mahbusa => const VariantRules(
+          startingPosition: StartingPosition.allOnOneOpposing,
+          movementDirection: MovementDirection.opposing,
+          captureMode: CaptureMode.pinning,
+          hasMotherPiece: true,
+          winnerRerolls: true,
+          p1StartPoint: 0, p2StartPoint: 23,
+          p1HomeStart: 18, p1HomeEnd: 23,
+          p2HomeStart: 0, p2HomeEnd: 5,
+        ),
+
+        // ── Tawla (Arab World) ──────────────────────────────────
+        tawla31 => const VariantRules(
+          startingPosition: StartingPosition.standard,
+          movementDirection: MovementDirection.opposing,
+          captureMode: CaptureMode.hitting,
+          allowHitAndRun: true,
+          winnerRerolls: true,
+          p1HomeStart: 0, p1HomeEnd: 5,
+          p2HomeStart: 18, p2HomeEnd: 23,
+        ),
+        mahbusaArab => const VariantRules(
           startingPosition: StartingPosition.allOnOneOpposing,
           movementDirection: MovementDirection.opposing,
           captureMode: CaptureMode.pinning,

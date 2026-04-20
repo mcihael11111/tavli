@@ -508,20 +508,6 @@ class GameNotifier extends StateNotifier<GameState> {
     return _allInHomeVariant(state.board, state.board.activePlayer);
   }
 
-  /// Auto-play all forced moves from the single legal turn.
-  /// Returns the list of moves applied.
-  List<Move> autoPlayForcedMoves() {
-    if (!isTrivialBearOff()) return const [];
-    final turn = state.legalTurns.first;
-    final moves = <Move>[];
-    for (final move in turn.moves) {
-      selectChecker(move.fromPoint);
-      makeMove(move.toPoint);
-      moves.add(move);
-    }
-    return moves;
-  }
-
   /// Peek at what the board would look like after applying a move
   /// (without actually changing state). Used for teaching mode evaluation.
   BoardState? peekApplyMove(Move move) {

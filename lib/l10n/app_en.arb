@@ -160,6 +160,7 @@
   "traditionTavla": "Tavla",
   "traditionNardy": "Nardy",
   "traditionSheshBesh": "Shesh Besh",
+  "traditionTawla": "Tawla",
 
   "variantTavla": "Tavla",
   "variantTavlaSub": "Turkish standard backgammon",
@@ -174,7 +175,11 @@
   "variantSheshBesh": "Shesh Besh",
   "variantSheshBeshSub": "Standard hitting game",
   "variantMahbusa": "Mahbusa",
-  "variantMahbusaSub": "Arabic pinning variant",
+  "variantMahbusaSub": "Pinning variant",
+  "variantTawla31": "Tawla 31",
+  "variantTawla31Sub": "Arab hitting game — play to 31 points",
+  "variantMahbusaArab": "Mahbusa",
+  "variantMahbusaArabSub": "Arab pinning variant",
 
   "poolTradition": "My Tradition",
   "poolInternational": "International",

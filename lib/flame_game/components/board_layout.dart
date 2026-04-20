@@ -51,25 +51,25 @@ class BoardLayout {
     boardTop = gameSize.y * 0.08;
 
     if (useSpriteLayout) {
-      // Calibrated against the designer's board sprite (set 1: Mahogany &
-      // Olive). Measured from the exported PNG: frame ≈ 4.4%, bar ≈ 4%,
-      // bear-off tray ≈ 5.2% of board width.
+      // Calibrated against the ACTUAL sprite pixel data (set1_board.png,
+      // 2106 × 1954 px). Measured directly from the PNG:
+      //   - Frame inner edge: 65 px from board edge → 65/2106 = 3.1%
+      //   - Center bar: 66 px wide → 66/2106 = 3.1%
+      //   - Bear-off trays: NONE — triangles go right to the frame edge
+      //   - Top/bottom frame: 55 px → 55/1954 = 2.8% of height
+      //   - Triangle height: ~625 px → 625/1954 = 32% of height
       //
-      // Horizontal (frameThickness) and vertical (trianglePad*) insets are
-      // NOT equal in the sprite. Horizontally the triangle edge sits at
-      // frameThickness + bearOffWidth from the board edge. Vertically the
-      // triangle base sits at trianglePadTop (~6% of board HEIGHT) from the
-      // top edge — the sprite has both a wooden frame AND an inset felt lip
-      // before the triangles begin.
+      // The sprite has NO dedicated bear-off trays; bearOffWidth is kept at
+      // a tiny value purely for borne-off checker positioning (so they stack
+      // just inside the frame edge). It does NOT offset the triangle grid.
       //
-      // If the sprite is re-exported these values must be re-measured;
-      // otherwise checkers and move-hint overlays will drift off the painted
-      // triangles again.
-      frameThickness = boardWidth * 0.044;
-      barWidth = boardWidth * 0.040;
-      bearOffWidth = boardWidth * 0.052;
-      trianglePadTop = boardHeight * 0.060;
-      trianglePadBottom = boardHeight * 0.060;
+      // If the sprite is re-exported these values must be re-measured from
+      // the source PNG; otherwise checkers drift off the painted triangles.
+      frameThickness = boardWidth * 0.031;
+      barWidth = boardWidth * 0.031;
+      bearOffWidth = boardWidth * 0.005; // virtual tray only; sprite has none
+      trianglePadTop = boardHeight * 0.028;
+      trianglePadBottom = boardHeight * 0.028;
       // 25% overlap — reads as a real stacked checker pile, not floating discs.
       stackOverlapFactor = 0.75;
       // Painted triangles on the sprite have a ~2 px base shadow; nudge the
@@ -93,11 +93,9 @@ class BoardLayout {
         boardWidth - frameThickness * 2 - barWidth - bearOffWidth * 2;
     pointWidth = playingWidth / 12;
 
-    // Triangle length. Sprite mode: measured from the exported PNG at ~30%
-    // of board height — the sprite's painted triangles do NOT extend as far
-    // as the procedural ones. Using 0.40 made move-hint overlay triangles
-    // visibly longer than the painted triangles underneath.
-    pointHeight = boardHeight * (useSpriteLayout ? 0.315 : 0.40);
+    // Triangle length. Sprite mode: measured from set1_board.png at 32%
+    // of board height (625/1954). Procedural triangles stay at 40%.
+    pointHeight = boardHeight * (useSpriteLayout ? 0.32 : 0.40);
 
     checkerRadius = pointWidth * 0.45;
   }

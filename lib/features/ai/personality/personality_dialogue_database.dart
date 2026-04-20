@@ -5,6 +5,7 @@ import 'bot_personality.dart';
 import 'tavla_dialogue_database.dart';
 import 'nardy_dialogue_database.dart';
 import 'sheshbesh_dialogue_database.dart';
+import 'tawla_arab_dialogue_database.dart';
 
 /// Routes dialogue lines to the correct personality database.
 abstract final class PersonalityDialogueDatabase {
@@ -28,12 +29,18 @@ abstract final class PersonalityDialogueDatabase {
         BotPersonality.giorgi => NardyDialogueDatabase.giorgiLines,
         BotPersonality.dyadyaSasha => NardyDialogueDatabase.sashaLines,
         BotPersonality.leyla => NardyDialogueDatabase.leylaLines,
-        // Israeli/Arab (Shesh Besh)
-        BotPersonality.abuYusuf => SheshBeshDialogueDatabase.abuYusufLines,
+        // Israeli (Shesh Besh)
         BotPersonality.dodMoshe => SheshBeshDialogueDatabase.mosheLines,
-        BotPersonality.samira => SheshBeshDialogueDatabase.samiraLines,
         BotPersonality.sabaEli => SheshBeshDialogueDatabase.eliLines,
-        BotPersonality.hana => SheshBeshDialogueDatabase.hanaLines,
+        BotPersonality.yael => SheshBeshDialogueDatabase.yaelLines,
+        BotPersonality.avi => SheshBeshDialogueDatabase.aviLines,
+        BotPersonality.rina => SheshBeshDialogueDatabase.rinaLines,
+        // Arab World (Tawla)
+        BotPersonality.abuYusuf => TawlaArabDialogueDatabase.abuYusufLines,
+        BotPersonality.samira => TawlaArabDialogueDatabase.samiraLines,
+        BotPersonality.hana => TawlaArabDialogueDatabase.hanaLines,
+        BotPersonality.khaled => TawlaArabDialogueDatabase.khaledLines,
+        BotPersonality.ummAhmad => TawlaArabDialogueDatabase.ummAhmadLines,
       };
 
   // ═════════════════════════════════════════════════════════════════

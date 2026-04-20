@@ -433,6 +433,9 @@ class AppLocalizationsHe extends AppLocalizations {
   String get traditionSheshBesh => 'שש בש';
 
   @override
+  String get traditionTawla => 'טאולה';
+
+  @override
   String get variantTavla => 'Tavla';
 
   @override
@@ -472,7 +475,19 @@ class AppLocalizationsHe extends AppLocalizations {
   String get variantMahbusa => 'Mahbusa';
 
   @override
-  String get variantMahbusaSub => 'Arabic pinning variant';
+  String get variantMahbusaSub => 'Pinning variant';
+
+  @override
+  String get variantTawla31 => 'Tawla 31';
+
+  @override
+  String get variantTawla31Sub => 'Arab hitting game — play to 31 points';
+
+  @override
+  String get variantMahbusaArab => 'Mahbusa';
+
+  @override
+  String get variantMahbusaArabSub => 'Arab pinning variant';
 
   @override
   String get poolTradition => 'המסורת שלי';

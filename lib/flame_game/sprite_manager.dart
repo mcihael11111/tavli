@@ -14,11 +14,17 @@ class SpriteManager {
   final Map<String, Sprite> _cache = {};
 
   /// Board sprite asset paths per set index.
+  /// All boards share the same 2102 × 1950 art template (only colors differ), so
+  /// the layout math in [BoardLayout] applies uniformly to every set.
   static const _boardPaths = <int, String>{
-    1: 'boards/set1_board.png',
+    1: 'boards/set1_board.png', // Mahogany & olive
+    2: 'boards/set2_board.png', // Walnut & navy
+    3: 'boards/set3_board.png', // Teal & maple
   };
 
   /// Board shadow sprite asset paths per set index.
+  /// Only set 1 currently ships with a matching shadow; sets 2 & 3 render
+  /// without a drop shadow until bespoke shadow art is produced.
   static const _boardShadowPaths = <int, String>{
     1: 'boards/set1_board_shadow.png',
   };

@@ -81,9 +81,9 @@ class _PassPlayScreenState extends ConsumerState<PassPlayScreen> {
   Widget build(BuildContext context) {
     final gs = ref.watch(gameProvider);
 
-    // Sync Flame.
+    // Sync Flame (instant, no animation — pass interstitial covers transitions).
     if (_game.isLoaded) {
-      _game.updateBoardState(gs.board);
+      _game.syncBoardState(gs.board);
       if (gs.selectedPoint != null && gs.availableMovesForSelected.isNotEmpty) {
         _game.showHighlights(gs.availableMovesForSelected);
       } else {
