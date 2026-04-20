@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -29,6 +30,15 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   static const double _depth = 8; // visible 3D depth
   static const double _pipRadius = 3.2;
   static const double _cornerRadius = 5;
+
+  /// Rattle animation: how long the dice flicker random faces before
+  /// settling on their real values. 0 = settled immediately.
+  double _rattleTimeLeft = 0;
+  int _rattleFace1 = 1;
+  int _rattleFace2 = 1;
+  double _rattleTickAccum = 0;
+  static const double _rattleTickInterval = 0.06; // flicker every ~60ms
+  static final Random _rng = Random();
 
   /// Per-set color palettes: (topFace, topFaceUsed, rightFace, rightFaceUsed, pipActive, pipUsed).
   static const _palettes = <int, _DicePalette>{
@@ -67,11 +77,34 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     required this.boardLayout,
     this.onTap,
     this.diceSet = 1,
+    bool rattle = false,
   }) : super(
           position: boardLayout.diceAreaCenter - Vector2(_dieSize + _gap / 2, _dieSize / 2),
           size: Vector2(_dieSize * 2 + _gap + _depth, _dieSize + _depth),
           anchor: Anchor.topLeft,
-        );
+        ) {
+    if (rattle && !_isPrompt) {
+      _rattleTimeLeft = 0.42;
+      _rattleFace1 = _rng.nextInt(6) + 1;
+      _rattleFace2 = _rng.nextInt(6) + 1;
+    }
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_rattleTimeLeft > 0) {
+      _rattleTimeLeft -= dt;
+      _rattleTickAccum += dt;
+      if (_rattleTickAccum >= _rattleTickInterval) {
+        _rattleTickAccum = 0;
+        _rattleFace1 = _rng.nextInt(6) + 1;
+        _rattleFace2 = _rng.nextInt(6) + 1;
+      }
+    }
+  }
+
+  bool get _isRattling => _rattleTimeLeft > 0;
 
   bool get _isPrompt => die1 == 0 && die2 == 0;
 
@@ -82,20 +115,27 @@ class DiceComponent extends PositionComponent with TapCallbacks {
       return;
     }
 
-    final die1Available = remaining.contains(die1);
+    // While rattling, flicker random faces each tick so the dice visibly
+    // tumble before landing on their real values.
+    final face1 = _isRattling ? _rattleFace1 : die1;
+    final face2 = _isRattling ? _rattleFace2 : die2;
+
+    final die1Available = _isRattling ? true : remaining.contains(die1);
     // For die2: count how many of die2's value remain. If doubles, die1
     // already claims one, so die2 needs at least 2 remaining.
     final die2Count = remaining.where((d) => d == die2).length;
-    final die2Available = die1 == die2 ? die2Count >= 2 : die2Count >= 1;
+    final die2Available = _isRattling
+        ? true
+        : (die1 == die2 ? die2Count >= 2 : die2Count >= 1);
 
     if (_sprites != null) {
-      _drawSpriteDie(canvas, const Offset(0, 0), die1, die1Available);
-      _drawSpriteDie(canvas, const Offset(_dieSize + _gap, 0), die2, die2Available);
+      _drawSpriteDie(canvas, const Offset(0, 0), face1, die1Available);
+      _drawSpriteDie(canvas, const Offset(_dieSize + _gap, 0), face2, die2Available);
       return;
     }
 
-    _draw3DDie(canvas, const Offset(0, 0), die1, die1Available);
-    _draw3DDie(canvas, const Offset(_dieSize + _gap, 0), die2, die2Available);
+    _draw3DDie(canvas, const Offset(0, 0), face1, die1Available);
+    _draw3DDie(canvas, const Offset(_dieSize + _gap, 0), face2, die2Available);
   }
 
   void _drawSpriteDie(Canvas canvas, Offset offset, int value, bool isAvailable) {

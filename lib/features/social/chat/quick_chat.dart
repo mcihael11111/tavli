@@ -117,7 +117,6 @@ class QuickChatPanel extends StatelessWidget {
                       child: Text(
                         '${msg.emoji ?? ''} ${msg.text.split('!').first}',
                         style: theme.textTheme.labelSmall?.copyWith(
-                          fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
                         textAlign: TextAlign.center,

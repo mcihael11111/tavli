@@ -168,7 +168,8 @@ class VariantHint {
         GameVariant.fevga || GameVariant.moultezim => singleBlocks,
         GameVariant.longNard => headRule,
         GameVariant.shortNard => doublingCubeIntro,
-        GameVariant.sheshBesh => hitAndRunAllowed,
+        GameVariant.sheshBesh || GameVariant.tawla31 => hitAndRunAllowed,
+        GameVariant.mahbusaArab => pinningExplain,
         _ => null,
       };
 }

@@ -8,7 +8,8 @@ enum Tradition {
   tavli,
   tavla,
   nardy,
-  sheshBesh;
+  sheshBesh,
+  tawla;
 
   /// English display name.
   String get displayName => switch (this) {
@@ -16,6 +17,7 @@ enum Tradition {
         tavla => 'Tavla',
         nardy => 'Nardy',
         sheshBesh => 'Shesh Besh',
+        tawla => 'Tawla',
       };
 
   /// Name in native script.
@@ -24,6 +26,7 @@ enum Tradition {
         tavla => 'Tavla',
         nardy => 'Нарды',
         sheshBesh => 'שש בש',
+        tawla => 'طاولة',
       };
 
   /// Region label.
@@ -31,15 +34,17 @@ enum Tradition {
         tavli => 'Greece',
         tavla => 'Turkey',
         nardy => 'Russia & Caucasus',
-        sheshBesh => 'Israel & Arab World',
+        sheshBesh => 'Israel',
+        tawla => 'Arab World',
       };
 
-  /// Flag emoji.
+  /// Flag emoji. Empty string for traditions that span multiple countries.
   String get flagEmoji => switch (this) {
         tavli => '🇬🇷',
         tavla => '🇹🇷',
         nardy => '🇷🇺',
         sheshBesh => '🇮🇱',
+        tawla => '',
       };
 
   /// The game variants belonging to this tradition.
@@ -48,10 +53,20 @@ enum Tradition {
         tavla => [GameVariant.tavla, GameVariant.tapa, GameVariant.moultezim, GameVariant.gulBara],
         nardy => [GameVariant.longNard, GameVariant.shortNard],
         sheshBesh => [GameVariant.sheshBesh, GameVariant.mahbusa],
+        tawla => [GameVariant.tawla31, GameVariant.mahbusaArab],
       };
 
   /// The default variant for this tradition.
   GameVariant get defaultVariant => variants.first;
+
+  /// Human-readable language name.
+  String get languageName => switch (this) {
+        tavli => 'Greek',
+        tavla => 'Turkish',
+        nardy => 'Russian',
+        sheshBesh => 'Hebrew',
+        tawla => 'Arabic',
+      };
 
   /// The language code used for cultural flavor mixing.
   String get flavorLanguageCode => switch (this) {
@@ -59,6 +74,7 @@ enum Tradition {
         tavla => 'tr',
         nardy => 'ru',
         sheshBesh => 'he',
+        tawla => 'ar',
       };
 
   /// Serialize to string for storage.

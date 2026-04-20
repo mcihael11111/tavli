@@ -6,7 +6,7 @@ enum DifficultyLevel {
   /// Εύκολο με Βοήθεια — Patient teacher, same AI as easy + teaching.
   easyWithHelp,
 
-  /// Μέτριο — Competitive regular, 1-ply, 10% noise.
+  /// Μέτριο — Competitive regular, 2-ply, 10% noise.
   medium,
 
   /// Δύσκολο — Intense veteran, 2-ply, 5% noise.
@@ -43,7 +43,7 @@ enum DifficultyLevel {
   int get searchDepth => switch (this) {
         easy => 0,
         easyWithHelp => 0,
-        medium => 1,
+        medium => 2,
         hard => 2,
         pappous => 3,
       };

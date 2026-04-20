@@ -96,7 +96,7 @@ class _LessonListItemState extends State<LessonListItem> {
 
               // Chevron.
               if (!isLocked)
-                Icon(
+                const Icon(
                   Icons.chevron_right,
                   color: TavliColors.disabledOnPrimary,
                   size: 24,
@@ -118,7 +118,7 @@ class _StatusIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (locked) {
-      return Icon(
+      return const Icon(
         Icons.lock_outline,
         size: 20,
         color: TavliColors.disabledOnPrimary,
@@ -131,12 +131,12 @@ class _StatusIcon extends StatelessWidget {
           size: 20,
           color: TavliColors.light,
         ),
-      LessonStatus.inProgress => Icon(
+      LessonStatus.inProgress => const Icon(
           Icons.circle,
           size: 10,
           color: TavliColors.disabledOnPrimary,
         ),
-      LessonStatus.notStarted => Icon(
+      LessonStatus.notStarted => const Icon(
           Icons.circle_outlined,
           size: 20,
           color: TavliColors.disabledOnPrimary,

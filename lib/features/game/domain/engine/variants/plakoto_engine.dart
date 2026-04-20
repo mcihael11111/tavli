@@ -46,14 +46,15 @@ class PlakotoEngine {
     if (move.fromPoint >= 0) {
       if (player == 1) {
         pts[move.fromPoint]--;
-        // If we were the pinner and leave, unpin.
-        if (pts[move.fromPoint] == 0 && pins[move.fromPoint] == 2) {
-          // Our last checker left — unpin opponent.
+        // If we were the pinner and our last checker left, unpin opponent.
+        // Net -1 means only P2's pinned checker remains (0 P1 + 1 P2).
+        if (pts[move.fromPoint] == -1 && pins[move.fromPoint] == 2) {
           pins.remove(move.fromPoint);
         }
       } else {
         pts[move.fromPoint]++;
-        if (pts[move.fromPoint] == 0 && pins[move.fromPoint] == 1) {
+        // Net +1 means only P1's pinned checker remains (1 P1 + 0 P2).
+        if (pts[move.fromPoint] == 1 && pins[move.fromPoint] == 1) {
           pins.remove(move.fromPoint);
         }
       }

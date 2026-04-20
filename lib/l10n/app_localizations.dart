@@ -946,6 +946,12 @@ abstract class AppLocalizations {
   /// **'Shesh Besh'**
   String get traditionSheshBesh;
 
+  /// No description provided for @traditionTawla.
+  ///
+  /// In en, this message translates to:
+  /// **'Tawla'**
+  String get traditionTawla;
+
   /// No description provided for @variantTavla.
   ///
   /// In en, this message translates to:
@@ -1027,8 +1033,32 @@ abstract class AppLocalizations {
   /// No description provided for @variantMahbusaSub.
   ///
   /// In en, this message translates to:
-  /// **'Arabic pinning variant'**
+  /// **'Pinning variant'**
   String get variantMahbusaSub;
+
+  /// No description provided for @variantTawla31.
+  ///
+  /// In en, this message translates to:
+  /// **'Tawla 31'**
+  String get variantTawla31;
+
+  /// No description provided for @variantTawla31Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Arab hitting game — play to 31 points'**
+  String get variantTawla31Sub;
+
+  /// No description provided for @variantMahbusaArab.
+  ///
+  /// In en, this message translates to:
+  /// **'Mahbusa'**
+  String get variantMahbusaArab;
+
+  /// No description provided for @variantMahbusaArabSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Arab pinning variant'**
+  String get variantMahbusaArabSub;
 
   /// No description provided for @poolTradition.
   ///

@@ -9,7 +9,7 @@ class PlayerProfile {
   final DateTime createdAt;
   final String? activeGameId;
 
-  /// The player's selected tradition (tavli, tavla, nardy, sheshBesh).
+  /// The player's selected tradition (tavli, tavla, nardy, sheshBesh, tawla).
   final String tradition;
 
   /// Per-tradition game stats: { 'tavli': { 'games': 10, 'wins': 6 }, ... }

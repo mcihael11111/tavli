@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/theme.dart';
 import '../../../../core/constants/colors.dart';
 import '../../../../core/constants/tradition.dart';
+import '../../../../shared/services/copy_service.dart';
 import '../../../../shared/services/settings_service.dart';
 import '../../../../shared/widgets/content_module.dart';
 import '../../../../shared/widgets/gradient_scaffold.dart';
@@ -139,7 +140,7 @@ class _LearnHubScreenState extends ConsumerState<LearnHubScreen> {
                 const SizedBox(height: TavliSpacing.lg),
 
                 // Other traditions.
-                _sectionHeader('Explore Other Traditions'),
+                _sectionHeader(TavliCopy.exploreOtherTraditions),
                 const SizedBox(height: TavliSpacing.sm),
                 for (int i = 0; i < discoveries.length; i++) ...[
                   if (i > 0) const SizedBox(height: TavliSpacing.sm),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -45,6 +47,18 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   bool _animationInProgress = false;
   bool _showOpeningResult = false;
 
+  /// When non-null, [_handleAiTurn] blocks at its await checkpoints until
+  /// this completer resolves. Set when the pause menu opens so an in-flight
+  /// AI turn doesn't silently advance behind the modal.
+  Completer<void>? _pauseLock;
+
+  Future<void> _awaitResume() async {
+    final lock = _pauseLock;
+    if (lock != null && !lock.isCompleted) {
+      await lock.future;
+    }
+  }
+
   /// Fixed reserved height for the action area (ROLL button / move controls).
   /// Keeping this constant prevents the board from jumping when the button
   /// content changes between ROLL, undo/complete, and empty.
@@ -89,9 +103,13 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       _announce('Game starting. Tap to roll for first move.');
       if (mounted) setState(() {});
 
-      // Listen for game-over once — fires exactly per state change, avoids
-      // the rebuild-triggered addPostFrameCallback race in build().
+      // Drive all state-transition side-effects from listenManual, which
+      // fires exactly once per state change. build() is for rendering only
+      // — mutating state from build triggers rebuild loops under stress.
       ref.listenManual(gameProvider, (previous, next) {
+        final phaseChanged = previous?.phase != next.phase;
+
+        // Game over.
         if (next.phase == GamePhase.gameOver && !_navigatingToVictory) {
           if (next.result?.winner == 1) {
             _audio.playSfx(SfxType.gameWin);
@@ -103,6 +121,54 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             _announce('You lose. ${_personality.displayName} wins.');
           }
           _navigateToVictory(next);
+          return;
+        }
+
+        // Turn complete → advance. Guard on phase transition so we don't
+        // re-advance if an unrelated field on the same phase changes.
+        if (phaseChanged && next.phase == GamePhase.turnComplete) {
+          Future.microtask(() {
+            if (!mounted) return;
+            ref.read(gameProvider.notifier).nextTurn();
+          });
+          return;
+        }
+
+        // AI's turn to roll.
+        if (phaseChanged &&
+            next.phase == GamePhase.playerTurnStart &&
+            next.isAiTurn &&
+            !_aiThinking) {
+          Future.microtask(() {
+            if (mounted) _handleAiTurn();
+          });
+          return;
+        }
+
+        // Opening roll: performOpeningRoll transitions straight to
+        // movingCheckers with dice already rolled. If the AI won the toss
+        // we need to kick off its turn here, since the playerTurnStart
+        // branch above never fires in the opening flow. _handleAiTurn
+        // no-ops its rollDice() call when phase is movingCheckers, so it
+        // jumps straight to selecting a turn with the existing dice.
+        if (phaseChanged &&
+            next.phase == GamePhase.movingCheckers &&
+            next.isAiTurn &&
+            !_aiThinking) {
+          Future.microtask(() {
+            if (mounted) _handleAiTurn();
+          });
+          return;
+        }
+
+        // Player offered double → AI decides.
+        if (phaseChanged &&
+            next.phase == GamePhase.doubleOffered &&
+            next.doubleOfferedBy == 1 &&
+            !_aiThinking) {
+          Future.microtask(() {
+            if (mounted) _handleAiDoubleResponse();
+          });
         }
       });
     });
@@ -153,6 +219,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final gs = ref.read(gameProvider);
     if (!gs.isPlayerTurn) return;
 
+    // Teaching mode: grab the quality of the chosen destination BEFORE the
+    // move is applied — after makeMove() the highlight state is cleared.
+    MoveQuality? chosenQuality;
+    if (widget.difficulty.isTeaching) {
+      final qualities = _computeMoveQualities();
+      chosenQuality = qualities?[toPoint];
+    }
+
     // Determine SFX before the move is applied.
     final move = gs.availableMovesForSelected
         .where((m) => m.toPoint == toPoint)
@@ -191,7 +265,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       _animationInProgress = false;
     }
 
-    // Post-move teaching feedback (Easy+Help).
+    // Teaching mode — immediate per-move signal.
+    // Haptic intensity tracks move quality so the learner gets feedback
+    // each move (not just the end-of-turn SnackBar summary). SnackBar
+    // would stack up visually for 4-move doubles turns; haptic is
+    // lightweight enough to fire every time without overwhelming.
+    if (chosenQuality != null && chosenQuality == MoveQuality.poor) {
+      HapticFeedback.heavyImpact();
+      _announce('That move may have been a mistake.');
+    }
+
+    // End-of-turn teaching summary (Easy+Help).
     if (widget.difficulty.isTeaching) {
       _checkTeachingFeedback();
     }
@@ -379,6 +463,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // Brief "thinking" beat — enough to register intent, short enough to
     // keep pace snappy. Was 600 ms; trimmed after pacing QA.
     await Future.delayed(const Duration(milliseconds: 350));
+    await _awaitResume();
     if (!mounted) { _aiThinking = false; return; }
 
     final notifier = ref.read(gameProvider.notifier);
@@ -401,6 +486,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     notifier.rollDice();
     // Short breather so the player sees the dice before movement starts.
     await Future.delayed(const Duration(milliseconds: 280));
+    await _awaitResume();
     if (!mounted) { _aiThinking = false; return; }
 
     final afterRoll = ref.read(gameProvider);
@@ -446,6 +532,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       for (final move in aiTurn.moves) {
         // Gap between successive AI moves — just long enough to be legible.
         await Future.delayed(const Duration(milliseconds: 80));
+        await _awaitResume();
         if (!mounted) { _aiThinking = false; return; }
 
         // Apply via notifier — selectChecker + makeMove.
@@ -529,8 +616,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
   void _playerAcceptsDouble() {
     ref.read(gameProvider.notifier).acceptDouble();
-    // Resume AI turn after player accepts.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _handleAiTurn());
+    // AI turn resumes automatically via listenManual in initState.
   }
 
   void _playerDeclinesDouble() {
@@ -569,25 +655,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       }
     }
 
-    // Game over is handled by ref.listenManual in initState — no build() check
-    // needed, which avoids the double-navigation race from addPostFrameCallback.
-
-    // AI turn.
-    if (gs.isAiTurn && gs.phase == GamePhase.playerTurnStart && !_aiThinking) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _handleAiTurn());
-    }
-
-    // Player turn complete → advance.
-    if (gs.phase == GamePhase.turnComplete) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(gameProvider.notifier).nextTurn();
-      });
-    }
-
-    // Player offered double → AI decides.
-    if (gs.phase == GamePhase.doubleOffered && gs.doubleOfferedBy == 1 && !_aiThinking) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _handleAiDoubleResponse());
-    }
+    // State-transition triggers (game-over, turn-complete → nextTurn,
+    // AI turn, AI double response) are all driven by ref.listenManual in
+    // initState. build() is rendering-only.
 
     final bgColor = (_aiThinking || gs.isAiTurn)
         ? TavliColors.botThinkingBg
@@ -729,7 +799,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 label: 'Undo last move',
                 button: true,
                 child: ElevatedButton(
-                  onPressed: () => ref.read(gameProvider.notifier).undoMove(),
+                  onPressed: () {
+                    HapticFeedback.selectionClick();
+                    ref.read(gameProvider.notifier).undoMove();
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: TavliColors.surface,
                     foregroundColor: TavliColors.light,
@@ -746,17 +819,24 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
-  void _onCompleteBearOff() {
+  Future<void> _onCompleteBearOff() async {
     final notifier = ref.read(gameProvider.notifier);
-    final moves = notifier.autoPlayForcedMoves();
-    for (final move in moves) {
-      if (move.isBearOff) {
-        _audio.playSfx(SfxType.checkerBearOff);
-      } else {
-        _audio.playSfx(SfxType.checkerPlace);
+    if (!notifier.isTrivialBearOff()) return;
+    final moves = List.of(ref.read(gameProvider).legalTurns.first.moves);
+
+    _animationInProgress = true;
+    try {
+      for (final move in moves) {
+        notifier.selectChecker(move.fromPoint);
+        notifier.makeMove(move.toPoint);
+        await _game.updateBoardState(ref.read(gameProvider).board);
+        if (!mounted) return;
+        _audio.playSfx(move.isBearOff ? SfxType.checkerBearOff : SfxType.checkerPlace);
+        HapticFeedback.lightImpact();
       }
+    } finally {
+      _animationInProgress = false;
     }
-    HapticFeedback.mediumImpact();
   }
 
   Widget _buildTopBar(GameState gs) {
@@ -775,7 +855,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 width: 2,
               ),
             ),
-            child: Center(child: Text('Μ', style: theme.textTheme.bodyLarge!.copyWith(
+            child: Center(child: Text(_personality.avatarInitial, style: theme.textTheme.bodyLarge!.copyWith(
               color: TavliColors.light, fontSize: 18, fontWeight: FontWeight.bold,
             ))),
           ),
@@ -796,9 +876,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             _buildCubeIndicator(gs),
             const SizedBox(width: TavliSpacing.xs),
           ],
-          Text('Pips: ${gs.board.pipCount(2)}',
+          Text('${TavliCopy.pips}: ${gs.board.pipCount(2)}',
             style: theme.textTheme.bodySmall!.copyWith(
-              color: TavliColors.light.withValues(alpha: 0.85))),
+              color: TavliColors.light)),
         ],
       ),
     );
@@ -810,8 +890,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final ownerText = gs.board.cubeOwner == null
         ? ''
         : gs.board.cubeOwner == 1
-            ? ' (You)'
-            : ' (Μ)';
+            ? ' (${TavliCopy.you})'
+            : ' (${_personality.avatarInitial})';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
@@ -850,12 +930,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             ))),
           ),
           const SizedBox(width: TavliSpacing.xs),
-          Text('You', style: theme.textTheme.bodyMedium!.copyWith(
+          Text(TavliCopy.you, style: theme.textTheme.bodyMedium!.copyWith(
             color: TavliColors.light)),
           const SizedBox(width: TavliSpacing.xs),
-          Text('Pips: ${gs.board.pipCount(1)}',
+          Text('${TavliCopy.pips}: ${gs.board.pipCount(1)}',
             style: theme.textTheme.bodySmall!.copyWith(
-              color: TavliColors.light.withValues(alpha: 0.85))),
+              color: TavliColors.light)),
           const Spacer(),
           if (gs.canPlayerDouble)
             SizedBox(
@@ -885,8 +965,53 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     );
   }
 
+  /// Confirmation dialog for destructive actions (resign / new game / exit).
+  /// Returns true if the user confirmed.
+  Future<bool> _confirmDestructive(String title, String body) async {
+    final theme = Theme.of(context);
+    final result = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: TavliColors.primary,
+        title: Text(
+          title,
+          style: theme.textTheme.titleLarge!.copyWith(
+            color: TavliColors.light,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Text(
+          body,
+          style: theme.textTheme.bodyMedium!.copyWith(color: TavliColors.light),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(
+              TavliCopy.cancel,
+              style: theme.textTheme.bodyMedium!.copyWith(color: TavliColors.light),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: TavliColors.error,
+              foregroundColor: TavliColors.light,
+            ),
+            child: Text(title),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
   void _showPauseMenu(BuildContext context) {
     final theme = Theme.of(context);
+    // Freeze AI mid-turn: any active _handleAiTurn blocks at its next
+    // _awaitResume() checkpoint until this completer resolves on dismiss.
+    _pauseLock = Completer<void>();
     showModalBottomSheet(
       context: context,
       useRootNavigator: true,
@@ -903,12 +1028,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               color: TavliColors.light, fontSize: 21, fontWeight: FontWeight.bold, letterSpacing: 2)),
             const SizedBox(height: TavliSpacing.md),
             _menuBtn(TavliCopy.resume, () => Navigator.pop(ctx)),
-            _menuBtn(TavliCopy.resign, () {
+            _menuBtn(TavliCopy.resign, () async {
               Navigator.pop(ctx);
-              ref.read(gameProvider.notifier).resign(1);
+              if (await _confirmDestructive(TavliCopy.resign, TavliCopy.confirmResignBody)) {
+                ref.read(gameProvider.notifier).resign(1);
+              }
             }),
-            _menuBtn(TavliCopy.newGame, () {
+            _menuBtn(TavliCopy.newGame, () async {
               Navigator.pop(ctx);
+              final gs = ref.read(gameProvider);
+              if (gs.phase != GamePhase.gameOver &&
+                  !await _confirmDestructive(TavliCopy.newGame, TavliCopy.confirmNewGameBody)) {
+                return;
+              }
               ref.read(gameProvider.notifier).newGame(
                 difficulty: widget.difficulty,
                 variant: widget.variant,
@@ -916,16 +1048,30 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               _dialogue.reset();
               _dialogue.trigger(DialogueEvent.gameStart, widget.difficulty, personality: _personality);
               _navigatingToVictory = false;
-              setState(() {});
+              if (mounted) setState(() {});
             }),
-            _menuBtn(TavliCopy.exitToHome, () {
+            _menuBtn(TavliCopy.exitToHome, () async {
               Navigator.pop(ctx);
-              context.go('/home');
+              final gs = ref.read(gameProvider);
+              final router = GoRouter.of(context);
+              if (gs.phase != GamePhase.gameOver &&
+                  !await _confirmDestructive(TavliCopy.exitToHome, TavliCopy.confirmExitBody)) {
+                return;
+              }
+              if (mounted) router.go('/home');
             }),
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      // Release AI from its pause checkpoint regardless of which button
+      // closed the sheet (resume, resign, new game, exit, or swipe-down).
+      final lock = _pauseLock;
+      _pauseLock = null;
+      if (lock != null && !lock.isCompleted) {
+        lock.complete();
+      }
+    });
   }
 
   Widget _buildDoubleOfferOverlay(GameState gs) {
@@ -945,7 +1091,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('Μ', style: theme.textTheme.bodyLarge!.copyWith(
+              Text(_personality.avatarInitial, style: theme.textTheme.bodyLarge!.copyWith(
                 color: TavliColors.surface, fontSize: 27, fontWeight: FontWeight.bold,
               )),
               const SizedBox(height: TavliSpacing.xs),

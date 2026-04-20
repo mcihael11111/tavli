@@ -144,7 +144,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  'Choose Your Game',
+                  TavliCopy.chooseYourGame,
                   style: theme.textTheme.headlineSmall!.copyWith(
                     color: TavliColors.light,
                   ),
@@ -315,9 +315,9 @@ class _VariantCardState extends State<_VariantCard> {
       };
 
   String get _mechanicLabel => switch (widget.variant.mechanicFamily) {
-        MechanicFamily.hitting => 'Hit & run',
-        MechanicFamily.pinning => 'Trap & pin',
-        MechanicFamily.running => 'Race & block',
+        MechanicFamily.hitting => TavliCopy.mechanicHitAndRun,
+        MechanicFamily.pinning => TavliCopy.mechanicTrapAndPin,
+        MechanicFamily.running => TavliCopy.mechanicRaceAndBlock,
       };
 
   @override
@@ -408,8 +408,8 @@ class _ExploreTraditionsCard extends StatelessWidget {
 
     return ContentModule(
       icon: Icons.explore_outlined,
-      title: 'Explore Other Traditions',
-      body: 'Backgammon is played differently around the world. Try another style!',
+      title: TavliCopy.exploreOtherTraditions,
+      body: TavliCopy.exploreOtherTraditionsSub,
       child: Row(
         children: [
           for (int i = 0; i < otherTraditions.length; i++) ...[

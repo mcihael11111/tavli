@@ -191,8 +191,8 @@ class SettingsScreen extends ConsumerWidget {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Jacoby Rule',
                         style: TextStyle(color: TavliColors.light)),
-                    subtitle: Text('Gammons only count if cube was offered',
-                        style: const TextStyle(color: TavliColors.disabledOnPrimary)),
+                    subtitle: const Text('Gammons only count if cube was offered',
+                        style: TextStyle(color: TavliColors.disabledOnPrimary)),
                     value: ref.watch(jacobyRuleProvider),
                     onChanged: (v) => _update(ref, jacobyRuleProvider, v,
                         (s, val) => s.jacobyRule = val),
@@ -347,7 +347,7 @@ class SettingsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.logout, color: TavliColors.light),
                     title: const Text('Sign Out',
                         style: TextStyle(color: TavliColors.light)),
-                    subtitle: Text('Sign out of your account',
+                    subtitle: const Text('Sign out of your account',
                         style: TextStyle(
                             color: TavliColors.disabledOnPrimary)),
                     onTap: () => _confirmSignOut(context, ref),
@@ -357,7 +357,7 @@ class SettingsScreen extends ConsumerWidget {
                     leading: const Icon(Icons.refresh, color: TavliColors.light),
                     title: const Text('Reset Onboarding',
                         style: TextStyle(color: TavliColors.light)),
-                    subtitle: Text('Restart the welcome flow',
+                    subtitle: const Text('Restart the welcome flow',
                         style: TextStyle(
                             color: TavliColors.disabledOnPrimary)),
                     onTap: () => _confirmResetOnboarding(context),

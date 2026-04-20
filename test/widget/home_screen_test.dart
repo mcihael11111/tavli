@@ -9,6 +9,9 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await SettingsService.initialize();
+    // Pin language to English for deterministic assertions against English
+    // labels. Default level (0.5 "Mixed") surfaces Greek for category-B copy.
+    SettingsService.instance.languageLevel = 0.0;
   });
 
   Widget createApp() {

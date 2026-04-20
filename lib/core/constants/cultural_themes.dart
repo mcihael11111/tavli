@@ -14,6 +14,7 @@ abstract final class CulturalThemes {
         Tradition.tavla => _tavlaTheme,
         Tradition.nardy => _nardyTheme,
         Tradition.sheshBesh => _sheshBeshTheme,
+        Tradition.tawla => _tawlaArabTheme,
       };
 
   static const _tavliTheme = CulturalTheme(
@@ -55,13 +56,25 @@ abstract final class CulturalThemes {
   static const _sheshBeshTheme = CulturalTheme(
     accentName: 'Mediterranean Tile',
     boardAccentDescription: 'Mosaic tile border pattern',
-    ambientSoundId: 'ambient_cafe_med',
-    ambientSoundDescription: 'Mediterranean cafe — Arabic coffee, street sounds, distant oud',
+    ambientSoundId: 'ambient_cafe_il',
+    ambientSoundDescription: 'Israeli cafe — espresso machine, Hebrew chatter, backgammon clicks',
     culturalColorHint: Color(0xFF0E6655), // Mediterranean teal
     defaultBoardWood: 'Olive & Sandstone',
     iconMotif: Icons.hexagon, // Tile/mosaic motif
-    culturalGreeting: '!Ahlan',
-    culturalGoodGame: '!Mabrook',
+    culturalGreeting: '!שלום',
+    culturalGoodGame: '!כל הכבוד',
+  );
+
+  static const _tawlaArabTheme = CulturalTheme(
+    accentName: 'Arabesque Geometry',
+    boardAccentDescription: 'Interlocking star and polygon border pattern',
+    ambientSoundId: 'ambient_maqha',
+    ambientSoundDescription: 'Arab coffeehouse — Arabic coffee, hookah, distant oud, dice clicking',
+    culturalColorHint: Color(0xFF1B5E20), // Deep green
+    defaultBoardWood: 'Walnut & Mother of Pearl',
+    iconMotif: Icons.auto_awesome, // Star pattern
+    culturalGreeting: '!أهلاً',
+    culturalGoodGame: '!مبروك',
   );
 }
 

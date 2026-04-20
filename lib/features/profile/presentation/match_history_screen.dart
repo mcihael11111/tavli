@@ -137,7 +137,7 @@ class _MatchHistoryScreenState extends State<MatchHistoryScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.history, size: 48, color: TavliColors.disabledOnPrimary),
+          const Icon(Icons.history, size: 48, color: TavliColors.disabledOnPrimary),
           const SizedBox(height: TavliSpacing.sm),
           Text('No games yet', style: theme.textTheme.headlineMedium?.copyWith(
             color: TavliColors.light,
