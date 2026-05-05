@@ -13,7 +13,10 @@ import '../../domain/engine/variants/game_variant.dart';
 import '../../../../core/constants/tradition.dart';
 import '../../domain/engine/variants/plakoto_engine.dart';
 import '../../domain/engine/variants/fevga_engine.dart';
+import '../../domain/engine/move_quality.dart';
 import '../../../ai/difficulty/difficulty_level.dart';
+import '../../../ai/engine/ai_player.dart';
+import 'move_quality_cache.dart';
 
 /// Complete game state: board, phase, dice, legal moves, history, etc.
 class GameState {
@@ -121,6 +124,17 @@ class GameNotifier extends StateNotifier<GameState> {
   GameVariant _variant;
   final PlakotoEngine _plakotoEngine;
   final FevgaEngine _fevgaEngine;
+
+  /// Cache of teaching-mode move-quality evaluations. Read by `build()`,
+  /// populated asynchronously via [scheduleQualityEval] so the heavy
+  /// equity scan never runs on the UI thread synchronously.
+  final MoveQualityCache _qualityCache = MoveQualityCache();
+  MoveQualityCache get qualityCache => _qualityCache;
+
+  /// Tracks which (boardHash, selectedPoint, sortedDice) eval is currently
+  /// in flight, so a stream of selectChecker calls only schedules one
+  /// microtask per unique key.
+  String? _pendingEvalKey;
 
   GameNotifier({
     GameEngine? engine,
@@ -521,6 +535,10 @@ class GameNotifier extends StateNotifier<GameState> {
   /// Advance to next turn (called after AI moves or turn-complete animation).
   void nextTurn() {
     if (state.phase == GamePhase.gameOver) return;
+    // Drop teaching-mode evaluations from the previous turn so memory is
+    // bounded across long games.
+    _qualityCache.invalidate();
+    _pendingEvalKey = null;
     state = state.copyWith(
       phase: GamePhase.playerTurnStart,
       clearRoll: true,
@@ -531,6 +549,120 @@ class GameNotifier extends StateNotifier<GameState> {
       clearSelectedPoint: true,
       clearDouble: true,
     );
+  }
+
+  /// Schedule a teaching-mode quality evaluation for the currently selected
+  /// checker, off the UI build path.
+  ///
+  /// Cheap fast-path:
+  ///   - Returns immediately when [isTeaching] is false.
+  ///   - Returns immediately when no checker is selected.
+  ///   - Returns immediately when the cache already has an entry for the
+  ///     current (boardHash, selectedPoint, sortedDice) key.
+  ///
+  /// On a miss it kicks off a [Future.microtask] that runs the equity scan
+  /// (the same logic that previously ran synchronously inside the screen's
+  /// `_computeMoveQualities` and was called twice per move — once on the
+  /// destination tap and again from `build()`).
+  ///
+  /// When the microtask completes it writes into [qualityCache] and pokes
+  /// state via `copyWith()` so the screen rebuilds and reads the freshly
+  /// cached qualities.
+  void scheduleQualityEval({
+    required bool isTeaching,
+    required AiPlayer aiPlayer,
+    required GameVariant variant,
+  }) {
+    if (!isTeaching) return;
+    final s = state;
+    final selected = s.selectedPoint;
+    if (selected == null) return;
+    if (s.availableMovesForSelected.isEmpty) return;
+
+    final boardHash = s.board.hashCode;
+    final sortedDice = List<int>.of(s.remainingDice)..sort();
+    final key = '$boardHash:$selected:${sortedDice.join(',')}';
+
+    // Already cached or in flight — nothing to do.
+    if (_qualityCache.read(
+          boardHash: boardHash,
+          selectedPoint: selected,
+          dice: s.remainingDice,
+        ) !=
+        null) {
+      return;
+    }
+    if (_pendingEvalKey == key) return;
+    _pendingEvalKey = key;
+
+    // Trivial case: a single legal move from this checker is best by
+    // construction. Resolve synchronously to avoid an unnecessary frame
+    // delay before highlights appear.
+    if (s.availableMovesForSelected.length == 1) {
+      _qualityCache.write(
+        boardHash: boardHash,
+        selectedPoint: selected,
+        dice: s.remainingDice,
+        qualities: {
+          s.availableMovesForSelected.first.toPoint: MoveQuality.best,
+        },
+      );
+      _pendingEvalKey = null;
+      // Force rebuild so the highlight reflects the new entry.
+      state = state.copyWith();
+      return;
+    }
+
+    Future.microtask(() {
+      // Re-check inside microtask: state may have moved on (player picked
+      // a different checker, completed the move, or turn ended).
+      final s2 = state;
+      if (s2.selectedPoint != selected) {
+        _pendingEvalKey = null;
+        return;
+      }
+      if (s2.board.hashCode != boardHash) {
+        _pendingEvalKey = null;
+        return;
+      }
+
+      final qualities = <int, MoveQuality>{};
+      final scores = <int, double>{};
+      for (final move in s2.availableMovesForSelected) {
+        final after = peekApplyMove(move);
+        if (after != null) {
+          scores[move.toPoint] =
+              aiPlayer.evaluatePosition(after, 1, variant: variant);
+        }
+      }
+
+      if (scores.isNotEmpty) {
+        final bestScore = scores.values.reduce((a, b) => a > b ? a : b);
+        for (final entry in scores.entries) {
+          final diff = bestScore - entry.value;
+          if (diff <= 0.01) {
+            qualities[entry.key] = MoveQuality.best;
+          } else if (diff <= 0.03) {
+            qualities[entry.key] = MoveQuality.good;
+          } else if (diff <= 0.08) {
+            qualities[entry.key] = MoveQuality.acceptable;
+          } else {
+            qualities[entry.key] = MoveQuality.poor;
+          }
+        }
+
+        _qualityCache.write(
+          boardHash: boardHash,
+          selectedPoint: selected,
+          dice: sortedDice,
+          qualities: qualities,
+        );
+      }
+
+      _pendingEvalKey = null;
+      // Force rebuild so the screen picks up the cache write.
+      state = state.copyWith();
+    });
   }
 }
 

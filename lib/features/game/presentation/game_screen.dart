@@ -209,6 +209,15 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     HapticFeedback.selectionClick();
     ref.read(gameProvider.notifier).selectChecker(pointIndex);
 
+    // Teaching mode: schedule the equity scan off the UI thread (Spec §8.5).
+    // The notifier writes the cache asynchronously and pokes state so build()
+    // re-runs as a thin reader. No-op when not in teaching mode.
+    ref.read(gameProvider.notifier).scheduleQualityEval(
+          isTeaching: widget.difficulty.isTeaching,
+          aiPlayer: _aiPlayer,
+          variant: widget.variant,
+        );
+
     // Tap-selection visual (Spec §6.1): scale 1.06x + ring fade-in over 80ms,
     // fired synchronously so the first frame of feedback lands in the same
     // frame as the tap commit. Clear any prior selection so only one checker
@@ -390,8 +399,11 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   /// dialogue triggers so the victory screen still has persona context.
   void _checkTeachingFeedback() {
     final gs = ref.read(gameProvider);
+    // Spec §8.5: gate BEFORE the heavy `evaluateMoveLoss` call below. This
+    // is the path that previously fired between move 1 and move 2 of an
+    // easyWithHelp turn, freezing the UI thread on the player's tap.
+    if (gs.remainingDice.isNotEmpty) return; // skip mid-turn — only fire at turn end
     if (gs.currentTurnMoves.isEmpty) return;
-    if (gs.remainingDice.isNotEmpty) return; // wait until turn is fully played
 
     // Pre-turn baseline. currentTurnMoves is non-empty (checked above), so the
     // undoStack MUST hold at least the pre-turn snapshot — if it doesn't we
@@ -438,46 +450,26 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
   }
 
-  /// Teaching mode: compute move quality for each available move.
+  /// Teaching mode: read the precomputed move qualities for the currently
+  /// selected checker.
+  ///
+  /// This is a pure cache reader — no equity evaluation runs here. The
+  /// expensive computation is scheduled by the notifier via
+  /// `scheduleQualityEval` from `_onCheckerTapped`, never from `build()`.
+  /// (Spec §1 #5, §8.5: removes the second synchronous `evaluatePosition`
+  /// scan that was firing on every rebuild and freezing the UI between
+  /// move 1 and move 2 of an `easyWithHelp` turn.)
   Map<int, MoveQuality>? _computeMoveQualities() {
     if (!widget.difficulty.isTeaching) return null;
-
     final gs = ref.read(gameProvider);
+    if (gs.selectedPoint == null) return null;
     if (gs.availableMovesForSelected.isEmpty) return null;
-
-    if (gs.availableMovesForSelected.length <= 1) {
-      return {gs.availableMovesForSelected.first.toPoint: MoveQuality.best};
-    }
-
-    // Evaluate each destination using variant-aware evaluator.
-    final qualities = <int, MoveQuality>{};
-    final moves = gs.availableMovesForSelected;
-    final scores = <int, double>{};
-
-    for (final move in moves) {
-      final after = ref.read(gameProvider.notifier).peekApplyMove(move);
-      if (after != null) {
-        scores[move.toPoint] = _aiPlayer.evaluatePosition(after, 1, variant: widget.variant);
-      }
-    }
-
-    if (scores.isEmpty) return null;
-
-    final bestScore = scores.values.reduce((a, b) => a > b ? a : b);
-    for (final entry in scores.entries) {
-      final diff = bestScore - entry.value;
-      if (diff <= 0.01) {
-        qualities[entry.key] = MoveQuality.best;
-      } else if (diff <= 0.03) {
-        qualities[entry.key] = MoveQuality.good;
-      } else if (diff <= 0.08) {
-        qualities[entry.key] = MoveQuality.acceptable;
-      } else {
-        qualities[entry.key] = MoveQuality.poor;
-      }
-    }
-
-    return qualities;
+    final notifier = ref.read(gameProvider.notifier);
+    return notifier.qualityCache.read(
+      boardHash: gs.board.hashCode,
+      selectedPoint: gs.selectedPoint!,
+      dice: gs.remainingDice,
+    );
   }
 
   void _navigateToVictory(GameState gs) {
