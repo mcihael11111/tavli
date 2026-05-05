@@ -210,6 +210,83 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
     }
   }
 
+  /// Animate all listed source-point checkers in parallel into the bear-off
+  /// tray with a 35ms stagger. Used by the trivial-bear-off COMPLETE button
+  /// to wrap end-game in ~250ms instead of ~800ms sequential.
+  ///
+  /// Caller is expected to have already mutated the underlying game state so
+  /// that [finalState] reflects the post-cascade board. The cascade is purely
+  /// a visual sweep — it animates the existing on-board checker components to
+  /// their tray slots and then syncs `_boardState` to [finalState].
+  ///
+  /// [onCheckerLanded] fires per-checker when its individual move animation
+  /// completes, so callers can play SFX in cascade.
+  Future<void> cascadeBearOff({
+    required List<int> sourcePoints,
+    required int playerSide,
+    required BoardState finalState,
+    required void Function(int sourcePoint) onCheckerLanded,
+  }) async {
+    if (!isLoaded || sourcePoints.isEmpty) {
+      _boardState = finalState;
+      return;
+    }
+    _animating = true;
+    try {
+      final layout = _boardComponent.layout;
+      // Track the next available stack slot in the bear-off tray.
+      // Existing borne-off count for this player is the starting offset.
+      var nextStackSlot = playerSide == 1
+          ? _boardState.borneOff1
+          : _boardState.borneOff2;
+      final futures = <Future<void>>[];
+
+      for (var i = 0; i < sourcePoints.length; i++) {
+        final source = sourcePoints[i];
+        final checker = _findTopChecker(source, playerSide);
+        if (checker == null) continue;
+
+        final stackSlot = nextStackSlot;
+        nextStackSlot += 1;
+
+        // Tray position: pointIndex == -2 (visual idx for tray is unflipped).
+        final targetPos = layout.checkerPosition(
+          -2,
+          stackSlot,
+          playerSide,
+          totalOnPoint: stackSlot + 1,
+        );
+
+        // Update logical state immediately so subsequent _findTopChecker calls
+        // for the next source skip this checker.
+        checker.updateLogicalPosition(
+          newPointIndex: -2,
+          newStackPosition: stackSlot,
+          newPlayer: playerSide,
+        );
+        checker.onTap = null;
+
+        final delay = Duration(milliseconds: 35 * i);
+        futures.add(() async {
+          if (delay > Duration.zero) {
+            await Future.delayed(delay);
+          }
+          await checker.animateMoveTo(targetPos, duration: 0.130);
+          onCheckerLanded(source);
+        }());
+      }
+
+      await Future.wait(futures).timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => <void>[],
+      );
+    } finally {
+      _animating = false;
+      // Sync canonical state once the cascade settles.
+      _boardState = finalState;
+    }
+  }
+
   /// Change the board set at runtime.
   void setBoardSet(int setIndex) {
     _boardSetIndex = setIndex;

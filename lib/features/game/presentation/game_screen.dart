@@ -895,19 +895,52 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     final notifier = ref.read(gameProvider.notifier);
     if (!notifier.isTrivialBearOff()) return;
     final moves = List.of(ref.read(gameProvider).legalTurns.first.moves);
+    if (moves.isEmpty) return;
+
+    // Capture sources and side before mutating state — once `makeMove` runs,
+    // legalTurns/activePlayer change as the turn rolls over.
+    final sourcePoints = moves.map((m) => m.fromPoint).toList(growable: false);
+    final playerSide = ref.read(gameProvider).board.activePlayer;
+    // Whether all the captured moves are bear-offs (expected for trivial path).
+    final allBearOff = moves.every((m) => m.isBearOff);
 
     _destinationLocked = true;
     try {
+      // Apply every move synchronously so the notifier's board reflects the
+      // post-cascade state. We deliberately skip per-move `updateBoardState`
+      // so the Flame world holds the pre-cascade visual until we drive the
+      // parallel animation below.
       for (final move in moves) {
         notifier.selectChecker(move.fromPoint);
         notifier.makeMove(move.toPoint);
-        await _game.updateBoardState(ref.read(gameProvider).board);
+      }
+      final finalBoard = ref.read(gameProvider).board;
+
+      if (allBearOff) {
+        // Parallel cascade: 35ms-staggered, ~250ms total wrap (vs ~800ms
+        // sequential). SFX fires per checker as it lands for an audible cascade.
+        await _game.cascadeBearOff(
+          sourcePoints: sourcePoints,
+          playerSide: playerSide,
+          finalState: finalBoard,
+          onCheckerLanded: (_) {
+            if (!mounted) return;
+            _audio.playSfx(SfxType.checkerBearOff);
+          },
+        );
+        if (mounted) HapticFeedback.lightImpact();
+      } else {
+        // Defensive fallback: if the trivial turn somehow contains a non-bear-off
+        // step, just sync the board normally and play a single SFX cluster.
+        await _game.updateBoardState(finalBoard);
         if (!mounted) return;
-        _audio.playSfx(move.isBearOff ? SfxType.checkerBearOff : SfxType.checkerPlace);
-        HapticFeedback.lightImpact();
+        for (final move in moves) {
+          _audio.playSfx(move.isBearOff ? SfxType.checkerBearOff : SfxType.checkerPlace);
+        }
+        if (mounted) HapticFeedback.lightImpact();
       }
     } finally {
-      _destinationLocked = false;
+      if (mounted) _destinationLocked = false;
     }
   }
 
