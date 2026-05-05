@@ -39,6 +39,18 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   final List<HighlightComponent> _highlights = [];
   DiceComponent? _diceComponent;
 
+  /// Rattle duration applied to newly created dice components. Defaults to
+  /// 280ms; overridden by [setDiceRattleDuration] from the game screen so
+  /// pacing varies with the active bot.
+  Duration _diceRattleDuration = const Duration(milliseconds: 280);
+
+  /// Set the rattle duration for future dice rolls. Also propagates to the
+  /// currently visible dice component (no effect if it's already settled).
+  void setDiceRattleDuration(Duration d) {
+    _diceRattleDuration = d;
+    _diceComponent?.setRattleDuration(d);
+  }
+
   /// Board set index (1, 2, or 3) for visual customization.
   int _boardSetIndex = 1;
 
@@ -221,6 +233,7 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
       onTap: () => onDiceRollRequested?.call(),
       diceSet: _diceSetIndex,
       rattle: isNewRoll,
+      rattleDuration: _diceRattleDuration,
     )
       ..sprites = _diceSprites
       ..shadowSprites = _diceShadowSprites;

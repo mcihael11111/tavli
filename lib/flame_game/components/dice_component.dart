@@ -45,8 +45,19 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   int _rattleFace1 = 1;
   int _rattleFace2 = 1;
   double _rattleTickAccum = 0;
-  static const double _rattleTickInterval = 0.06; // flicker every ~60ms
+  static const double _rattleTickInterval = 0.045; // flicker every ~45ms
   static final Random _rng = Random();
+
+  /// Default rattle duration — overridden via [setRattleDuration] before
+  /// the dice are constructed. Tightened from 420ms to 280ms after pacing QA.
+  Duration _rattleDuration = const Duration(milliseconds: 280);
+
+  /// Override the rattle duration. Has no effect on a rattle already in
+  /// progress; applies to the next constructed DiceComponent (or to this
+  /// one if called before it has rattled).
+  void setRattleDuration(Duration d) {
+    _rattleDuration = d;
+  }
 
   /// Per-set color palettes: (topFace, topFaceUsed, rightFace, rightFaceUsed, pipActive, pipUsed).
   static const _palettes = <int, _DicePalette>{
@@ -90,6 +101,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     this.onTap,
     this.diceSet = 1,
     bool rattle = false,
+    Duration? rattleDuration,
   }) : super(
           position: boardLayout.diceAreaCenter -
               Vector2(_dieSizeFor(boardLayout) + _gapFor(boardLayout) / 2,
@@ -102,8 +114,11 @@ class DiceComponent extends PositionComponent with TapCallbacks {
           ),
           anchor: Anchor.topLeft,
         ) {
+    if (rattleDuration != null) {
+      _rattleDuration = rattleDuration;
+    }
     if (rattle && !_isPrompt) {
-      _rattleTimeLeft = 0.42;
+      _rattleTimeLeft = _rattleDuration.inMilliseconds / 1000.0;
       _rattleFace1 = _rng.nextInt(6) + 1;
       _rattleFace2 = _rng.nextInt(6) + 1;
     }

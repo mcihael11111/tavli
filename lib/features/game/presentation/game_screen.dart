@@ -19,6 +19,7 @@ import '../../ai/difficulty/difficulty_level.dart';
 import '../../ai/engine/ai_player.dart';
 import '../../ai/mikhail/dialogue_event.dart';
 import '../../ai/mikhail/dialogue_system.dart';
+import '../../ai/pacing/turn_pacing.dart';
 import '../domain/engine/variants/game_variant.dart';
 import 'providers/game_provider.dart';
 
@@ -42,6 +43,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   late AiPlayer _aiPlayer;
   late DialogueSystem _dialogue;
   late AudioService _audio;
+  late TurnPacing _pacing;
   bool _aiThinking = false;
   bool _navigatingToVictory = false;
   bool _animationInProgress = false;
@@ -72,6 +74,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _aiPlayer = AiPlayer();
     _dialogue = DialogueSystem();
     _audio = AudioService();
+    _pacing = TurnPacing.forBot(widget.difficulty, _personality);
 
     final boardSet = SettingsService.instance.boardSet;
     final checkerSet = SettingsService.instance.checkerSet;
@@ -86,6 +89,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       checkerSet: checkerSet,
       diceSet: diceSet,
     );
+    _game.setDiceRattleDuration(_pacing.diceRattle);
 
     // Allow landscape for gameplay.
     SystemChrome.setPreferredOrientations([
@@ -485,8 +489,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // paths; the finally block only kicks in when code actually throws.
     try {
     // Brief "thinking" beat — enough to register intent, short enough to
-    // keep pace snappy. Trimmed 600 → 350 → 180 ms after pacing QA.
-    await Future.delayed(const Duration(milliseconds: 180));
+    // keep pace snappy. Now driven by TurnPacing so it varies per bot.
+    await Future.delayed(_pacing.thinkingBeat);
     await _awaitResume();
     if (!mounted) { _aiThinking = false; return; }
 
@@ -509,7 +513,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     _audio.playSfx(SfxType.diceRoll);
     notifier.rollDice();
     // Short breather so the player sees the dice before movement starts.
-    await Future.delayed(const Duration(milliseconds: 280));
+    await Future.delayed(_pacing.dicePostRollBreather);
     await _awaitResume();
     if (!mounted) { _aiThinking = false; return; }
 
@@ -555,7 +559,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     if (aiTurn != null) {
       for (final move in aiTurn.moves) {
         // Gap between successive AI moves — just long enough to be legible.
-        await Future.delayed(const Duration(milliseconds: 80));
+        await Future.delayed(_pacing.interMoveSettle);
         await _awaitResume();
         if (!mounted) { _aiThinking = false; return; }
 
@@ -592,7 +596,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
 
     // Tiny settle beat before handing control back to the player.
-    await Future.delayed(const Duration(milliseconds: 60));
+    await Future.delayed(_pacing.finalSettle);
     if (!mounted) { _aiThinking = false; return; }
 
     final afterMoves = ref.read(gameProvider);
