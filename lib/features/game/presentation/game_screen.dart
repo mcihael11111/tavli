@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/colors.dart';
-import '../../../shared/providers/accessibility_providers.dart';
 import '../../../flame_game/tavli_game.dart';
 import '../../../shared/services/audio_service.dart';
 import '../../../shared/services/copy_service.dart';
@@ -730,13 +729,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // AI turn, AI double response) are all driven by ref.listenManual in
     // initState. build() is rendering-only.
 
-    final bgColor = (_aiThinking || gs.isAiTurn)
-        ? TavliColors.botThinkingBg
-        : TavliColors.primary;
-
-    return AnimatedContainer(
-      duration: ReducedMotion.duration(context, const Duration(milliseconds: 400)),
-      color: bgColor,
+    return Container(
+      decoration: const BoxDecoration(
+        color: TavliColors.primary, // fallback shown if image fails
+        image: DecorationImage(
+          image: AssetImage('assets/images/backgrounds/table.png'),
+          fit: BoxFit.cover,
+        ),
+      ),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
