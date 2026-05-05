@@ -46,7 +46,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   late TurnPacing _pacing;
   bool _aiThinking = false;
   bool _navigatingToVictory = false;
-  bool _animationInProgress = false;
+  bool _destinationLocked = false; // blocks destination taps during current move animation
+  bool _selectionLocked = false;   // blocks selection (e.g. during dice rattle)
   bool _showOpeningResult = false;
 
   /// When non-null, [_handleAiTurn] blocks at its await checkpoints until
@@ -193,7 +194,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   void _onCheckerTapped(int pointIndex) {
-    if (_animationInProgress) return;
+    if (_selectionLocked) return;
     final gs = ref.read(gameProvider);
     if (!gs.isPlayerTurn) return;
     if (gs.phase != GamePhase.movingCheckers) return;
@@ -219,7 +220,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   Future<void> _onDestinationTapped(int toPoint) async {
-    if (_animationInProgress) return;
+    if (_destinationLocked) return;
     final gs = ref.read(gameProvider);
     if (!gs.isPlayerTurn) return;
 
@@ -262,7 +263,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // The animation is now 130 ms (down from 220 ms) so the perceived block
     // is short while still giving the renderer time to commit the new state
     // before the next tap is accepted.
-    _animationInProgress = true;
+    _destinationLocked = true;
     ref.read(gameProvider.notifier).makeMove(toPoint);
 
     try {
@@ -272,7 +273,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         HapticFeedback.lightImpact();
       }
     } finally {
-      _animationInProgress = false;
+      _destinationLocked = false;
     }
 
     // Teaching mode — immediate per-move signal.
@@ -481,6 +482,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   Future<void> _handleAiTurn() async {
     if (_aiThinking) return;
     _aiThinking = true;
+    // While the bot is thinking and rattling dice, block selection AND
+    // destination taps. Selection unlocks once the dice are visible (see
+    // pre-input window below); destination stays locked until all bot
+    // animations finish so player taps don't commit against a stale board.
+    _selectionLocked = true;
+    _destinationLocked = true;
     if (mounted) setState(() {});
 
     // Exception safety: if any awaited call throws (AI bug, bad state, etc.)
@@ -516,6 +523,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     await Future.delayed(_pacing.dicePostRollBreather);
     await _awaitResume();
     if (!mounted) { _aiThinking = false; return; }
+
+    // Bot has rolled and dice are visible — player may now pre-select their
+    // next checker. Destination taps still wait for bot animations to finish.
+    if (mounted) setState(() => _selectionLocked = false);
 
     final afterRoll = ref.read(gameProvider);
 
@@ -613,6 +624,10 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       // Log to stderr; a real build pipes this through reportError/Crashlytics.
       debugPrint('AI turn failed: $e\n$stack');
     } finally {
+      // Always release both input locks at the end of the bot's turn — even
+      // on early returns / exceptions — so the player can act.
+      _selectionLocked = false;
+      _destinationLocked = false;
       if (_aiThinking) {
         _aiThinking = false;
         if (mounted) setState(() {});
@@ -660,7 +675,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // and other non-animated state changes are reflected immediately.
     // The differ inside TavliGame handles animation vs instant based on context.
     if (_game.isLoaded) {
-      if (!_animationInProgress && !_aiThinking) {
+      if (!_destinationLocked && !_aiThinking) {
         _game.syncBoardState(gs.board);
       }
 
@@ -848,11 +863,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   }
 
   Future<void> _onCompleteBearOff() async {
+    if (_destinationLocked) return;
     final notifier = ref.read(gameProvider.notifier);
     if (!notifier.isTrivialBearOff()) return;
     final moves = List.of(ref.read(gameProvider).legalTurns.first.moves);
 
-    _animationInProgress = true;
+    _destinationLocked = true;
     try {
       for (final move in moves) {
         notifier.selectChecker(move.fromPoint);
@@ -863,7 +879,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         HapticFeedback.lightImpact();
       }
     } finally {
-      _animationInProgress = false;
+      _destinationLocked = false;
     }
   }
 
