@@ -202,11 +202,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // Tap selected checker again → deselect.
     if (gs.selectedPoint == pointIndex) {
       ref.read(gameProvider.notifier).clearSelection();
+      _game.clearAllCheckerSelections();
       return;
     }
 
     HapticFeedback.selectionClick();
     ref.read(gameProvider.notifier).selectChecker(pointIndex);
+
+    // Tap-selection visual (Spec §6.1): scale 1.06x + ring fade-in over 80ms,
+    // fired synchronously so the first frame of feedback lands in the same
+    // frame as the tap commit. Clear any prior selection so only one checker
+    // carries the ring at a time.
+    _game.clearAllCheckerSelections();
+    _game.findCheckerAt(pointIndex)?.setSelected(true);
 
     // Check if any moves are available after selection.
     final afterSelect = ref.read(gameProvider);
@@ -263,14 +271,22 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // The animation is now 130 ms (down from 220 ms) so the perceived block
     // is short while still giving the renderer time to commit the new state
     // before the next tap is accepted.
+    // Immediate destination haptic (Spec §6.2): fire on tap commit, BEFORE
+    // the 130ms move animation begins. Previously this fired after the await
+    // so the tap felt detached from the visible animation start.
+    if (landingSfx != null) {
+      HapticFeedback.lightImpact();
+    }
+
     _destinationLocked = true;
     ref.read(gameProvider.notifier).makeMove(toPoint);
+    // Clear the tap-selection visual now that the move is committing.
+    _game.clearAllCheckerSelections();
 
     try {
       await _game.updateBoardState(ref.read(gameProvider).board);
       if (landingSfx != null) {
         _audio.playSfx(landingSfx);
-        HapticFeedback.lightImpact();
       }
     } finally {
       _destinationLocked = false;

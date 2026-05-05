@@ -400,6 +400,34 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
     }
   }
 
+  /// Find a checker at the given logical point (any player). Returns the
+  /// topmost checker on that point if multiple are stacked.
+  ///
+  /// Used by the tap-selection visual to apply [CheckerComponent.setSelected]
+  /// from the game-screen tap handler. Logical point indices are mapped to
+  /// visual indices internally so callers pass the same index they get in
+  /// `onCheckerTapped`.
+  CheckerComponent? findCheckerAt(int logicalPoint) {
+    final visualIdx = _visualPoint(logicalPoint);
+    CheckerComponent? top;
+    for (final c in _checkers) {
+      if (c.pointIndex == visualIdx) {
+        if (top == null || c.stackPosition > top.stackPosition) {
+          top = c;
+        }
+      }
+    }
+    return top;
+  }
+
+  /// Deselect every checker on the board. Called before applying a fresh
+  /// selection so only one checker carries the visual at a time.
+  void clearAllCheckerSelections() {
+    for (final c in _checkers) {
+      c.setSelected(false);
+    }
+  }
+
   /// Find the topmost checker on a given logical point for a given player.
   CheckerComponent? _findTopChecker(int logicalPoint, int player) {
     final visualIdx = _visualPoint(logicalPoint);

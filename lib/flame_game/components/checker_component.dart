@@ -35,6 +35,21 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
 
   bool _isSelected = false;
 
+  // ── Selection tween (Spec §6.1) ──────────────────────────
+  // Drives the 80ms scale + ring-opacity animation kicked off in onTapUp.
+  // Uses an update()-driven tween (not a Flame Effect) so the first frame of
+  // feedback can land synchronously with the tap, and so cancellation when
+  // the player rapid-taps a different checker is just a state reset.
+  double _ringOpacity = 0.0;
+  double _selectionScale = 1.0;
+  static const double _selectionTweenDuration = 0.080;
+  double _selectionTweenT = 0;
+  double _selectionStartScale = 1.0;
+  double _selectionTargetScale = 1.0;
+  double _selectionStartOpacity = 0.0;
+  double _selectionTargetOpacity = 0.0;
+  bool _selectionTweenActive = false;
+
   /// Cylinder thickness as fraction of radius.
   static const double _thicknessRatio = 0.32;
 
@@ -130,28 +145,82 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
 
   bool get isSelected => _isSelected;
 
-  set isSelected(bool value) {
+  /// Toggle the tap-selection visual (scale 1.00 → 1.06 + ring fade-in over
+  /// 80ms ease-out). Idempotent on the same value. Called synchronously from
+  /// onTapUp so the first frame of feedback lands in the same frame as the
+  /// tap commit (Spec §6.1).
+  void setSelected(bool value) {
+    if (_isSelected == value) return;
     _isSelected = value;
-    if (value) {
-      add(ScaleEffect.to(
-        Vector2.all(1.1),
-        EffectController(duration: 0.15),
-      ));
-    } else {
-      add(ScaleEffect.to(
-        Vector2.all(1.0),
-        EffectController(duration: 0.15),
-      ));
+    _selectionStartScale = _selectionScale;
+    _selectionStartOpacity = _ringOpacity;
+    _selectionTargetScale = value ? 1.06 : 1.0;
+    _selectionTargetOpacity = value ? 0.85 : 0.0;
+    _selectionTweenT = 0;
+    _selectionTweenActive = true;
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_selectionTweenActive) {
+      _selectionTweenT += dt;
+      final p = (_selectionTweenT / _selectionTweenDuration).clamp(0.0, 1.0);
+      // Ease-out (quadratic): fast at start, settles smoothly.
+      final eased = 1 - (1 - p) * (1 - p);
+      _selectionScale = _selectionStartScale +
+          (_selectionTargetScale - _selectionStartScale) * eased;
+      _ringOpacity = _selectionStartOpacity +
+          (_selectionTargetOpacity - _selectionStartOpacity) * eased;
+      if (p >= 1.0) {
+        _selectionTweenActive = false;
+        _selectionScale = _selectionTargetScale;
+        _ringOpacity = _selectionTargetOpacity;
+      }
     }
   }
 
   @override
   void render(Canvas canvas) {
-    if (_sprites != null) {
-      _renderWithSprite(canvas);
-      return;
+    // Apply tap-selection scale around the checker center. The scale is
+    // tweened (Spec §6.1, 80ms ease-out) so any non-1.0 value means we're
+    // mid- or post- selection animation.
+    final scaling = _selectionScale != 1.0;
+    if (scaling) {
+      canvas.save();
+      canvas.translate(radius, radius);
+      canvas.scale(_selectionScale);
+      canvas.translate(-radius, -radius);
     }
 
+    if (_sprites != null) {
+      _renderWithSprite(canvas);
+    } else {
+      _renderProcedural(canvas);
+    }
+
+    if (scaling) {
+      canvas.restore();
+    }
+
+    // Selection ring (Spec §6.1) — drawn in unscaled space so the 2px stroke
+    // remains 2px regardless of the scale tween. Sits just outside the
+    // checker disc.
+    if (_ringOpacity > 0.001) {
+      final ring = Paint()
+        ..color = TavliColors.primary.withValues(alpha: _ringOpacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+      canvas.drawCircle(
+        Offset(radius, radius),
+        radius + 3,
+        ring,
+      );
+    }
+  }
+
+  /// Procedural (non-sprite) cylinder rendering.
+  void _renderProcedural(Canvas canvas) {
     final cx = radius;
     final cy = radius;
 
@@ -194,11 +263,6 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
 
     // ── Rim lighting (specular highlight) ────────────────────
     _drawRimLight(canvas, cx, cy);
-
-    // ── Selection glow ───────────────────────────────────────
-    if (_isSelected) {
-      _drawSelectionGlow(canvas, cx, cy);
-    }
   }
 
   /// Render using designer-provided sprite assets.
@@ -401,34 +465,6 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
         ..style = PaintingStyle.stroke
         ..strokeWidth = radius * 0.06
         ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  void _drawSelectionGlow(Canvas canvas, double cx, double cy) {
-    // Green glow around the checker (matching reference app).
-    final glowPaint = Paint()
-      ..color = TavliColors.selectionGreen.withValues(alpha: 0.5)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(cx, cy),
-        width: radius * 2.3,
-        height: _ellipseH * 2.3 + _thickness,
-      ),
-      glowPaint,
-    );
-
-    // Bright green ring.
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(cx, cy),
-        width: radius * 2.15,
-        height: _ellipseH * 2.15,
-      ),
-      Paint()
-        ..color = TavliColors.selectionGreen.withValues(alpha: 0.85)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.5,
     );
   }
 
