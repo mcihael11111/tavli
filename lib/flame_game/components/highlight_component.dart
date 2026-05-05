@@ -253,9 +253,16 @@ class HighlightComponent extends PositionComponent
       return (local - Vector2(r, r)).length <= r;
     }
 
-    // Point-in-triangle test for standard points.
+    // Rectangular hit zone covering the full point column. The visible green
+    // triangle stays the same, but the tap zone now spans the entire bbox so
+    // the tip region (which is only a few pixels wide on the triangle path)
+    // is no longer functionally unhittable. The bbox is bounded by pointWidth
+    // laterally so adjacent highlighted destinations stay unambiguous.
     final local = point - position;
-    return _trianglePath.contains(Offset(local.x, local.y));
+    return local.x >= 0 &&
+        local.x <= size.x &&
+        local.y >= 0 &&
+        local.y <= size.y;
   }
 
   @override

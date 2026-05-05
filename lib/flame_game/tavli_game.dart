@@ -31,7 +31,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   late BoardComponent _boardComponent;
   final SpriteManager _spriteManager = SpriteManager();
   CheckerSprites? _checkerSprites;
+  CheckerShadowSprites? _checkerShadowSprites;
+  CheckerVerticalSprites? _checkerVerticalSprites;
   DiceSprites? _diceSprites;
+  DiceShadowSprites? _diceShadowSprites;
   final List<CheckerComponent> _checkers = [];
   final List<HighlightComponent> _highlights = [];
   DiceComponent? _diceComponent;
@@ -104,7 +107,13 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   Future<void> _loadSprites() async {
     await _boardComponent.loadSprites(_spriteManager, _boardSetIndex);
     _checkerSprites = await _spriteManager.loadCheckerSprites(_checkerSetIndex);
+    _checkerShadowSprites =
+        await _spriteManager.loadCheckerShadowSprites(_checkerSetIndex);
+    _checkerVerticalSprites =
+        await _spriteManager.loadCheckerVerticalSprites(_checkerSetIndex);
     _diceSprites = await _spriteManager.loadDiceSprites(_diceSetIndex);
+    _diceShadowSprites =
+        await _spriteManager.loadDiceShadowSprites(_diceSetIndex);
   }
 
   @override
@@ -124,11 +133,30 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   /// Used by the build() method for non-move state changes (undo, turn transitions).
   void syncBoardState(BoardState newState) {
     if (_animating) return; // don't interrupt an animation
-    if (_boardState == newState) return; // no change
+    // Use a *structural* equality check (only what affects checker positions)
+    // so flips of activePlayer / phase / dice don't tear down all 30 checkers
+    // every turn — that rebuild was the source of the post-move "jump"
+    // visible after every player or AI move.
+    if (_piecesIdentical(_boardState, newState)) {
+      _boardState = newState;
+      return;
+    }
     _boardState = newState;
     if (isLoaded) {
       _rebuildCheckers();
     }
+  }
+
+  /// True when both states have identical checker placement everywhere
+  /// (points, bar, borne-off). Ignores activePlayer, phase, dice, cube state.
+  static bool _piecesIdentical(BoardState a, BoardState b) {
+    for (int i = 0; i < 24; i++) {
+      if (a.points[i] != b.points[i]) return false;
+    }
+    return a.bar1 == b.bar1 &&
+        a.bar2 == b.bar2 &&
+        a.borneOff1 == b.borneOff1 &&
+        a.borneOff2 == b.borneOff2;
   }
 
   /// Update the board state with animation (for moves).
@@ -193,7 +221,9 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
       onTap: () => onDiceRollRequested?.call(),
       diceSet: _diceSetIndex,
       rattle: isNewRoll,
-    )..sprites = _diceSprites;
+    )
+      ..sprites = _diceSprites
+      ..shadowSprites = _diceShadowSprites;
     add(_diceComponent!);
   }
 
@@ -397,7 +427,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
           boardLayout: layout,
           onTap: () => onCheckerTapped?.call(i), // callback uses logical index
           checkerSet: _checkerSetIndex,
-        )..sprites = _checkerSprites;
+        )
+        ..sprites = _checkerSprites
+        ..shadowSprites = _checkerShadowSprites
+        ..verticalSprites = _checkerVerticalSprites;
         _checkers.add(checker);
         add(checker);
       }
@@ -412,7 +445,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
         boardLayout: layout,
         onTap: () => onCheckerTapped?.call(-1),
         checkerSet: _checkerSetIndex,
-      )..sprites = _checkerSprites;
+      )
+        ..sprites = _checkerSprites
+        ..shadowSprites = _checkerShadowSprites
+        ..verticalSprites = _checkerVerticalSprites;
       _checkers.add(checker);
       add(checker);
     }
@@ -424,7 +460,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
         boardLayout: layout,
         onTap: () => onCheckerTapped?.call(-1),
         checkerSet: _checkerSetIndex,
-      )..sprites = _checkerSprites;
+      )
+        ..sprites = _checkerSprites
+        ..shadowSprites = _checkerShadowSprites
+        ..verticalSprites = _checkerVerticalSprites;
       _checkers.add(checker);
       add(checker);
     }
@@ -437,7 +476,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
         player: 1,
         boardLayout: layout,
         checkerSet: _checkerSetIndex,
-      )..sprites = _checkerSprites;
+      )
+        ..sprites = _checkerSprites
+        ..shadowSprites = _checkerShadowSprites
+        ..verticalSprites = _checkerVerticalSprites;
       _checkers.add(checker);
       add(checker);
     }
@@ -448,7 +490,10 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
         player: 2,
         boardLayout: layout,
         checkerSet: _checkerSetIndex,
-      )..sprites = _checkerSprites;
+      )
+        ..sprites = _checkerSprites
+        ..shadowSprites = _checkerShadowSprites
+        ..verticalSprites = _checkerVerticalSprites;
       _checkers.add(checker);
       add(checker);
     }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/colors.dart';
 import '../../../shared/widgets/content_module.dart';
@@ -191,9 +192,27 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
   bool _loading = true;
   String? _error;
 
+  String? _spectatorUid;
+
   @override
   void initState() {
     super.initState();
+    _joinAndSubscribe();
+  }
+
+  Future<void> _joinAndSubscribe() async {
+    // QA M14: previously the screen only subscribed to the room stream and
+    // never called joinAsSpectator / leaveAsSpectator, so spectator counts
+    // never incremented or decremented. Now we register on entry and clean
+    // up in dispose.
+    _spectatorUid = FirebaseAuth.instance.currentUser?.uid;
+    if (_spectatorUid != null) {
+      try {
+        await _service.joinAsSpectator(widget.gameRoomId, _spectatorUid!);
+      } catch (e) {
+        debugPrint('Spectator join failed: $e');
+      }
+    }
     _subscribe();
   }
 
@@ -215,6 +234,13 @@ class _SpectateGameScreenState extends State<SpectateGameScreen> {
   @override
   void dispose() {
     _subscription?.cancel();
+    // Best-effort decrement; ignore failure since the screen is going away.
+    final uid = _spectatorUid;
+    if (uid != null) {
+      _service.leaveAsSpectator(widget.gameRoomId, uid).catchError((e) {
+        debugPrint('Spectator leave failed: $e');
+      });
+    }
     super.dispose();
   }
 

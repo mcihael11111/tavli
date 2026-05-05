@@ -174,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 iconSize: 32,
                 title: '${tradition.displayName} Marathon',
                 body: tradition.variants.map((v) => v.nativeName).join(' \u2192 '),
-                trailing: const Icon(Icons.play_arrow, color: TavliColors.light, size: 28),
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: _onMarathonTap,
               ),
 

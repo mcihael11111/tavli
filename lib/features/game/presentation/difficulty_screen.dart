@@ -12,8 +12,18 @@ import '../domain/engine/variants/game_variant.dart';
 /// Difficulty selection screen — pick which difficulty to face.
 class DifficultyScreen extends StatefulWidget {
   final GameVariant variant;
+  /// True when entered via the marathon card on home. Forwarded to /game so
+  /// the engine sets up multi-game scoring instead of a single match.
+  final bool isMarathon;
+  /// Tradition name forwarded for marathon's variant cycling.
+  final String? tradition;
 
-  const DifficultyScreen({super.key, this.variant = GameVariant.portes});
+  const DifficultyScreen({
+    super.key,
+    this.variant = GameVariant.portes,
+    this.isMarathon = false,
+    this.tradition,
+  });
 
   @override
   State<DifficultyScreen> createState() => _DifficultyScreenState();
@@ -81,6 +91,8 @@ class _DifficultyScreenState extends State<DifficultyScreen> {
                 onTap: () => context.push('/game', extra: {
                   'difficulty': level,
                   'variant': widget.variant,
+                  if (widget.isMarathon) 'marathon': true,
+                  if (widget.tradition != null) 'tradition': widget.tradition,
                 }),
               ),
           ],
@@ -125,12 +137,28 @@ class _DifficultyCard extends StatelessWidget {
     final colors = theme.colorScheme;
     final accent = _accent(colors);
 
-    return Opacity(
-      opacity: isLocked ? 0.5 : 1.0,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: ContentModule(
-          onTap: isLocked ? null : onTap,
+    // Accessibility label (QA M4+M5): announce level, status, and unlock
+    // condition so VoiceOver/TalkBack users can reason about the card without
+    // seeing the icon or opacity.
+    final a11yLabel = [
+      level.greekName,
+      '(${level.englishName})',
+      if (isLocked) 'Locked. ${level.unlockCondition ?? ''}'.trim(),
+      if (!isLocked && stats.totalGames > 0)
+        '${stats.totalGames} games played',
+    ].join('. ');
+
+    return Semantics(
+      button: true,
+      enabled: !isLocked,
+      label: a11yLabel,
+      hint: isLocked ? 'Unlock this difficulty to play' : 'Double tap to play',
+      child: Opacity(
+        opacity: isLocked ? 0.5 : 1.0,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: ContentModule(
+            onTap: isLocked ? null : onTap,
           leading: Container(
             width: 48,
             height: 48,
@@ -142,7 +170,7 @@ class _DifficultyCard extends StatelessWidget {
           ),
           title: level.greekName,
           trailing: !isLocked
-              ? const Icon(Icons.play_arrow, color: TavliColors.light, size: 28)
+              ? const Icon(Icons.chevron_right, color: TavliColors.light, size: 24)
               : null,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,6 +232,7 @@ class _DifficultyCard extends StatelessWidget {
               ],
             ],
           ),
+        ),
         ),
       ),
     );

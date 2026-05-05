@@ -248,13 +248,19 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       }
     }
 
-    // Block further taps before applying the move to close the race window.
+    // Block taps for the duration of the animation. An earlier revision
+    // unblocked immediately after committing state to feel snappier, but a
+    // QA pass found that opened a stale-state race: the player could tap a
+    // checker mid-animation while game_provider's selectChecker() ran against
+    // the *new* board, but the visible state was still the old one. Result
+    // was occasional illegal-looking moves on rapid double taps.
+    //
+    // The animation is now 130 ms (down from 220 ms) so the perceived block
+    // is short while still giving the renderer time to commit the new state
+    // before the next tap is accepted.
     _animationInProgress = true;
-
-    // Apply the move — state updates immediately.
     ref.read(gameProvider.notifier).makeMove(toPoint);
 
-    // Wait for checker animation to complete, then play landing sound.
     try {
       await _game.updateBoardState(ref.read(gameProvider).board);
       if (landingSfx != null) {
@@ -267,12 +273,24 @@ class _GameScreenState extends ConsumerState<GameScreen> {
 
     // Teaching mode — immediate per-move signal.
     // Haptic intensity tracks move quality so the learner gets feedback
-    // each move (not just the end-of-turn SnackBar summary). SnackBar
-    // would stack up visually for 4-move doubles turns; haptic is
-    // lightweight enough to fire every time without overwhelming.
+    // each move. Before QA H11 the only visible per-move signal was haptic;
+    // a player who made a poor opening move followed by legal follow-ups
+    // could finish the turn with an "overall OK" summary that hid the
+    // opening mistake. We now also surface a short SnackBar on the spot
+    // for poor moves — short enough not to stack on 4-move doubles.
     if (chosenQuality != null && chosenQuality == MoveQuality.poor) {
       HapticFeedback.heavyImpact();
       _announce('That move may have been a mistake.');
+      if (widget.difficulty.isTeaching && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(TavliCopy.teachingBadMove),
+            duration: const Duration(milliseconds: 900),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: TavliColors.surface,
+          ),
+        );
+      }
     }
 
     // End-of-turn teaching summary (Easy+Help).
@@ -297,7 +315,9 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       _announce('You rolled $p, $botName rolled $o. $who first.');
       // Show result briefly before dismissing overlay.
       setState(() => _showOpeningResult = true);
-      Future.delayed(const Duration(milliseconds: 1500), () {
+      // Trimmed from 1500ms — the opening overlay was the worst lag the
+      // player saw before their first move. 700ms is enough to read the result.
+      Future.delayed(const Duration(milliseconds: 700), () {
         if (mounted) setState(() => _showOpeningResult = false);
       });
       return;
@@ -352,8 +372,12 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     if (gs.currentTurnMoves.isEmpty) return;
     if (gs.remainingDice.isNotEmpty) return; // wait until turn is fully played
 
-    // Compare player's board to the best possible board.
-    final boardBefore = gs.undoStack.isNotEmpty ? gs.undoStack.first : gs.board;
+    // Pre-turn baseline. currentTurnMoves is non-empty (checked above), so the
+    // undoStack MUST hold at least the pre-turn snapshot — if it doesn't we
+    // have no meaningful baseline (opening roll or state lost) and must skip
+    // rather than silently compare board to itself (QA H12).
+    if (gs.undoStack.isEmpty) return;
+    final boardBefore = gs.undoStack.first;
     final equityLoss = _aiPlayer.evaluateMoveLoss(
       boardBefore, gs.board,
       gs.currentRoll!,
@@ -461,8 +485,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     // paths; the finally block only kicks in when code actually throws.
     try {
     // Brief "thinking" beat — enough to register intent, short enough to
-    // keep pace snappy. Was 600 ms; trimmed after pacing QA.
-    await Future.delayed(const Duration(milliseconds: 350));
+    // keep pace snappy. Trimmed 600 → 350 → 180 ms after pacing QA.
+    await Future.delayed(const Duration(milliseconds: 180));
     await _awaitResume();
     if (!mounted) { _aiThinking = false; return; }
 
@@ -568,7 +592,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
     }
 
     // Tiny settle beat before handing control back to the player.
-    await Future.delayed(const Duration(milliseconds: 120));
+    await Future.delayed(const Duration(milliseconds: 60));
     if (!mounted) { _aiThinking = false; return; }
 
     final afterMoves = ref.read(gameProvider);
@@ -1028,6 +1052,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               color: TavliColors.light, fontSize: 21, fontWeight: FontWeight.bold, letterSpacing: 2)),
             const SizedBox(height: TavliSpacing.md),
             _menuBtn(TavliCopy.resume, () => Navigator.pop(ctx)),
+            // Mid-game customization shortcut (QA H7). Pause lock stays held
+            // by _pauseLock Completer so the AI doesn't act while the player
+            // is picking a new board. On return, the Flame game rebuilds
+            // with the new set via its existing setBoardSet path.
+            _menuBtn('Customize', () {
+              Navigator.pop(ctx);
+              context.push('/customization');
+            }),
             _menuBtn(TavliCopy.resign, () async {
               Navigator.pop(ctx);
               if (await _confirmDestructive(TavliCopy.resign, TavliCopy.confirmResignBody)) {

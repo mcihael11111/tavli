@@ -93,7 +93,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           final args = state.extra as Map<String, dynamic>?;
           final variantName = args?['variant'] as String? ?? 'portes';
           final variant = GameVariant.values.byName(variantName);
-          return DifficultyScreen(variant: variant);
+          // Forward marathon + tradition extras (QA H3) so marathon mode
+          // entry from home actually launches a marathon, not a single game.
+          final isMarathon = args?['marathon'] as bool? ?? false;
+          final tradition = args?['tradition'] as String?;
+          return DifficultyScreen(
+            variant: variant,
+            isMarathon: isMarathon,
+            tradition: tradition,
+          );
         },
       ),
       GoRoute(

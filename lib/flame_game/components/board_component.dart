@@ -18,6 +18,7 @@ class BoardComponent extends PositionComponent {
   // Sprite-based rendering (null = use procedural fallback).
   Sprite? _boardSprite;
   Sprite? _shadowSprite;
+  bool _bakedBearOff = false;
 
   // Board set colors (used for procedural fallback).
   Color _frameColor = TavliColors.mahoganyDark;
@@ -35,7 +36,11 @@ class BoardComponent extends PositionComponent {
   }
 
   void onResize(Vector2 gameSize) {
-    layout = BoardLayout(gameSize, useSpriteLayout: _boardSprite != null);
+    layout = BoardLayout(
+      gameSize,
+      useSpriteLayout: _boardSprite != null,
+      useBakedBearOff: _bakedBearOff,
+    );
   }
 
   /// Load sprite assets for the current board set.
@@ -44,8 +49,12 @@ class BoardComponent extends PositionComponent {
   Future<void> loadSprites(SpriteManager manager, int setIndex) async {
     _boardSprite = await manager.loadBoardSprite(setIndex);
     _shadowSprite = await manager.loadBoardShadowSprite(setIndex);
-    // Recalculate layout with sprite-aware proportions.
-    layout = BoardLayout(layout.gameSize, useSpriteLayout: _boardSprite != null);
+    _bakedBearOff = _boardSprite != null && manager.hasBakedBearOff(setIndex);
+    layout = BoardLayout(
+      layout.gameSize,
+      useSpriteLayout: _boardSprite != null,
+      useBakedBearOff: _bakedBearOff,
+    );
   }
 
   void setBoardSet(int setIndex) {
@@ -99,27 +108,37 @@ class BoardComponent extends PositionComponent {
   }
 
   /// Render the board using designer-provided sprite assets.
+  ///
+  /// In baked-bearoff mode the sprite covers the full image rect (which is
+  /// taller than the playing region — the extra space is the top + bottom
+  /// bear-off strips). Procedural shadows are skipped because the new boards
+  /// have shadow + frame depth painted into the PNG itself.
   void _renderWithSprites(Canvas canvas) {
-    // Dark table surface underneath.
     _drawTableSurface(canvas);
 
-    // Board shadow (use sprite shadow if available, else procedural).
+    if (_bakedBearOff) {
+      _boardSprite!.render(
+        canvas,
+        position: Vector2(layout.imageLeft, layout.imageTop),
+        size: Vector2(layout.imageWidth, layout.imageHeight),
+      );
+      return;
+    }
+
     if (_shadowSprite != null) {
-      // The shadow sprite has a black background — render it underneath
-      // slightly offset for the drop-shadow effect.
       final shadowRect = Rect.fromLTWH(
         layout.boardLeft + 2,
         layout.boardTop + 3,
         layout.boardWidth + 2,
         layout.boardHeight + 2,
       );
-      _shadowSprite!.render(canvas, position: Vector2(shadowRect.left, shadowRect.top),
+      _shadowSprite!.render(canvas,
+          position: Vector2(shadowRect.left, shadowRect.top),
           size: Vector2(shadowRect.width, shadowRect.height));
     } else {
       _drawBoardShadow(canvas);
     }
 
-    // Main board sprite — scaled to fit the layout dimensions exactly.
     _boardSprite!.render(
       canvas,
       position: Vector2(layout.boardLeft, layout.boardTop),

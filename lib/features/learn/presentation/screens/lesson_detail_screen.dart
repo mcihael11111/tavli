@@ -39,6 +39,14 @@ class _LessonDetailScreenState extends ConsumerState<LessonDetailScreen> {
     _sections = LearnContent.sectionsForTradition(_tradition);
     _section = _sections.firstWhere((s) => s.id == widget.sectionId);
     _currentIndex = widget.lessonIndex.clamp(0, _section.lessons.length - 1);
+    // QA M15: lessons now move into the inProgress state the moment they're
+    // opened, so the index screen can show "Resume" vs "Start".
+    _markStarted();
+  }
+
+  Future<void> _markStarted() async {
+    final repo = await ref.read(learnProgressProvider.future);
+    await repo.markStarted(_lesson.id);
   }
 
   Lesson get _lesson => _section.lessons[_currentIndex];

@@ -110,6 +110,96 @@ void main() {
     });
   });
 
+  group('BoardLayout — baked bear-off mode', () {
+    // Landscape phone viewport, close to a 16:9 phone in landscape.
+    final landscape = Vector2(896, 414);
+    // Portrait phone viewport.
+    final portrait = Vector2(412, 915);
+
+    test('portrait screen fits width (100 % vpw) and centers vertically', () {
+      final l = BoardLayout(portrait, useBakedBearOff: true);
+      expect(l.imageWidth, portrait.x);
+      // Baked PNG aspect is 2102 / 2374 ≈ 0.8854.
+      expect(l.imageHeight, closeTo(portrait.x / 0.8854, 0.5));
+      expect(l.imageLeft, 0);
+      expect(l.imageTop, closeTo((portrait.y - l.imageHeight) / 2, 0.5));
+    });
+
+    test('landscape screen fits height (image taller than wide)', () {
+      final l = BoardLayout(landscape, useBakedBearOff: true);
+      expect(l.imageHeight, landscape.y);
+      expect(l.imageWidth, closeTo(landscape.y * 0.8854, 0.5));
+      expect(l.imageTop, 0);
+      expect(l.imageLeft, closeTo((landscape.x - l.imageWidth) / 2, 0.5));
+    });
+
+    test('board playing region sits below top bear-off strip', () {
+      final l = BoardLayout(portrait, useBakedBearOff: true);
+      expect(l.boardTop, greaterThan(l.imageTop));
+      expect(l.bearOffStripHeight, greaterThan(0));
+      expect(l.boardTop, closeTo(l.imageTop + l.bearOffStripHeight, 0.01));
+      expect(l.boardHeight, closeTo(l.imageHeight * 0.821, 1.0));
+    });
+
+    test('bear-off checkers land inside the strip regions', () {
+      final l = BoardLayout(portrait, useBakedBearOff: true);
+      // P1 bears off to bottom strip.
+      final p1 = l.checkerPosition(-2, 0, 1);
+      expect(p1.y, greaterThan(l.boardTop + l.boardHeight));
+      expect(p1.y, lessThan(l.imageTop + l.imageHeight));
+      // P2 bears off to top strip.
+      final p2 = l.checkerPosition(-2, 0, 2);
+      expect(p2.y, greaterThan(l.imageTop));
+      expect(p2.y, lessThan(l.boardTop));
+    });
+
+    test('baked mode has no side bear-off tray', () {
+      final l = BoardLayout(portrait, useBakedBearOff: true);
+      expect(l.bearOffWidth, 0);
+    });
+  });
+
+  group('BoardLayout — visible-disc + tap-target invariants', () {
+    // Reasonable phone widths: 360 = small Android, 412 = mid Android.
+    final viewports = [
+      Vector2(360, 800),
+      Vector2(412, 915),
+      Vector2(896, 414),
+    ];
+
+    test('checker visible disc is at least 80% of triangle base width', () {
+      // The visible disc diameter equals checkerRadius * 2 (the logical
+      // bounding box). It must read as snug-in-the-triangle, not floating.
+      for (final v in viewports) {
+        final l = BoardLayout(v, useBakedBearOff: true);
+        final discDiameter = l.checkerRadius * 2;
+        final fraction = discDiameter / l.pointWidth;
+        expect(fraction, greaterThanOrEqualTo(0.80),
+            reason: 'on viewport $v disc/point=$fraction');
+        expect(fraction, lessThanOrEqualTo(1.05),
+            reason: 'disc spills past triangle base on $v');
+      }
+    });
+
+    test('tap-target hitbox respects 44pt Material a11y floor', () {
+      // Hitbox = max(checkerRadius, BoardLayout.minTapRadius).
+      for (final v in viewports) {
+        final l = BoardLayout(v, useBakedBearOff: true);
+        final hit = l.checkerRadius < BoardLayout.minTapRadius
+            ? BoardLayout.minTapRadius
+            : l.checkerRadius;
+        expect(hit * 2, greaterThanOrEqualTo(44),
+            reason: 'tap diameter <44pt on viewport $v');
+      }
+    });
+
+    test('visible-ratio constants match the 2026 art set', () {
+      // Pinned by image inspection: 222/400 for checkers, 136/400 for dice.
+      expect(BoardLayout.checkerVisibleRatio, closeTo(222 / 400, 0.005));
+      expect(BoardLayout.diceVisibleRatio, closeTo(136 / 400, 0.005));
+    });
+  });
+
   group('BoardLayout — procedural mode (no sprite)', () {
     final layout = BoardLayout(gameSize, useSpriteLayout: false);
 

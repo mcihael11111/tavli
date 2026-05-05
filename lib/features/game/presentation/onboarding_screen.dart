@@ -55,6 +55,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _next() {
+    // Dismiss the keyboard before advancing — without this, the focused
+    // username TextField on page 2 keeps the IME visible while the next page
+    // slides in, covering the content (reported on Galaxy S931B).
+    FocusManager.instance.primaryFocus?.unfocus();
+
     if (_currentPage < _pageCount - 1) {
       _controller.nextPage(
         duration: ReducedMotion.duration(context, const Duration(milliseconds: 400)),

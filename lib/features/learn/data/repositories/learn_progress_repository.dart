@@ -5,6 +5,7 @@ import '../models/lesson_progress.dart';
 class LearnProgressRepository {
   static const _prefix = 'learn_';
   static const _completedSuffix = '_completed';
+  static const _startedSuffix = '_started';
   static const _timestampSuffix = '_ts';
 
   final SharedPreferences _prefs;
@@ -15,7 +16,19 @@ class LearnProgressRepository {
   LessonStatus getStatus(String lessonId) {
     final completed = _prefs.getBool('$_prefix$lessonId$_completedSuffix');
     if (completed == true) return LessonStatus.completed;
+    // QA M15: before this, `inProgress` was never set — partially-read lessons
+    // looked identical to untouched ones on the index. Now a lesson opened
+    // but not completed reads back as `inProgress` so the UI can distinguish.
+    final started = _prefs.getBool('$_prefix$lessonId$_startedSuffix');
+    if (started == true) return LessonStatus.inProgress;
     return LessonStatus.notStarted;
+  }
+
+  /// Mark a lesson as started (opened) but not yet completed. Idempotent; a
+  /// completed lesson stays completed.
+  Future<void> markStarted(String lessonId) async {
+    if (getStatus(lessonId) == LessonStatus.completed) return;
+    await _prefs.setBool('$_prefix$lessonId$_startedSuffix', true);
   }
 
   /// Get full progress for a lesson.
@@ -41,6 +54,7 @@ class LearnProgressRepository {
   /// Reset progress for a lesson.
   Future<void> reset(String lessonId) async {
     await _prefs.remove('$_prefix$lessonId$_completedSuffix');
+    await _prefs.remove('$_prefix$lessonId$_startedSuffix');
     await _prefs.remove('$_prefix$lessonId$_timestampSuffix');
   }
 

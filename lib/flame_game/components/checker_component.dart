@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame/events.dart';
 import 'package:flame/effects.dart';
@@ -29,6 +30,8 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
 
   /// Sprite-based rendering (null = use procedural fallback).
   CheckerSprites? _sprites;
+  CheckerShadowSprites? _shadowSprites;
+  CheckerVerticalSprites? _verticalSprites;
 
   bool _isSelected = false;
 
@@ -55,6 +58,19 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
           anchor: Anchor.center,
           position: boardLayout.checkerPosition(pointIndex, stackPosition, player),
         );
+
+  @override
+  Future<void> onLoad() async {
+    await super.onLoad();
+    // Tap target: at least 44pt diameter (Material a11y floor) regardless of
+    // how cramped the board gets on small phones.
+    final hitR = radius < BoardLayout.minTapRadius ? BoardLayout.minTapRadius : radius;
+    add(CircleHitbox(
+      radius: hitR,
+      position: Vector2(radius - hitR, radius - hitR),
+      anchor: Anchor.topLeft,
+    ));
+  }
 
   // ── Material colors ────────────────────────────────────────
   // Checker set color palettes.
@@ -102,6 +118,12 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
 
   /// Set sprite assets for this checker. Pass null to use procedural rendering.
   set sprites(CheckerSprites? value) => _sprites = value;
+
+  /// Set drop-shadow sprite. Rendered under the checker when sprite mode is on.
+  set shadowSprites(CheckerShadowSprites? value) => _shadowSprites = value;
+
+  /// Side-on sprite used when this checker is borne off (lives in the tray).
+  set verticalSprites(CheckerVerticalSprites? value) => _verticalSprites = value;
 
   double get _thickness => radius * _thicknessRatio;
   double get _ellipseH => radius * _perspectiveSquash;
@@ -180,14 +202,59 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
   }
 
   /// Render using designer-provided sprite assets.
+  ///
+  /// The sprite PNG has transparent padding around the visible disc (for the
+  /// baked shadow). We scale the bbox up by 1/visibleRatio so the visible disc
+  /// matches the logical [radius], then offset to keep the disc centered.
   void _renderWithSprite(Canvas canvas) {
+    // Borne-off checkers render as on-edge slivers in the bear-off tray.
+    if (pointIndex == -2 && _verticalSprites != null) {
+      _renderVerticalSprite(canvas);
+      return;
+    }
+
+    final visibleDiameter = radius * 2;
+    final spriteSize = visibleDiameter / BoardLayout.checkerVisibleRatio;
+    final spriteOrigin = radius - spriteSize / 2;
+
+    // Stack-aware shadow opacity matches the procedural renderer so a tall
+    // pile doesn't accumulate dark layers underneath each disc.
+    final shadowOpacity = stackPosition == 0 ? 1.0 : (0.45 / (stackPosition + 1));
+    if (_shadowSprites != null && shadowOpacity > 0.04) {
+      final shadowPaint = Paint()
+        ..colorFilter = ColorFilter.mode(
+          Color.fromRGBO(0, 0, 0, shadowOpacity),
+          BlendMode.modulate,
+        );
+      _shadowSprites!.forPlayer(player).render(
+            canvas,
+            position: Vector2(spriteOrigin, spriteOrigin),
+            size: Vector2(spriteSize, spriteSize),
+            overridePaint: shadowPaint,
+          );
+    }
+
     final sprite = _sprites!.getSprite(player, _isSelected);
-    final spriteSize = radius * 2;
     sprite.render(
       canvas,
-      position: Vector2(0, 0),
+      position: Vector2(spriteOrigin, spriteOrigin),
       size: Vector2(spriteSize, spriteSize),
     );
+  }
+
+  /// Render a borne-off checker as an on-edge sliver inside the bear-off tray.
+  /// The sprite PNG aspect is 77 × 202 ≈ 0.381. We size the sliver to match
+  /// the tray's inner height and use the natural aspect for width.
+  void _renderVerticalSprite(Canvas canvas) {
+    const aspect = 77.0 / 202.0;
+    final h = boardLayout.trayInnerHeight * 0.92; // small breathing room
+    final w = h * aspect;
+    final origin = Vector2(radius - w / 2, radius - h / 2);
+    _verticalSprites!.forPlayer(player).render(
+          canvas,
+          position: origin,
+          size: Vector2(w, h),
+        );
   }
 
   void _drawCylinderSide(Canvas canvas, double cx, double cy) {
@@ -377,14 +444,20 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
   /// Returns a Future that completes when the animation finishes.
   /// Cancels any in-progress animation first.
   Future<void> animateMoveTo(Vector2 target, {
-    double duration = 0.22,
-    Curve curve = Curves.easeInOutCubic,
+    double duration = 0.13,
+    Curve curve = Curves.easeOutCubic,
   }) {
-    // Cancel any existing animation to prevent overlap.
+    // Cancel any existing animation. Snap the position to the previous target
+    // before removing the old effect so the next animation interpolates from
+    // a stable point — without this, mid-flight cancellation in 4-move doubles
+    // turns produced visible jank as the new effect started from wherever the
+    // checker happened to be that frame (QA H4).
     if (_activeMoveEffect != null) {
+      position = _pendingTarget ?? position;
       _activeMoveEffect!.removeFromParent();
       _activeMoveEffect = null;
     }
+    _pendingTarget = target;
 
     final completer = Completer<void>();
     final effect = MoveEffect.to(
@@ -392,6 +465,7 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
       EffectController(duration: duration, curve: curve),
       onComplete: () {
         _activeMoveEffect = null;
+        _pendingTarget = null;
         if (!completer.isCompleted) completer.complete();
       },
     );
@@ -399,6 +473,10 @@ class CheckerComponent extends CircleComponent with TapCallbacks {
     add(effect);
     return completer.future;
   }
+
+  /// Where the active move effect is heading. Used so a cancellation snaps to
+  /// the in-flight target before the next effect kicks in.
+  Vector2? _pendingTarget;
 
   /// Update this checker's logical position without changing its visual position.
   /// Used by the differ to update identity before animating.

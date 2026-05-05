@@ -344,26 +344,11 @@ class ShopService {
 
   bool canAfford(ShopItem item) => _coins >= item.priceCoins;
 
-  /// Whether a board set index is owned (set 1 is always free).
-  bool isBoardSetOwned(int setIndex) {
-    if (setIndex == 1) return true;
-    final id = ShopItemSets.boardIdForSet(setIndex);
-    return id != null && _purchased.contains(id);
-  }
-
-  /// Whether a checker set index is owned (set 1 is always free).
-  bool isCheckerSetOwned(int setIndex) {
-    if (setIndex == 1) return true;
-    final id = ShopItemSets.checkerIdForSet(setIndex);
-    return id != null && _purchased.contains(id);
-  }
-
-  /// Whether a dice set index is owned (set 1 is always free).
-  bool isDiceSetOwned(int setIndex) {
-    if (setIndex == 1) return true;
-    final id = ShopItemSets.diceIdForSet(setIndex);
-    return id != null && _purchased.contains(id);
-  }
+  // INTERNAL TESTING: paywall disabled — every set reads as owned.
+  // Restore the original gated checks before any public release.
+  bool isBoardSetOwned(int setIndex) => true;
+  bool isCheckerSetOwned(int setIndex) => true;
+  bool isDiceSetOwned(int setIndex) => true;
 
   /// Purchase an item with coins. Returns true if successful.
   bool purchaseWithCoins(ShopItem item) {

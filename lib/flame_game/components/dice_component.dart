@@ -21,15 +21,23 @@ class DiceComponent extends PositionComponent with TapCallbacks {
 
   /// Sprite-based rendering (null = use procedural fallback).
   DiceSprites? _sprites;
+  DiceShadowSprites? _shadowSprites;
 
   /// Set sprite assets for this dice component.
   set sprites(DiceSprites? value) => _sprites = value;
 
-  static const double _dieSize = 38;
-  static const double _gap = 14;
-  static const double _depth = 8; // visible 3D depth
-  static const double _pipRadius = 3.2;
-  static const double _cornerRadius = 5;
+  /// Set drop-shadow sprite for each die face.
+  set shadowSprites(DiceShadowSprites? value) => _shadowSprites = value;
+
+  /// Die outer bbox is sized relative to the board's checker radius so dice
+  /// scale with the board. Was a fixed 38 px — too small on the 2026 art set
+  /// because the sprite has 66 % transparent padding, so the visible face was
+  /// only ~13 px. Now ≈ 1.6 × checker radius across all viewport sizes.
+  double get _dieSize => boardLayout.checkerRadius * 1.6;
+  double get _gap => _dieSize * 0.37;
+  double get _depth => _dieSize * 0.21;
+  double get _pipRadius => _dieSize * 0.084;
+  double get _cornerRadius => _dieSize * 0.13;
 
   /// Rattle animation: how long the dice flicker random faces before
   /// settling on their real values. 0 = settled immediately.
@@ -70,6 +78,10 @@ class DiceComponent extends PositionComponent with TapCallbacks {
 
   _DicePalette get _palette => _palettes[diceSet] ?? _palettes[1]!;
 
+  static double _dieSizeFor(BoardLayout l) => l.checkerRadius * 1.6;
+  static double _gapFor(BoardLayout l) => _dieSizeFor(l) * 0.37;
+  static double _depthFor(BoardLayout l) => _dieSizeFor(l) * 0.21;
+
   DiceComponent({
     required this.die1,
     required this.die2,
@@ -79,8 +91,15 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     this.diceSet = 1,
     bool rattle = false,
   }) : super(
-          position: boardLayout.diceAreaCenter - Vector2(_dieSize + _gap / 2, _dieSize / 2),
-          size: Vector2(_dieSize * 2 + _gap + _depth, _dieSize + _depth),
+          position: boardLayout.diceAreaCenter -
+              Vector2(_dieSizeFor(boardLayout) + _gapFor(boardLayout) / 2,
+                  _dieSizeFor(boardLayout) / 2),
+          size: Vector2(
+            _dieSizeFor(boardLayout) * 2 +
+                _gapFor(boardLayout) +
+                _depthFor(boardLayout),
+            _dieSizeFor(boardLayout) + _depthFor(boardLayout),
+          ),
           anchor: Anchor.topLeft,
         ) {
     if (rattle && !_isPrompt) {
@@ -130,12 +149,12 @@ class DiceComponent extends PositionComponent with TapCallbacks {
 
     if (_sprites != null) {
       _drawSpriteDie(canvas, const Offset(0, 0), face1, die1Available);
-      _drawSpriteDie(canvas, const Offset(_dieSize + _gap, 0), face2, die2Available);
+      _drawSpriteDie(canvas, Offset(_dieSize + _gap, 0), face2, die2Available);
       return;
     }
 
     _draw3DDie(canvas, const Offset(0, 0), face1, die1Available);
-    _draw3DDie(canvas, const Offset(_dieSize + _gap, 0), face2, die2Available);
+    _draw3DDie(canvas, Offset(_dieSize + _gap, 0), face2, die2Available);
   }
 
   void _drawSpriteDie(Canvas canvas, Offset offset, int value, bool isAvailable) {
@@ -157,10 +176,33 @@ class DiceComponent extends PositionComponent with TapCallbacks {
 
     canvas.save();
     canvas.translate(offset.dx, offset.dy);
+
+    // Sprite has 66 % transparent padding around the visible die face. Scale
+    // up the bbox so the visible face fills the logical [_dieSize] cell, then
+    // offset to keep it centered.
+    final renderSize = _dieSize / BoardLayout.diceVisibleRatio;
+    final renderOrigin = (_dieSize - renderSize) / 2;
+    final renderPos = Vector2(renderOrigin, renderOrigin);
+    final renderVec = Vector2.all(renderSize);
+
+    final shadow = _shadowSprites?.forFace(value);
+    if (shadow != null) {
+      shadow.render(
+        canvas,
+        position: renderPos,
+        size: renderVec,
+        overridePaint: Paint()
+          ..colorFilter = ColorFilter.mode(
+            Color.fromRGBO(0, 0, 0, isAvailable ? 0.55 : 0.3),
+            BlendMode.modulate,
+          ),
+      );
+    }
+
     sprite.render(
       canvas,
-      position: Vector2.zero(),
-      size: Vector2.all(_dieSize),
+      position: renderPos,
+      size: renderVec,
       overridePaint: paint,
     );
     canvas.restore();
@@ -175,7 +217,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
     // ── Drop shadow ────────────────────────────────────────
     final shadowRect = RRect.fromRectAndRadius(
       Rect.fromLTWH(x + 3, y + 4, _dieSize, _dieSize),
-      const Radius.circular(_cornerRadius),
+      Radius.circular(_cornerRadius),
     );
     canvas.drawRRect(shadowRect, LightingSystem.dropShadowPaint(opacity: 0.4, blur: 6));
 
@@ -202,7 +244,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
 
     // ── Top face (main visible face) ───────────────────────
     final topRect = Rect.fromLTWH(x, y, _dieSize, _dieSize);
-    final topRRect = RRect.fromRectAndRadius(topRect, const Radius.circular(_cornerRadius));
+    final topRRect = RRect.fromRectAndRadius(topRect, Radius.circular(_cornerRadius));
 
     // Gradient: lighter top-left (toward light), darker bottom-right.
     final topColor = isAvailable ? pal.topActive : pal.topUsed;
@@ -242,7 +284,7 @@ class DiceComponent extends PositionComponent with TapCallbacks {
   void _drawPips(Canvas canvas, double x, double y, int value, Color pipColor, double opacity) {
     final cx = x + _dieSize / 2;
     final cy = y + _dieSize / 2;
-    const d = _dieSize * 0.24;
+    final d = _dieSize * 0.24;
 
     final positions = _pipPositions(value, cx, cy, d);
 

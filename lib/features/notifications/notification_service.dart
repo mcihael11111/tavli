@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
@@ -140,15 +142,20 @@ class NotificationService {
     try {
       _fcmToken = await _messaging.getToken();
       debugPrint('FCM token: $_fcmToken');
+      if (_fcmToken != null) {
+        await _persistToken(_fcmToken!);
+      }
     } catch (e) {
       debugPrint('Failed to get FCM token: $e');
     }
 
-    // Listen for token refresh.
+    // Listen for token refresh. Without persisting here (QA H9), rotated
+    // tokens stayed in memory only — opponents silently stopped getting
+    // push notifications after the next token rotation.
     _messaging.onTokenRefresh.listen((newToken) {
       _fcmToken = newToken;
       debugPrint('FCM token refreshed: $newToken');
-      // TODO: Update token in Firestore user profile.
+      _persistToken(newToken);
     });
 
     // Foreground messages.
@@ -181,6 +188,25 @@ class NotificationService {
     debugPrint('Notification tapped: ${message.messageId}');
     final notification = TavliNotification.fromRemoteMessage(message);
     _notificationTaps.add(notification);
+  }
+
+  /// Persist the FCM token to the signed-in player's Firestore profile, so
+  /// the backend can target this device when notifying opponents. No-ops if
+  /// no user is signed in yet (e.g. during cold-start before auth resolves).
+  Future<void> _persistToken(String token) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      await FirebaseFirestore.instance.collection('players').doc(uid).set(
+        {
+          'fcmToken': token,
+          'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true),
+      );
+    } catch (e) {
+      debugPrint('Failed to persist FCM token: $e');
+    }
   }
 
   /// Subscribe to a topic (e.g., 'game_<roomId>' for game updates).

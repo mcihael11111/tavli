@@ -81,8 +81,25 @@ service cloud.firestore {
                     && request.resource.data.variant is string
                     && request.resource.data.tradition is string;
 
+      // Identity fields a participant can NEVER mutate. Without this, the
+      // overly-permissive `isParticipant()` clause below would let a player
+      // rewrite player UIDs, swap variants, or reset gameId mid-game (QA C4).
+      function identityIntact() {
+        return request.resource.data.gameId == resource.data.gameId
+          && request.resource.data.variant == resource.data.variant
+          && request.resource.data.tradition == resource.data.tradition
+          && request.resource.data.players.player1.uid ==
+             resource.data.players.player1.uid
+          && (
+            !resource.data.players.keys().hasAny(['player2']) ||
+            request.resource.data.players.player2.uid ==
+              resource.data.players.player2.uid
+          );
+      }
+
       // Participants can update: joining, submitting moves on their turn,
-      // doubling actions, heartbeats, ending/abandoning.
+      // doubling actions, heartbeats, ending/abandoning. Identity fields are
+      // pinned; full move-legality enforcement still requires a Cloud Function.
       allow update: if isSignedIn() && (
         // Player 2 joining (room transitions from waiting to inProgress)
         (resource.data.status == 'waiting' &&
@@ -90,8 +107,8 @@ service cloud.firestore {
          request.resource.data.players.keys().hasAny(['player2']) &&
          request.resource.data.players.player2.uid == request.auth.uid) ||
 
-        // Active participant updating during play
-        isParticipant()
+        // Active participant updating during play — identity must be intact.
+        (isParticipant() && identityIntact())
       );
 
       // Chat subcollection — participants can read; only a participant can
@@ -106,7 +123,12 @@ service cloud.firestore {
         allow create: if isSignedIn()
                       && request.resource.data.senderUid == request.auth.uid
                       && request.resource.data.senderName is string
-                      && request.resource.data.messageIndex is int;
+                      && request.resource.data.messageIndex is int
+                      // Length cap (QA H8): hard limit prevents spam payloads.
+                      // Real rate-limiting requires Cloud Functions.
+                      && request.resource.data.text is string
+                      && request.resource.data.text.size() > 0
+                      && request.resource.data.text.size() <= 500;
       }
     }
 
@@ -124,8 +146,27 @@ service cloud.firestore {
                     && request.resource.data.tradition is string
                     && request.resource.data.variant is string
                     && request.resource.data.poolType is string;
-      allow update: if isSignedIn()
-                    && (isOwner(uid) || request.resource.data.status == 'matched');
+      // Self-update: queue owner can change anything about their entry.
+      // Cross-user matching: a different signed-in user can flip another
+      // entry to 'matched' to claim them, but ONLY:
+      //   - if the entry is currently 'waiting' (no double-claiming)
+      //   - if all identity fields stay put (uid, name, rating, variant…)
+      //   - if the new status is exactly 'matched'
+      // Without these guards (QA C3) any signed-in user could rewrite
+      // queue entries, hijacking matches.
+      allow update: if isSignedIn() && (
+        isOwner(uid) ||
+        (
+          request.resource.data.status == 'matched' &&
+          resource.data.status == 'waiting' &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.name == resource.data.name &&
+          request.resource.data.rating == resource.data.rating &&
+          request.resource.data.tradition == resource.data.tradition &&
+          request.resource.data.variant == resource.data.variant &&
+          request.resource.data.poolType == resource.data.poolType
+        )
+      );
       allow delete: if isOwner(uid);
     }
 

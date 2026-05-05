@@ -108,7 +108,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
                       icon: Icons.play_circle,
                       title: 'Active Game',
                       body: 'You have a game in progress',
-                      trailing: const Icon(Icons.chevron_right, color: TavliColors.light),
+                      trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                       onTap: () {
                         context.push('/online-game', extra: {
                           'gameRoomId': profile!.activeGameId,
@@ -139,7 +139,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
                 iconSize: 26,
                 title: 'Quick Match',
                 body: 'Find a ${SettingsService.instance.tradition.displayName} player near your rating',
-                trailing: const Icon(Icons.chevron_right, color: TavliColors.light),
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/matchmaking'),
               ),
 
@@ -160,7 +160,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
                 iconSize: 26,
                 title: 'International Match',
                 body: 'Play across traditions by game mechanic',
-                trailing: const Icon(Icons.chevron_right, color: TavliColors.light),
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/matchmaking', extra: {
                   'poolType': PoolType.international,
                 }),
@@ -183,7 +183,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
                 iconSize: 26,
                 title: 'Create Room',
                 body: 'Invite a friend with a code or QR',
-                trailing: const Icon(Icons.chevron_right, color: TavliColors.light),
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/invite/create'),
               ),
               const SizedBox(height: TavliSpacing.sm),
@@ -193,7 +193,7 @@ class OnlineLobbyScreen extends ConsumerWidget {
                 iconSize: 26,
                 title: 'Join Room',
                 body: 'Enter a room code or scan QR',
-                trailing: const Icon(Icons.chevron_right, color: TavliColors.light),
+                trailing: const Icon(Icons.chevron_right, color: TavliColors.light, size: 24),
                 onTap: () => context.push('/join'),
               ),
 

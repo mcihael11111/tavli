@@ -159,14 +159,31 @@ class BleBoardImpl implements BleBoardService {
 
   @override
   Future<void> disconnect() async {
+    // Full teardown (QA H10). Earlier revision only cancelled the heartbeat,
+    // leaving scanning/advertising running and the reconnect loop active —
+    // OS-level BLE resources leaked and the app would try to reconnect to
+    // the previous peer even after the user exited the dual-board screen.
     _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+    _lastRemoteHeartbeat = null;
+
+    await stopScanning();
+    await stopAdvertising();
+
     _connected = false;
     _connectedDeviceId = null;
     _connectedDeviceName = null;
     _connectionState.add(BleConnectionState.disconnected);
 
     // TODO: device.disconnect();
-    debugPrint('BLE: Disconnected.');
+    debugPrint('BLE: Disconnected (full teardown).');
+  }
+
+  /// Stop any in-flight host advertising. Stub for now — wire to the real
+  /// FlutterBluePlus / platform-channel call when advertising ships.
+  Future<void> stopAdvertising() async {
+    // TODO: FlutterBluePlus.stopAdvertising();
+    debugPrint('BLE: stopAdvertising()');
   }
 
   @override
