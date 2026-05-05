@@ -8,6 +8,7 @@ import '../features/game/data/models/move.dart';
 import 'components/board_component.dart';
 import 'components/checker_component.dart';
 import 'components/dice_component.dart';
+import 'components/dice_cue_ring.dart';
 import 'components/highlight_component.dart';
 import 'sprite_manager.dart';
 export 'components/highlight_component.dart' show MoveQuality;
@@ -38,6 +39,7 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
   final List<CheckerComponent> _checkers = [];
   final List<HighlightComponent> _highlights = [];
   DiceComponent? _diceComponent;
+  DiceCueRing? _diceCueRing;
 
   /// Rattle duration applied to newly created dice components. Defaults to
   /// 280ms; overridden by [setDiceRattleDuration] from the game screen so
@@ -113,6 +115,30 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
     await _loadSprites();
 
     _rebuildCheckers();
+    _rebuildDiceCueRing();
+  }
+
+  /// (Re)build the dice cue ring around the dice cup region. Sized to wrap
+  /// both dice with a small breathing margin. Hidden by default; the game
+  /// screen toggles visibility via [setDiceCueVisible].
+  void _rebuildDiceCueRing() {
+    _diceCueRing?.removeFromParent();
+    final layout = _boardComponent.layout;
+    // Match the dice component's footprint: 2 dice wide + a small margin.
+    final dieSize = layout.checkerRadius * 1.6;
+    final radius = dieSize * 1.4;
+    final center = layout.diceAreaCenter;
+    _diceCueRing = DiceCueRing(
+      position: center - Vector2.all(radius),
+      radius: radius,
+    );
+    add(_diceCueRing!);
+  }
+
+  /// Toggle the pulsing dice cue ring. Pass `true` only when it's the
+  /// player's turn to roll AND no roll has been committed yet.
+  void setDiceCueVisible(bool visible) {
+    _diceCueRing?.visible = visible;
   }
 
   /// Load all sprite assets for the current set indices.
@@ -134,6 +160,9 @@ class TavliGame extends FlameGame with TapCallbacks, HasCollisionDetection {
     if (isLoaded) {
       _boardComponent.onResize(size);
       _rebuildCheckers();
+      final wasVisible = _diceCueRing?.visible ?? false;
+      _rebuildDiceCueRing();
+      _diceCueRing?.visible = wasVisible;
     }
   }
 

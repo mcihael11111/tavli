@@ -188,5 +188,19 @@
   "canonicalRules": "Canonical Rules",
 
   "traditionSwitcher": "Tradition",
-  "changeTradition": "Change Tradition"
+  "changeTradition": "Change Tradition",
+
+  "playerTurn": "Your turn",
+  "botThinking": "{name} thinking…",
+  "@botThinking": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "botMoving": "{name} moving…",
+  "@botMoving": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  }
 }

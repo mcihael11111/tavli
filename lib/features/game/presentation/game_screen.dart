@@ -22,6 +22,7 @@ import '../../ai/mikhail/dialogue_system.dart';
 import '../../ai/pacing/turn_pacing.dart';
 import '../domain/engine/variants/game_variant.dart';
 import 'providers/game_provider.dart';
+import 'widgets/turn_handoff_pill.dart';
 
 /// Main game screen: hosts the Flame board + Flutter UI overlay.
 class GameScreen extends ConsumerStatefulWidget {
@@ -712,6 +713,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         // "TAP TO ROLL" pill — duplicate affordances confuse the player.
         _game.hideDice();
       }
+
+      // Pulse a cue ring around the dice cup while it's the player's turn
+      // to roll. Disappears the moment the rattle starts (currentRoll set)
+      // or the AI takes over.
+      _game.setDiceCueVisible(
+        gs.isPlayerTurn &&
+            gs.phase == GamePhase.playerTurnStart &&
+            gs.currentRoll == null &&
+            !_destinationLocked &&
+            !_aiThinking,
+      );
     }
 
     // State-transition triggers (game-over, turn-complete → nextTurn,
@@ -911,7 +923,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               shape: BoxShape.circle,
               color: TavliColors.surfaceDark,
               border: Border.all(
-                color: gs.isAiTurn ? TavliColors.surface : TavliColors.primary,
+                color: TavliColors.primary,
                 width: 2,
               ),
             ),
@@ -922,6 +934,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           const SizedBox(width: TavliSpacing.xs),
           Text('${_personality.greekName} — ${widget.difficulty.greekName}',
             style: theme.textTheme.labelLarge!.copyWith(color: TavliColors.light)),
+          if (gs.isAiTurn) ...[
+            const SizedBox(width: TavliSpacing.xs),
+            TurnHandoffPill(
+              isPlayerTurn: false,
+              isBotMoving: _aiThinking && _destinationLocked,
+              botName: _personality.displayName,
+            ),
+          ],
           const Spacer(),
           if (_aiThinking)
             const SizedBox(
@@ -981,7 +1001,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
               shape: BoxShape.circle,
               color: TavliColors.surfaceDark,
               border: Border.all(
-                color: gs.isPlayerTurn ? TavliColors.surface : TavliColors.primary,
+                color: TavliColors.primary,
                 width: 2,
               ),
             ),
@@ -996,6 +1016,14 @@ class _GameScreenState extends ConsumerState<GameScreen> {
           Text('${TavliCopy.pips}: ${gs.board.pipCount(1)}',
             style: theme.textTheme.bodySmall!.copyWith(
               color: TavliColors.light)),
+          if (gs.isPlayerTurn && !_aiThinking) ...[
+            const SizedBox(width: TavliSpacing.xs),
+            TurnHandoffPill(
+              isPlayerTurn: true,
+              isBotMoving: false,
+              botName: _personality.displayName,
+            ),
+          ],
           const Spacer(),
           if (gs.canPlayerDouble)
             SizedBox(

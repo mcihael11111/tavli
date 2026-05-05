@@ -1101,6 +1101,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Change Tradition'**
   String get changeTradition;
+
+  /// No description provided for @playerTurn.
+  ///
+  /// In en, this message translates to:
+  /// **'Your turn'**
+  String get playerTurn;
+
+  /// No description provided for @botThinking.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} thinking…'**
+  String botThinking(String name);
+
+  /// No description provided for @botMoving.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} moving…'**
+  String botMoving(String name);
 }
 
 class _AppLocalizationsDelegate

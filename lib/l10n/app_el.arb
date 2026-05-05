@@ -154,5 +154,19 @@
   "greekLevelCantRead": "Δεν διαβάζω ελληνικά",
   "greekLevelFluent": "Άπταιστα",
   "greekLevelCanRead": "Διαβάζω και γράφω",
-  "greekLevelExample": "Παράδειγμα"
+  "greekLevelExample": "Παράδειγμα",
+
+  "playerTurn": "Σειρά σας",
+  "botThinking": "Ο {name} σκέφτεται…",
+  "@botThinking": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "botMoving": "Ο {name} κινείται…",
+  "@botMoving": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  }
 }

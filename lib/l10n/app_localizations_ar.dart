@@ -509,4 +509,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get changeTradition => 'تغيير التقليد';
+
+  @override
+  String get playerTurn => 'Your turn';
+
+  @override
+  String botThinking(String name) {
+    return '$name thinking…';
+  }
+
+  @override
+  String botMoving(String name) {
+    return '$name moving…';
+  }
 }

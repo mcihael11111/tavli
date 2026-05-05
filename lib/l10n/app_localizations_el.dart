@@ -510,4 +510,17 @@ class AppLocalizationsEl extends AppLocalizations {
 
   @override
   String get changeTradition => 'Change Tradition';
+
+  @override
+  String get playerTurn => 'Σειρά σας';
+
+  @override
+  String botThinking(String name) {
+    return 'Ο $name σκέφτεται…';
+  }
+
+  @override
+  String botMoving(String name) {
+    return 'Ο $name κινείται…';
+  }
 }
