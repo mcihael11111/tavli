@@ -36,6 +36,12 @@ class HighlightComponent extends PositionComponent
   /// Badge position (tip of triangle for standard points, center for bear-off).
   late final Offset _badgeCenter;
 
+  /// Apex of the triangle in PARENT (board) coordinates — captured before
+  /// any bbox/pad transforms. Used to anchor the badge X position to the
+  /// true apex centerline, independent of the padded bbox geometry.
+  /// For bear-off, this remains a zero vector and is unused.
+  late final Vector2 _apexInParent;
+
   HighlightComponent({
     required this.pointIndex,
     required this.dieValue,
@@ -58,9 +64,15 @@ class HighlightComponent extends PositionComponent
       _localVerts = [];
       _trianglePath = Path();
       _badgeCenter = Offset(r, r);
+      _apexInParent = Vector2.zero();
     } else {
       // Standard point: compute triangle from board layout.
       final verts = boardLayout.pointTriangle(pointIndex);
+
+      // Capture the apex (third vertex) in PARENT (board) space BEFORE any
+      // bbox/pad transform is applied. The badge anchors to this apex point
+      // so it stays on the apex centerline regardless of padded-bbox geometry.
+      _apexInParent = verts[2].clone();
 
       // Compute bounding box.
       double minX = verts[0].x, maxX = verts[0].x;
@@ -88,8 +100,17 @@ class HighlightComponent extends PositionComponent
         ..lineTo(_localVerts[2].dx, _localVerts[2].dy)
         ..close();
 
-      // Badge at the tip (third vertex = the point of the triangle).
-      _badgeCenter = _localVerts[2];
+      // Badge anchored to the apex in parent space, translated back into
+      // this component's local coordinates and lifted vertically so the
+      // badge sits ABOVE the apex rather than overlapping the tip.
+      // Top-row triangles point downward (apex below base) — lift downward;
+      // bottom-row triangles point upward (apex above base) — lift upward.
+      const badgeRadius = 10.0;
+      const badgeLift = badgeRadius + 6.0;
+      final isTopRow = pointIndex >= 12;
+      final liftY = isTopRow ? badgeLift : -badgeLift;
+      final apexLocal = _apexInParent - position;
+      _badgeCenter = Offset(apexLocal.x, apexLocal.y + liftY);
     }
 
     // Pulsing effect.
@@ -130,19 +151,28 @@ class HighlightComponent extends PositionComponent
       return;
     }
 
+    // Clip fill + glow to the triangle silhouette so the blurred halo
+    // never bleeds past the triangle path. The border stroke is drawn
+    // outside the clip region because the stroke IS the path boundary
+    // and would otherwise be halved by the clip.
+    canvas.save();
+    canvas.clipPath(_trianglePath);
+
     // ── Filled triangle ────────────────────────────────────────
     canvas.drawPath(
       _trianglePath,
       Paint()..color = _fillColor.withValues(alpha: 0.45 * op),
     );
 
-    // ── Soft glow behind triangle ──────────────────────────────
+    // ── Soft glow behind triangle (clipped to silhouette) ──────
     canvas.drawPath(
       _trianglePath,
       Paint()
         ..color = _fillColor.withValues(alpha: 0.25 * op)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
     );
+
+    canvas.restore();
 
     // ── Border stroke (quality-coded) ──────────────────────────
     canvas.drawPath(
