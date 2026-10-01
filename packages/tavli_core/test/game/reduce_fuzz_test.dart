@@ -79,7 +79,12 @@ void _invariants(GameState s) {
       expect(m.freeze(), s.position);
       expect(ctx, s.context);
     case GamePhase.gameOver:
-      expect(s.result, isNotNull);
+      final r = s.result!;
+      // A valid result: points to a winner, or a draw.
+      expect(
+          r.winner == null ? r.kind == ResultKind.draw : r.points > 0, isTrue,
+          reason: '$r');
+      expect(r.cubeValue, s.cube.value);
       expect(s.cube.offeredBy, isNull);
   }
 }

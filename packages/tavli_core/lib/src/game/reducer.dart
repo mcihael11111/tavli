@@ -150,7 +150,8 @@ GameState _passTurn(GameState s) {
   );
 }
 
-/// One step of the current play; then the game-end checks (Task 11).
+/// One step of the current play; then the game-end checks (G8, D8-D10),
+/// which may end the game mid-turn with dice unplayed.
 ReduceResult _step(GameState s, Step step) {
   if (s.node.child(step) == null) {
     return RuleViolation(
@@ -174,6 +175,10 @@ ReduceResult _step(GameState s, Step step) {
     rules,
     justMoved: side,
     cubeValue: s.cube.value,
+  );
+  assert(
+    (result != null) == endsGame(position, rules, side),
+    'checkGameEnd and endsGame disagree on $position',
   );
   if (result == null) return GameUpdate(next, events);
   events.add(GameEnded(result));
