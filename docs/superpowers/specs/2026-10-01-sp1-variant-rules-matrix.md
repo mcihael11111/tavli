@@ -1,7 +1,12 @@
 # SP1 — Per-Variant Rules Matrix (for user sign-off)
 
 **Date:** 2026-10-01
-**Status:** Draft. Needs user sign-off on the DECISIONS in §6 before `tavli_core` is coded.
+**Status:** **APPROVED 2026-10-01.** The user accepted every recommendation (**R**) in §6, D1–D22, including:
+- **D20 = B:** re-model Tawla 31 as the running game now; add "Tawla 'Ada" as a 14th variant in a later stage.
+- **D4/D5 = A:** Tavla house rules are on by default.
+- **D9 = A:** Tapa uses the Bulgarian mother rule; a both-pinned tie scores 1 point each.
+
+This document is the **normative rules source** for `tavli_core`. Where a section shows options, the **R** option is binding.
 **Parent:** `2026-10-01-gameplay-rewrite-program-design.md` §4.3 (SP1 "Game core")
 **Scope:** All 13 `GameVariant`s. Every rule cites a source. Rules that are regional or ambiguous are raised as DECISIONS. No rule here was invented. Where the sources say nothing, the doc says "no source".
 
