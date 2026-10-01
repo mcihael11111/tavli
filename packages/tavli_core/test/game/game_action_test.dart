@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:tavli_core/tavli_core.dart';
-import 'package:test/test.dart' hide Timeout;
+import 'package:test/test.dart';
 
 void main() {
   test('every action round-trips through JSON', () {
@@ -15,14 +15,14 @@ void main() {
       Take(),
       Drop(),
       Resign(Side.one),
-      Timeout(Side.two),
+      ClockTimeout(Side.two),
     ]) {
       final back = GameAction.fromJson(a.toJson());
       expect(back, a, reason: '${a.toJson()}');
       expect(back.runtimeType, a.runtimeType);
       expect(back.hashCode, a.hashCode);
     }
-    expect(const Resign(Side.one), isNot(const Timeout(Side.one)));
+    expect(const Resign(Side.one), isNot(const ClockTimeout(Side.one)));
     expect(const Take(), isNot(const Drop()));
   });
 
@@ -39,9 +39,24 @@ void main() {
       },
       {'type': 'resign', 'side': 'three'},
       {'type': 'timeout'},
+      {'type': 'clockTimeout'},
     ]) {
       expect(() => GameAction.fromJson(j), throwsFormatException, reason: '$j');
     }
+  });
+
+  test('fromJson takes any decoded JSON; non-objects are FormatException', () {
+    for (final j in <Object?>[
+      null,
+      3,
+      'take',
+      [],
+      {1: 2}
+    ]) {
+      expect(() => GameAction.fromJson(j), throwsFormatException, reason: '$j');
+    }
+    // Unknown extra keys are ignored.
+    expect(GameAction.fromJson({'type': 'take', 'side': 'one'}), const Take());
   });
 
   test('DiceRoll.random stays in 1..6 and validates', () {

@@ -1,5 +1,8 @@
 /// What the reducer reports happened (design spec §5.5). These are the
 /// only things the board animates.
+///
+/// Events are immutable values: lists are unmodifiable and every event has
+/// value equality.
 library;
 
 import '../board/side.dart';
@@ -18,14 +21,33 @@ final class OpeningRolled extends GameEvent {
   const OpeningRolled(this.dieOne, this.dieTwo, this.starter);
 
   @override
+  bool operator ==(Object other) =>
+      other is OpeningRolled &&
+      other.dieOne == dieOne &&
+      other.dieTwo == dieTwo &&
+      other.starter == starter;
+
+  @override
+  int get hashCode => Object.hash('opening', dieOne, dieTwo, starter);
+
+  @override
   String toString() => 'OpeningRolled($dieOne, $dieTwo, ${starter?.name})';
 }
 
-/// [side] rolled [dice] (the two dice as rolled).
+/// [side] rolled [dice]: the two dice as rolled, e.g. `[5, 5]`. The dice
+/// to play (`[5, 5, 5, 5]`, or a Gul Bara cascade queue) are in the new
+/// state's `dice`.
 final class DiceRolled extends GameEvent {
   final Side side;
   final List<int> dice;
-  const DiceRolled(this.side, this.dice);
+  DiceRolled(this.side, List<int> dice) : dice = List.unmodifiable(dice);
+
+  @override
+  bool operator ==(Object other) =>
+      other is DiceRolled && other.side == side && _eq(other.dice, dice);
+
+  @override
+  int get hashCode => Object.hash('rolled', side, Object.hashAll(dice));
 
   @override
   String toString() => 'DiceRolled(${side.name}, $dice)';
@@ -38,6 +60,13 @@ final class CheckerMoved extends GameEvent {
   const CheckerMoved(this.side, this.step);
 
   @override
+  bool operator ==(Object other) =>
+      other is CheckerMoved && other.side == side && other.step == step;
+
+  @override
+  int get hashCode => Object.hash('moved', side, step);
+
+  @override
   String toString() => 'CheckerMoved(${side.name}, $step)';
 }
 
@@ -48,6 +77,13 @@ final class StepUndone extends GameEvent {
   const StepUndone(this.side, this.step);
 
   @override
+  bool operator ==(Object other) =>
+      other is StepUndone && other.side == side && other.step == step;
+
+  @override
+  int get hashCode => Object.hash('undone', side, step);
+
+  @override
   String toString() => 'StepUndone(${side.name}, $step)';
 }
 
@@ -55,7 +91,14 @@ final class StepUndone extends GameEvent {
 final class PlayCommitted extends GameEvent {
   final Side side;
   final List<Step> steps;
-  const PlayCommitted(this.side, this.steps);
+  PlayCommitted(this.side, List<Step> steps) : steps = List.unmodifiable(steps);
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlayCommitted && other.side == side && _eq(other.steps, steps);
+
+  @override
+  int get hashCode => Object.hash('committed', side, Object.hashAll(steps));
 
   @override
   String toString() => 'PlayCommitted(${side.name}, $steps)';
@@ -66,7 +109,14 @@ final class PlayCommitted extends GameEvent {
 final class TurnPassed extends GameEvent {
   final Side side;
   final List<int> dice;
-  const TurnPassed(this.side, this.dice);
+  TurnPassed(this.side, List<int> dice) : dice = List.unmodifiable(dice);
+
+  @override
+  bool operator ==(Object other) =>
+      other is TurnPassed && other.side == side && _eq(other.dice, dice);
+
+  @override
+  int get hashCode => Object.hash('passed', side, Object.hashAll(dice));
 
   @override
   String toString() => 'TurnPassed(${side.name}, $dice)';
@@ -76,7 +126,14 @@ final class TurnPassed extends GameEvent {
 final class RemainderPassed extends GameEvent {
   final Side to;
   final List<int> dice;
-  const RemainderPassed(this.to, this.dice);
+  RemainderPassed(this.to, List<int> dice) : dice = List.unmodifiable(dice);
+
+  @override
+  bool operator ==(Object other) =>
+      other is RemainderPassed && other.to == to && _eq(other.dice, dice);
+
+  @override
+  int get hashCode => Object.hash('remainder', to, Object.hashAll(dice));
 
   @override
   String toString() => 'RemainderPassed(${to.name}, $dice)';
@@ -89,6 +146,13 @@ final class CubeOffered extends GameEvent {
   const CubeOffered(this.by, this.value);
 
   @override
+  bool operator ==(Object other) =>
+      other is CubeOffered && other.by == by && other.value == value;
+
+  @override
+  int get hashCode => Object.hash('offered', by, value);
+
+  @override
   String toString() => 'CubeOffered(${by.name}, $value)';
 }
 
@@ -97,6 +161,13 @@ final class CubeTaken extends GameEvent {
   final Side by;
   final int newValue;
   const CubeTaken(this.by, this.newValue);
+
+  @override
+  bool operator ==(Object other) =>
+      other is CubeTaken && other.by == by && other.newValue == newValue;
+
+  @override
+  int get hashCode => Object.hash('taken', by, newValue);
 
   @override
   String toString() => 'CubeTaken(${by.name}, $newValue)';
@@ -108,6 +179,12 @@ final class CubeDropped extends GameEvent {
   const CubeDropped(this.by);
 
   @override
+  bool operator ==(Object other) => other is CubeDropped && other.by == by;
+
+  @override
+  int get hashCode => Object.hash('dropped', by);
+
+  @override
   String toString() => 'CubeDropped(${by.name})';
 }
 
@@ -117,5 +194,20 @@ final class GameEnded extends GameEvent {
   const GameEnded(this.result);
 
   @override
+  bool operator ==(Object other) =>
+      other is GameEnded && other.result == result;
+
+  @override
+  int get hashCode => Object.hash('ended', result);
+
+  @override
   String toString() => 'GameEnded($result)';
+}
+
+bool _eq<T>(List<T> a, List<T> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

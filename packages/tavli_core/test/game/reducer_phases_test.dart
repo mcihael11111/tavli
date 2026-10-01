@@ -1,5 +1,5 @@
 import 'package:tavli_core/tavli_core.dart';
-import 'package:test/test.dart' hide Timeout;
+import 'package:test/test.dart';
 
 import '../support/positions.dart';
 import '../support/reducer.dart';
@@ -151,8 +151,7 @@ void main() {
   });
 
   group('moving', () {
-    final moving =
-        (reduce(_portesToRoll(), const RollDice(3, 1)) as GameUpdate).state;
+    final moving = stateAfter(_portesToRoll(), const RollDice(3, 1));
 
     test('StepAction applies the step and emits CheckerMoved', () {
       final u = ok(moving, const StepAction(Step(8, 5, 3)));

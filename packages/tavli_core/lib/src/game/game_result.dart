@@ -12,6 +12,7 @@ enum ResultKind {
   draw,
   checkersRemaining,
   resign,
+  timeout,
 }
 
 /// The result of a finished game.

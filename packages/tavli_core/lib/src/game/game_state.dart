@@ -18,6 +18,7 @@ import 'game_result.dart';
 import 'rule_violation.dart';
 
 part 'reducer.dart';
+part 'reducer_cube.dart';
 
 /// Where a game is in its turn cycle.
 enum GamePhase { opening, awaitingRoll, cubeOffered, moving, gameOver }
@@ -133,9 +134,19 @@ final class GameState {
 
   /// A copy of a non-moving state with [position] as the board, for
   /// setting up scenarios (tests, puzzles, a resumed game).
+  ///
+  /// Throws [StateError] during a moving phase, and [ArgumentError] when
+  /// [position]'s direction is not the variant's.
   GameState withPosition(Position position) {
     if (phase == GamePhase.moving) {
       throw StateError('withPosition during a moving phase');
+    }
+    if (position.direction != variant.rules.direction) {
+      throw ArgumentError.value(
+        position.direction,
+        'position',
+        '${variant.name} plays ${variant.rules.direction.name}',
+      );
     }
     return _copy(position: position, turnStart: position);
   }
@@ -145,7 +156,9 @@ final class GameState {
   /// then cached. Throws [StateError] when there are no dice to play.
   PlayTree get tree => _tree ??= _buildTree();
 
-  /// The node of [tree] reached by [steps].
+  /// The node of [tree] reached by [steps]. Like [tree], throws
+  /// [StateError] when there are no dice to play: outside `moving`, except
+  /// in a game that ended mid-turn, where it is the node the game ended at.
   PlayNode get node => tree.walk(steps)!;
 
   PlayTree _buildTree() {

@@ -79,6 +79,26 @@ void main() {
     });
   }
 
+  test('D18 oracle differential: every start position, first turn x 21 rolls',
+      () {
+    final failures = <String>[];
+    for (final v in Variant.values) {
+      final rules = v.rules;
+      final p = Position.forRules(rules);
+      final ctx = TurnContext(firstTurn: true);
+      for (final side in Side.values) {
+        for (final dice in _rolls) {
+          final fast = generatePlays(p, side, dice, rules, ctx).finals;
+          final ref = referenceFinals(p, side, dice, rules, ctx);
+          final d = _diff('${v.name} start', p, side, dice, ctx, fast, ref);
+          if (d != null) failures.add(d);
+        }
+      }
+    }
+    printOnFailure(failures.take(5).join('\n\n'));
+    expect(failures, isEmpty, reason: '${failures.length} mismatches');
+  });
+
   test('D15 D16 oracle differential: Gul Bara cascades with few finals', () {
     final rules = Variant.gulBara.rules;
     final rng = Random(77);

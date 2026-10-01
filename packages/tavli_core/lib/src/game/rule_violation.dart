@@ -12,8 +12,11 @@ sealed class ReduceResult {
 /// The action was accepted: the new [state] and what happened, in order.
 final class GameUpdate extends ReduceResult {
   final GameState state;
+
+  /// Unmodifiable.
   final List<GameEvent> events;
-  const GameUpdate(this.state, this.events);
+  GameUpdate(this.state, List<GameEvent> events)
+      : events = List.unmodifiable(events);
 }
 
 /// Why an action was rejected.
@@ -41,6 +44,10 @@ enum ViolationCode {
 
   /// The game is over.
   gameOver,
+
+  /// The authenticated sender is not the side this action belongs to
+  /// (`reduce(..., by:)`).
+  notYourAction,
 }
 
 /// The action was rejected; the state is unchanged.
@@ -48,6 +55,13 @@ final class RuleViolation extends ReduceResult {
   final ViolationCode code;
   final String message;
   const RuleViolation(this.code, this.message);
+
+  @override
+  bool operator ==(Object other) =>
+      other is RuleViolation && other.code == code && other.message == message;
+
+  @override
+  int get hashCode => Object.hash(code, message);
 
   @override
   String toString() => 'RuleViolation(${code.name}: $message)';

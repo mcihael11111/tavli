@@ -70,6 +70,18 @@ final class AppliedStep {
   });
 
   @override
+  bool operator ==(Object other) =>
+      other is AppliedStep &&
+      other.step == step &&
+      other.hit == hit &&
+      other.pinned == pinned &&
+      other.unpinned == unpinned &&
+      other.bearOff == bearOff;
+
+  @override
+  int get hashCode => Object.hash(step, hit, pinned, unpinned, bearOff);
+
+  @override
   String toString() => 'AppliedStep($step'
       '${hit ? ' hit' : ''}${pinned ? ' pinned' : ''}'
       '${unpinned ? ' unpinned' : ''}${bearOff ? ' off' : ''})';

@@ -1,16 +1,44 @@
 part of 'game_state.dart';
 
+/// The side that must send [a] in [s], or null when either side (or the
+/// system) may: the opening roll, or an action that fits no phase.
+///
+/// - `RollDice`, `StepAction`, `UndoStep`, `CommitPlay`, `OfferDouble`:
+///   the side to move;
+/// - `Take`, `Drop`: the side the double was offered to;
+/// - `Resign`, `ClockTimeout`: the action's own side.
+Side? actorOf(GameState s, GameAction a) => switch (a) {
+      RollOpening() => null,
+      RollDice() || StepAction() || UndoStep() || CommitPlay() => s.sideToMove,
+      OfferDouble() => s.sideToMove,
+      Take() || Drop() => s.cube.offeredBy?.opponent,
+      Resign(:final side) || ClockTimeout(:final side) => side,
+    };
+
 /// Applies [a] to [s] (design spec §5.3; plan Task 10 phase machine).
+///
+/// With [by] (the authenticated sender, e.g. on the game server), an
+/// action whose [actorOf] is another side is a `notYourAction` violation.
 ///
 /// Never throws on bad input: a rejected action returns a [RuleViolation]
 /// and leaves [s] as it was.
-ReduceResult reduce(GameState s, GameAction a) {
+ReduceResult reduce(GameState s, GameAction a, {Side? by}) {
   if (s.phase == GamePhase.gameOver) {
     return const RuleViolation(ViolationCode.gameOver, 'the game is over');
   }
+  if (by != null) {
+    final actor = actorOf(s, a);
+    if (actor != null && actor != by) {
+      return RuleViolation(
+        ViolationCode.notYourAction,
+        '$a is for ${actor.name}, not ${by.name}',
+      );
+    }
+  }
   final phase = s.phase;
   return switch (a) {
-    Resign(:final side) || Timeout(:final side) => _forfeit(s, side),
+    Resign(:final side) => _forfeit(s, side, ResultKind.resign),
+    ClockTimeout(:final side) => _forfeit(s, side, ResultKind.timeout),
     RollOpening() when phase == GamePhase.opening => _opening(s, a),
     RollDice() when phase == GamePhase.awaitingRoll => _roll(s, a),
     StepAction() when phase == GamePhase.moving => _step(s, a.step),
@@ -192,85 +220,4 @@ ReduceResult _commit(GameState s) {
   // opponent (D16-B). Handing it over is plan Task 12; until then the turn
   // passes normally and the remainder is dropped.
   return GameUpdate(_passTurn(s), [PlayCommitted(side, s.steps)]);
-}
-
-/// D7: the side to move offers to double before rolling.
-ReduceResult _offer(GameState s) {
-  final side = s.sideToMove!, cube = s.cube;
-  if (!s.variant.rules.cube.available || !cube.enabled) {
-    return const RuleViolation(
-      ViolationCode.cubeUnavailable,
-      'this game has no doubling cube',
-    );
-  }
-  if (s.crawfordGame || cube.value >= 64) {
-    return RuleViolation(
-      ViolationCode.cannotDouble,
-      s.crawfordGame ? 'no doubling in the Crawford game' : 'cube at 64',
-    );
-  }
-  if (cube.owner != null && cube.owner != side) {
-    return const RuleViolation(
-      ViolationCode.cannotDouble,
-      'the opponent owns the cube',
-    );
-  }
-  return GameUpdate(
-    s._copy(
-      phase: GamePhase.cubeOffered,
-      cube: cube.copyWith(offeredBy: side),
-    ),
-    [CubeOffered(side, cube.value * 2)],
-  );
-}
-
-/// The opponent takes: the cube doubles and passes to the taker; the
-/// offerer goes on to roll.
-ReduceResult _take(GameState s) {
-  final taker = s.sideToMove!.opponent;
-  final value = s.cube.value * 2;
-  return GameUpdate(
-    s._copy(
-      phase: GamePhase.awaitingRoll,
-      cube: s.cube.copyWith(value: value, owner: taker),
-    ),
-    [CubeTaken(taker, value)],
-  );
-}
-
-/// The opponent drops: the offerer wins a single game at the current
-/// value.
-ReduceResult _drop(GameState s) {
-  final offerer = s.sideToMove!;
-  final value = s.cube.value;
-  final result = GameResult(
-    winner: offerer,
-    kind: ResultKind.single,
-    points: value,
-    cubeValue: value,
-  );
-  return GameUpdate(
-    s._copy(
-      phase: GamePhase.gameOver,
-      cube: s.cube.copyWith(),
-      result: result,
-    ),
-    [CubeDropped(offerer.opponent), GameEnded(result)],
-  );
-}
-
-/// Resign or timeout by [loser], in any phase: the opponent wins a single
-/// game times the cube.
-ReduceResult _forfeit(GameState s, Side loser) {
-  final value = s.cube.value;
-  final result = GameResult(
-    winner: loser.opponent,
-    kind: ResultKind.single,
-    points: value,
-    cubeValue: value,
-  );
-  return GameUpdate(
-    s._copy(phase: GamePhase.gameOver, result: result, keepTree: true),
-    [GameEnded(result)],
-  );
 }

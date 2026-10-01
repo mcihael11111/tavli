@@ -7,15 +7,23 @@ import '../play/step.dart';
 /// An input to `reduce`. Dice always arrive as data.
 ///
 /// JSON: an object with a `"type"` key plus the action's fields, e.g.
-/// `{"type": "rollDice", "d1": 5, "d2": 3}`.
+/// `{"type": "rollDice", "d1": 5, "d2": 3}`. Only [Resign] and
+/// [ClockTimeout] carry a `"side"`; who sent an action is not part of it
+/// (see `actorOf` and `reduce(..., by:)`).
 sealed class GameAction {
   const GameAction();
 
   Map<String, Object?> toJson();
 
-  /// Parses [toJson] output. Throws only [FormatException]. Values are
-  /// checked for type only; the reducer judges legality (e.g. dice 1..6).
-  static GameAction fromJson(Map<String, Object?> j) {
+  /// Parses [toJson] output from any decoded JSON value. Throws only
+  /// [FormatException] (also for a non-object). Unknown extra keys are
+  /// ignored. Values are checked for type only; the reducer judges
+  /// legality (e.g. dice 1..6).
+  static GameAction fromJson(Object? json) {
+    if (json is! Map<String, Object?>) {
+      throw FormatException('GameAction: not a JSON object', json);
+    }
+    final j = json;
     int die(String key) {
       final v = j[key];
       if (v is! int) throw FormatException('GameAction: $key must be int', j);
@@ -53,8 +61,8 @@ sealed class GameAction {
         return const Drop();
       case 'resign':
         return Resign(side());
-      case 'timeout':
-        return Timeout(side());
+      case 'clockTimeout':
+        return ClockTimeout(side());
       default:
         throw FormatException('GameAction: unknown type', j);
     }
@@ -149,8 +157,8 @@ final class Resign extends _SideAction {
 }
 
 /// [side] ran out of time.
-final class Timeout extends _SideAction {
-  const Timeout(Side side) : super('timeout', side);
+final class ClockTimeout extends _SideAction {
+  const ClockTimeout(Side side) : super('clockTimeout', side);
 }
 
 /// An action with no fields; equal to any instance of the same type.

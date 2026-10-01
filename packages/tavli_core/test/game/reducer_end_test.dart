@@ -1,5 +1,5 @@
 import 'package:tavli_core/tavli_core.dart';
-import 'package:test/test.dart' hide Timeout;
+import 'package:test/test.dart';
 
 import '../support/positions.dart';
 import '../support/reducer.dart';
@@ -62,24 +62,62 @@ void main() {
   });
 
   group('resign and timeout', () {
-    test('resign in any phase: the opponent wins single x cube', () {
+    test('resign in opening: the opponent wins 1 x cube, kind resign', () {
       final u = ok(GameState.initial(_portes), const Resign(S.one));
       expect(u.state.phase, GamePhase.gameOver);
       expect(
         u.state.result,
         const GameResult(
-            winner: S.two, kind: ResultKind.single, points: 1, cubeValue: 1),
+            winner: S.two, kind: ResultKind.resign, points: 1, cubeValue: 1),
       );
-      expect((u.events.single as GameEnded).result, u.state.result);
+      expect(u.events, [GameEnded(u.state.result!)]);
+    });
+
+    test('resign and timeout while awaiting the roll', () {
+      final s = _portesToRoll();
+      expect(
+          ok(s, const Resign(S.one)).state.result,
+          const GameResult(
+              winner: S.two, kind: ResultKind.resign, points: 1, cubeValue: 1));
+      expect(
+          ok(s, const ClockTimeout(S.two)).state.result,
+          const GameResult(
+              winner: S.one,
+              kind: ResultKind.timeout,
+              points: 1,
+              cubeValue: 1));
+    });
+
+    test('resign or timeout during an offer: the offer lapses', () {
+      final offered = ok(GameState.initial(Variant.shortNard, starter: S.one),
+              const OfferDouble())
+          .state;
+      expect(offered.cube.offeredBy, S.one);
+      for (final (a, kind) in const [
+        (Resign(S.two), ResultKind.resign),
+        (ClockTimeout(S.two), ResultKind.timeout),
+      ]) {
+        final end = ok(offered, a).state;
+        expect(end.phase, GamePhase.gameOver);
+        expect(end.cube.offeredBy, isNull);
+        expect(end.cube.value, 1, reason: 'the double was never taken');
+        expect(end.result,
+            GameResult(winner: S.one, kind: kind, points: 1, cubeValue: 1));
+      }
     });
 
     test('timeout while moving, with the cube at 2', () {
       final s = play(GameState.initial(Variant.shortNard, starter: S.one),
           const [OfferDouble(), Take(), RollDice(3, 1)]);
       expect(s.phase, GamePhase.moving);
-      final u = ok(s, const Timeout(S.one));
-      expect(u.state.result?.winner, S.two);
-      expect(u.state.result?.points, 2);
+      final u = ok(s, const ClockTimeout(S.one));
+      expect(
+          u.state.result,
+          const GameResult(
+              winner: S.two,
+              kind: ResultKind.timeout,
+              points: 2,
+              cubeValue: 2));
     });
 
     test('every action after the game is over is gameOver', () {
@@ -94,11 +132,31 @@ void main() {
         Take(),
         Drop(),
         Resign(S.one),
-        Timeout(S.two),
+        ClockTimeout(S.two),
       ]) {
         rejects(over, a, ViolationCode.gameOver);
       }
     });
+  });
+
+  test('D1-A an opening winner with no legal play passes the turn', () {
+    // Side two holds my 19..24: my bar checker cannot enter with 5-3.
+    final p = pos(
+      one: {6: 14},
+      barOne: 1,
+      two: {1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 5},
+    );
+    final u =
+        ok(GameState.initial(_portes).withPosition(p), const RollOpening(5, 3));
+    expect(u.events, [
+      const OpeningRolled(5, 3, S.one),
+      TurnPassed(S.one, const [5, 3]),
+    ]);
+    expect(u.state.phase, GamePhase.awaitingRoll);
+    expect(u.state.sideToMove, S.two);
+    expect(u.state.turnsTaken, {S.one: 1, S.two: 0});
+    expect(u.state.rollIndex, 1);
+    expect(u.state.position, p);
   });
 
   group('Gul Bara', () {
