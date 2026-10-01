@@ -172,6 +172,17 @@ An empty tree means no legal play: the turn passes (G9).
 
 **Cascade (Gul Bara).** The generator plays the ordered queue (*d* ×4, *d*+1 ×4, … 6 ×4). Within each number it plays as many as possible. At the first number that can't be played in full, it stops and reports the `remainder` dice (D16-B).
 
+**Cascade trees are lazy** (decided 2026-10-01 after measurement). Early-game cascades reach 10⁵–10⁶ distinct finals and take 0.3–100 s to enumerate. So for cascades:
+- A memoized search `maxPlayable(position, ctx, queueIndex)` stops early once the full queue is reachable. It gives `diceUsed` and `remainder` up front.
+- Each node computes `nextSteps` on demand: the steps whose continuation still reaches `diceUsed`.
+- `finals` is not materialized for cascades; `isForced` is computed lazily or reported as false.
+
+This is sound because Gul Bara has no play filters (D17), so G4 is the only play-level rule. Normal rolls keep the eager tree, which the D5/D12/D13/D14 filters need.
+
+**Game-ending steps** (matrix addendum A4) terminate a sequence and count as using all dice.
+
+**SP2 note:** the bot cannot enumerate cascade finals, so it must sample or play greedily on cascades.
+
 ### 4.5 `ReferenceGenerator` (test oracle)
 
 A deliberately naive implementation:
