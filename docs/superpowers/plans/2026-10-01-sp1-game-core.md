@@ -635,6 +635,7 @@ sealed class GameEvent {}
 enum ViolationCode {
   wrongPhase, invalidDice, illegalStep, incompletePlay, nothingToUndo,
   cubeUnavailable, cannotDouble, gameOver,
+  // added later: notYourAction (actor attribution), stepsAlreadyTaken (SubmitPlay)
 }
 class RuleViolation { final ViolationCode code; final String message; }
 
@@ -698,7 +699,7 @@ Prefer a small `sealed class ReduceResult` with two subclasses, `GameUpdate` and
 | `StepAction(step)` | Must be in `node.nextSteps`, else `illegalStep`. Apply it and emit `CheckerMoved`. Then run the game-end checks (Task 11); a game end goes to `gameOver` |
 | `UndoStep` | Fails with `nothingToUndo` if no steps were taken. Otherwise recompute the position from `turnStart` + `steps[..-1]` and emit `StepUndone` |
 | `CommitPlay` | Requires `node.isComplete`, else `incompletePlay`. Emit `PlayCommitted` and `turnsTaken[side]++` (see below) |
-| `SubmitPlay(steps)` | Only with no step taken yet (`state.steps.isEmpty`), else `wrongPhase`. Applies every step as `StepAction`, then `CommitPlay`, **atomically**: an illegal step (`illegalStep`) or a result that is not a full play (`incompletePlay`) rejects the whole action and leaves the state unchanged. A game-ending step ends the game there (no commit); any step after it is `illegalStep`. Events: the same `CheckerMoved`… (+ `GameEnded`) or … + `PlayCommitted` (+ `RemainderPassed`) sequence as step-by-step play |
+| `SubmitPlay(steps)` | Only with no step taken yet (`state.steps.isEmpty`), else `stepsAlreadyTaken` (a dedicated code, added after the Task 15 review; outside `moving` it is `wrongPhase`). Applies every step as `StepAction`, then `CommitPlay`, **atomically**: an illegal step (`illegalStep`) or a result that is not a full play (`incompletePlay`) rejects the whole action and leaves the state unchanged. A game-ending step ends the game there (no commit); any step after it is `illegalStep`. Events: the same `CheckerMoved`… (+ `GameEnded`) or … + `PlayCommitted` (+ `RemainderPassed`) sequence as step-by-step play |
 
 After `CommitPlay`:
 - **With a cascade remainder** (`tree.remainder.isNotEmpty`, `onFailure == opponentPlaysRemainder`, and not already `remainderTurn`): the opponent's phase becomes `moving` over `generateCascade` of the remainder with `remainderTurn: true`, and `RemainderPassed` is emitted. If the opponent has no play, they go straight to `awaitingRoll`.

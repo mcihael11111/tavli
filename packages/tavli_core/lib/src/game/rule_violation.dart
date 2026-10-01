@@ -57,6 +57,10 @@ enum ViolationCode {
   /// Undo with no step taken this play.
   nothingToUndo,
 
+  /// `SubmitPlay` after steps were already taken this play (undo them
+  /// first, or keep playing step by step).
+  stepsAlreadyTaken,
+
   /// The variant or this game has no cube.
   cubeUnavailable,
 

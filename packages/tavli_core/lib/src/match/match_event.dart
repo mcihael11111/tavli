@@ -28,6 +28,10 @@ final class InGame extends MatchEvent {
 /// Game [index] (0-based in the match) of [variant] started: [starter]
 /// rolls first, or null for an opening roll; [crawford] marks the
 /// Crawford game.
+///
+/// Emitted only by `NextGame`, so never for game 0: that game exists from
+/// `MatchState.initial` on, and its variant, starter and Crawford flag
+/// are read from `MatchState.initial(config).game`.
 final class GameStarted extends MatchEvent {
   final int index;
   final Variant variant;

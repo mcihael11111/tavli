@@ -118,6 +118,16 @@ GameState _gameStateFromJson(Object? json) {
   // Replay the steps through the play tree. Nothing in it should throw
   // for a state that passed the checks above; if anything still does,
   // the state is malformed all the same.
+  //
+  // Caveat: this catch is deliberately broad, so it would also turn an
+  // engine bug (an ArgumentError thrown by the generator, the step rules
+  // or freeze() on a state they ought to accept) into a FormatException
+  // that reads like bad input, masking the bug. The checks above are
+  // meant to make it unreachable, and the fuzz suite round-trips
+  // engine-produced states through JSON to catch it. If a
+  // FormatException mentioning "unplayable state" ever appears for a
+  // state the engine itself produced, treat it as an engine bug, not as
+  // corrupt input.
   try {
     return _replaySteps(r, s, steps);
   } on ArgumentError catch (e) {

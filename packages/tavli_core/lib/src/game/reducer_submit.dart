@@ -8,7 +8,7 @@ part of 'game_state.dart';
 ReduceResult _submit(GameState s, List<Step> steps) {
   if (s.steps.isNotEmpty) {
     return const RuleViolation(
-      ViolationCode.wrongPhase,
+      ViolationCode.stepsAlreadyTaken,
       'SubmitPlay after steps were taken this play (undo them first)',
     );
   }

@@ -111,7 +111,12 @@ void main() {
     rejects(GameState.initial(Variant.portes, starter: S.one),
         SubmitPlay(const [Step(8, 5, 3)]), ViolationCode.wrongPhase);
     rejects(ok(s, const StepAction(Step(8, 5, 3))).state,
-        SubmitPlay(const [Step(6, 5, 1)]), ViolationCode.wrongPhase);
+        SubmitPlay(const [Step(6, 5, 1)]), ViolationCode.stepsAlreadyTaken);
+    // Even a whole play is refused once a step was taken.
+    rejects(
+        ok(s, const StepAction(Step(8, 5, 3))).state,
+        SubmitPlay(const [Step(8, 5, 3), Step(6, 5, 1)]),
+        ViolationCode.stepsAlreadyTaken);
     final play = SubmitPlay(const [Step(8, 5, 3), Step(6, 5, 1)]);
     expect(actorOf(s, play), S.one);
     rejects(s, play, ViolationCode.notYourAction, by: S.two);
