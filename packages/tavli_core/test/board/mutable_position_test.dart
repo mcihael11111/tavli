@@ -3,6 +3,12 @@ import 'package:test/test.dart';
 
 import '../support/positions.dart';
 
+final bool _assertsOn = () {
+  var on = false;
+  assert(on = true);
+  return on;
+}();
+
 void main() {
   group('MutablePosition', () {
     test('mutate-then-freeze equals a fromPips-built position', () {
@@ -68,6 +74,33 @@ void main() {
       }
       m.move(Side.one, 7, 4);
       expect(m.allHome(Side.one), isTrue);
+    });
+
+    test('add/remove reject pips outside 0..25 with RangeError', () {
+      final m = pos(one: {}, two: {}).toMutable();
+      expect(() => m.add(Side.one, -1), throwsRangeError);
+      expect(() => m.remove(Side.two, 26), throwsRangeError);
+      expect(() => m.count(Side.one, 26), throwsRangeError);
+    });
+
+    test('freeze validates in debug builds: pin bit with no pinner', () {
+      if (!_assertsOn) return;
+      final m = pos(one: {3: 1}, two: {}).toMutable()
+        ..setPinned(Side.one, 3, true);
+      expect(m.freeze, throwsArgumentError);
+    });
+
+    test('freeze validates in debug builds: side not totalling 15', () {
+      if (!_assertsOn) return;
+      final m = pos(one: {3: 1}, two: {}).toMutable()..add(Side.one, 5);
+      expect(m.freeze, throwsArgumentError);
+    });
+
+    test('freeze validates in debug builds: shared unpinned point', () {
+      if (!_assertsOn) return;
+      final m = pos(one: {8: 1}, two: {19: 1}).toMutable()
+        ..move(Side.one, 8, 6);
+      expect(m.freeze, throwsArgumentError);
     });
   });
 }

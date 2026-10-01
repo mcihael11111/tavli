@@ -262,40 +262,29 @@ void main() {
       expectMarathonTargets(r);
     });
 
-    test('D1 D10 D11 mahbusa: pinning as plakoto, opening roll each game', () {
-      final r = Variant.mahbusa.rules;
-      expectBasics(
-        r,
-        layout: Layout.stackOpposing,
-        direction: Direction.opposing,
-        contact: Contact.pin,
-        opening: OpeningProcedure.playOpeningDice,
-        nextGame: NextGameStarter.openingRoll,
-      );
-      expect(r.head, isNull);
-      expect(r.advancement, isNull);
-      expectNoPrimes(r);
-      expectPlakotoPin(r, bothPinned: 0);
-      expect(r.hit, isNull);
-      expectFourDoubles(r);
-      expectMultiplierNoTriple(r);
-      expectNoCube(r);
-      expectMarathonTargets(r);
-    });
-
-    test('D10 mahbusaArab: same row as mahbusa', () {
-      final r = Variant.mahbusaArab.rules;
-      expectBasics(
-        r,
-        layout: Layout.stackOpposing,
-        direction: Direction.opposing,
-        contact: Contact.pin,
-        opening: OpeningProcedure.playOpeningDice,
-        nextGame: NextGameStarter.openingRoll,
-      );
-      expectPlakotoPin(r, bothPinned: 0);
-      expectMarathonTargets(r);
-    });
+    for (final v in [Variant.mahbusa, Variant.mahbusaArab]) {
+      test('D1 D10 D11 ${v.name}: pinning as plakoto, opening roll each game',
+          () {
+        final r = v.rules;
+        expectBasics(
+          r,
+          layout: Layout.stackOpposing,
+          direction: Direction.opposing,
+          contact: Contact.pin,
+          opening: OpeningProcedure.playOpeningDice,
+          nextGame: NextGameStarter.openingRoll,
+        );
+        expect(r.head, isNull);
+        expect(r.advancement, isNull);
+        expectNoPrimes(r);
+        expectPlakotoPin(r, bothPinned: 0);
+        expect(r.hit, isNull);
+        expectFourDoubles(r);
+        expectMultiplierNoTriple(r);
+        expectNoCube(r);
+        expectMarathonTargets(r);
+      });
+    }
 
     test(
         'D20 D21 tawla31: running, runner to pip 18, no prime limits, '

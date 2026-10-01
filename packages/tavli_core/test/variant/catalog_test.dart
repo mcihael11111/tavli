@@ -3,6 +3,12 @@ import 'package:test/test.dart';
 
 import 'catalog_expect.dart';
 
+final bool _assertsOn = () {
+  var on = false;
+  assert(on = true);
+  return on;
+}();
+
 void main() {
   test('catalog has all 13 variants', () {
     expect(variantCatalog.length, 13);
@@ -110,6 +116,9 @@ void main() {
     });
 
     test('D10 mahbusa and mahbusaArab rules are equal', () {
+      // VariantRules has no structural ==: this relies on both entries
+      // sharing one const instance (const canonicalization). The full row
+      // check for each lives in catalog_rows_test.dart.
       expect(Variant.mahbusaArab.rules, Variant.mahbusa.rules);
     });
 
@@ -168,6 +177,55 @@ void main() {
       expect(CubeRules.none.available, isFalse);
       expect(CubeRules.none.enabledByDefault, isFalse);
       expect(CubeRules.none.crawford, isFalse);
+    });
+
+    test('M2 const constructors assert their invariants', () {
+      if (!_assertsOn) return;
+      // Parameters are variables, so the constructors run at runtime.
+      VariantRules build({
+        Contact contact = Contact.block,
+        PinRules? pin,
+        HitRules? hit,
+        DoublesMode doubles = DoublesMode.four,
+        Cascade? cascade,
+      }) =>
+          VariantRules(
+            layout: Layout.stackDiagonal,
+            direction: Direction.same,
+            contact: contact,
+            opening: OpeningProcedure.playOpeningDice,
+            nextGame: NextGameStarter.openingRoll,
+            pin: pin,
+            hit: hit,
+            doubles: doubles,
+            cascade: cascade,
+            scoring: const Scoring(model: ScoringModel.multiplier),
+            match: const MatchDefaults(targets: [3]),
+          );
+      const pin = PinRules(
+        motherRule: true,
+        motherPoints: 2,
+        bothPinnedPoints: 0,
+        noBearOffWhilePinned: true,
+      );
+      const cascade = Cascade(
+        normalRolls: 3,
+        onFailure: CascadeFailure.forfeit,
+      );
+      final throwsAssert = throwsA(isA<AssertionError>());
+      expect(build(), isA<VariantRules>());
+      expect(() => build(doubles: DoublesMode.cascade), throwsAssert);
+      expect(() => build(cascade: cascade), throwsAssert);
+      expect(() => build(contact: Contact.pin), throwsAssert);
+      expect(() => build(pin: pin), throwsAssert);
+      expect(() => build(hit: const HitRules()), throwsAssert);
+      final model = ScoringModel.values.first;
+      expect(() => Scoring(model: model, triple: 3), throwsAssert);
+      expect(
+        () =>
+            Scoring(model: model, tripleCondition: TripleCondition.winnerHome),
+        throwsAssert,
+      );
     });
   });
 }

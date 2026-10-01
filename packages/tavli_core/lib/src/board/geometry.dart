@@ -12,6 +12,9 @@ class Geometry {
   static Geometry of(Direction d) => d == Direction.opposing ? opposing : same;
 
   /// Opponent's pip for the physical point at my [pip] (1..24).
+  ///
+  /// Undefined outside 1..24: pips 0 (off) and 25 (bar) have no physical
+  /// point, so callers must not pass them (only a debug assert checks).
   int toOpponent(int pip) {
     assert(pip >= 1 && pip <= 24, 'pip $pip has no physical point');
     if (direction == Direction.opposing) return 25 - pip;

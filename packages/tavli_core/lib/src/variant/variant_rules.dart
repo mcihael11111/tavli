@@ -130,7 +130,11 @@ class Scoring {
   final int? triple;
   final TripleCondition? tripleCondition;
 
-  const Scoring({required this.model, this.triple, this.tripleCondition});
+  const Scoring({required this.model, this.triple, this.tripleCondition})
+      : assert(
+          (triple == null) == (tripleCondition == null),
+          'triple and tripleCondition go together',
+        );
 }
 
 /// Doubling cube policy (D7).
@@ -197,5 +201,13 @@ class VariantRules {
     required this.scoring,
     this.cube = CubeRules.none,
     required this.match,
-  });
+  })  : assert(
+          (doubles == DoublesMode.cascade) == (cascade != null),
+          'cascade is set exactly when doubles cascade',
+        ),
+        assert(
+          (contact == Contact.pin) == (pin != null),
+          'pin rules are set exactly for pinning games',
+        ),
+        assert(hit == null || contact == Contact.hit, 'hit rules need hit');
 }

@@ -1,31 +1,34 @@
 part of 'position.dart';
 
-/// Read helpers shared by [Position] and [MutablePosition].
-mixin _PositionReads {
-  Direction get direction;
+/// The [BoardView] implementation shared by [Position] and [MutablePosition].
+mixin _PositionReads implements BoardView {
   Uint8List get _counts;
   int get _pinnedOne;
   int get _pinnedTwo;
 
+  @override
   Geometry get geometry => Geometry.of(direction);
 
-  /// Checkers of [s] on its own [pip] (0 = off, 25 = bar).
+  @override
   int count(Side s, int pip) {
     if (pip < 0 || pip > 25) throw RangeError.range(pip, 0, 25, 'pip');
     return _counts[s.index * _stride + pip];
   }
 
-  /// Whether the checker of [s] on its own [pip] is pinned.
-  bool isPinned(Side s, int pip) => (pinnedMask(s) >> pip) & 1 == 1;
+  @override
+  bool isPinned(Side s, int pip) =>
+      pip >= 1 && pip <= 24 && (pinnedMask(s) >> pip) & 1 == 1;
 
-  /// Bit p set => the checker of [s] on its pip p is pinned (p in 1..24).
+  @override
   int pinnedMask(Side s) => s == Side.one ? _pinnedOne : _pinnedTwo;
 
+  @override
   int borneOff(Side s) => _counts[s.index * _stride];
 
+  @override
   int onBar(Side s) => _counts[s.index * _stride + 25];
 
-  /// Sum of pip * count over pips 1..25 (the bar counts 25).
+  @override
   int pipCount(Side s) {
     final base = s.index * _stride;
     var sum = 0;
@@ -35,8 +38,7 @@ mixin _PositionReads {
     return sum;
   }
 
-  /// G5: no checker of [s] on pips 7..25. Pinned checkers count as home;
-  /// the D11 bear-off gate is separate.
+  @override
   bool allHome(Side s) {
     final base = s.index * _stride;
     for (var pip = 7; pip <= 25; pip++) {
@@ -45,11 +47,10 @@ mixin _PositionReads {
     return true;
   }
 
-  /// Checkers not yet borne off (board + bar).
+  @override
   int checkersOnBoard(Side s) => _checkers - borneOff(s);
 
-  /// The side holding the physical point at [me]'s [myPip] (1..24), or null
-  /// if it is empty. For a pinned pair this is the pinner.
+  @override
   Side? controller(Side me, int myPip) {
     if (myPip < 1 || myPip > 24) throw RangeError.range(myPip, 1, 24, 'myPip');
     final them = me.opponent;

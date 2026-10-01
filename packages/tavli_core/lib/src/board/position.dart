@@ -4,11 +4,14 @@ library;
 import 'dart:typed_data';
 
 import '../variant/variant_rules.dart';
+import 'board_view.dart';
 import 'geometry.dart';
 import 'side.dart';
 
 part 'mutable_position.dart';
+part 'position_json.dart';
 part 'position_reads.dart';
+part 'position_validation.dart';
 
 const int _stride = 26; // pips 0..25 per side
 const int _checkers = 15;
@@ -18,7 +21,7 @@ const int _checkers = 15;
 /// (bit p set => this side's checker on its pip p is pinned).
 ///
 /// Equality is structural; [hashCode] is cached and web-safe (< 2^30).
-final class Position with _PositionReads {
+final class Position with _PositionReads implements BoardView {
   @override
   final Direction direction;
   @override
@@ -55,59 +58,42 @@ final class Position with _PositionReads {
       _maskOf(pinnedOne, 'pinnedOne'),
       _maskOf(pinnedTwo, 'pinnedTwo'),
     );
-    p._validate();
+    _validateBoard(p);
     return p;
   }
 
   /// The start position for [layout] (both sides alike).
+  ///
+  /// Asserts that [layout] fits [direction]: `stackDiagonal` is the only
+  /// same-direction layout (matrix §1).
   factory Position.start(Layout layout, Direction direction) {
+    assert(
+      (layout == Layout.stackDiagonal) == (direction == Direction.same),
+      '$layout does not fit $direction',
+    );
     final side = layout == Layout.standard2535
         ? const {24: 2, 13: 5, 8: 3, 6: 5}
         : const {24: 15};
     return Position.fromPips(one: side, two: side, direction: direction);
   }
 
-  /// Parses [toJson] output. Throws [FormatException] on a malformed shape
-  /// and [ArgumentError] on an invalid position.
-  static Position fromJson(Map<String, Object?> j) {
-    final dirName = j['direction'];
-    final direction = Direction.values.where((d) => d.name == dirName);
-    if (direction.isEmpty) {
-      throw FormatException('Position: bad direction', dirName);
-    }
-    final counts = Uint8List(2 * _stride);
-    for (final (i, key) in const ['one', 'two'].indexed) {
-      final list = j[key];
-      if (list is! List<Object?> || list.length != _stride) {
-        throw FormatException('Position: "$key" must be $_stride counts', list);
-      }
-      var total = 0;
-      for (var pip = 0; pip < _stride; pip++) {
-        final c = list[pip];
-        if (c is! int || c < 0 || c > _checkers) {
-          throw FormatException('Position: bad count in "$key"', c);
-        }
-        counts[i * _stride + pip] = c;
-        total += c;
-      }
-      if (total != _checkers) {
-        throw ArgumentError.value(total, key, 'side must total $_checkers');
-      }
-    }
-    final p = Position._(
-      direction.first,
-      counts,
-      _maskOf(_pipList(j['pinnedOne'], 'pinnedOne'), 'pinnedOne'),
-      _maskOf(_pipList(j['pinnedTwo'], 'pinnedTwo'), 'pinnedTwo'),
-    );
-    p._validate();
-    return p;
-  }
+  /// The start position for a variant's [rules].
+  factory Position.forRules(VariantRules rules) =>
+      Position.start(rules.layout, rules.direction);
 
+  /// Parses [toJson] output (schema v1). Throws only [FormatException] for
+  /// any bad payload, including a well-formed but invalid position.
+  static Position fromJson(Map<String, Object?> j) => _positionFromJson(j);
+
+  /// Schema v1 (see `tavliCoreSchemaVersion`). All keys are required:
+  /// - `direction`: `"opposing"` or `"same"`;
+  /// - `one`, `two`: 26 ints each, counts by own pip 0..25 (0 = off,
+  ///   25 = bar), each side totalling 15;
+  /// - `pinnedOne`, `pinnedTwo`: ascending distinct pinned pips in 1..24.
   Map<String, Object?> toJson() => {
         'direction': direction.name,
-        'one': List<int>.of(_counts.sublist(0, _stride)),
-        'two': List<int>.of(_counts.sublist(_stride)),
+        'one': List<int>.generate(_stride, (i) => _counts[i]),
+        'two': List<int>.generate(_stride, (i) => _counts[_stride + i]),
         'pinnedOne': _pipsOf(_pinnedOne),
         'pinnedTwo': _pipsOf(_pinnedTwo),
       };
@@ -166,79 +152,5 @@ final class Position with _PositionReads {
     h = 0x1fffffff & (h + v);
     h = 0x1fffffff & (h + ((0x0007ffff & h) << 10));
     return h ^ (h >> 6);
-  }
-
-  /// Checks the cross-side invariants (§3.2). Totals are checked by callers.
-  void _validate() {
-    final g = Geometry.of(direction);
-    for (var p = 1; p <= 24; p++) {
-      final q = g.toOpponent(p);
-      final m = _counts[p], o = _counts[_stride + q];
-      final pinnedMine = (_pinnedOne >> p) & 1 == 1;
-      final pinnedTheirs = (_pinnedTwo >> q) & 1 == 1;
-      if (pinnedMine && pinnedTheirs) {
-        throw ArgumentError('point one:$p/two:$q is pinned both ways');
-      }
-      if (pinnedMine && (m != 1 || o < 1)) {
-        throw ArgumentError('one pinned on $p needs 1 checker under a pinner');
-      }
-      if (pinnedTheirs && (o != 1 || m < 1)) {
-        throw ArgumentError('two pinned on $q needs 1 checker under a pinner');
-      }
-      if (m > 0 && o > 0 && !pinnedMine && !pinnedTheirs) {
-        throw ArgumentError('point one:$p/two:$q holds both sides unpinned');
-      }
-    }
-  }
-
-  static void _fillSide(
-    Uint8List counts,
-    int base,
-    Map<int, int> pips,
-    int bar,
-    String name,
-  ) {
-    var total = bar;
-    if (bar < 0 || bar > _checkers) {
-      throw ArgumentError.value(bar, 'bar ($name)', 'must be 0..$_checkers');
-    }
-    for (final MapEntry(key: pip, value: n) in pips.entries) {
-      if (pip < 1 || pip > 24) {
-        throw ArgumentError.value(pip, name, 'pip keys must be 1..24');
-      }
-      if (n < 0 || n > _checkers) {
-        throw ArgumentError.value(n, '$name[$pip]', 'must be 0..$_checkers');
-      }
-      counts[base + pip] = n;
-      total += n;
-    }
-    if (total > _checkers) {
-      throw ArgumentError.value(total, name, 'more than $_checkers checkers');
-    }
-    counts[base + 25] = bar;
-    counts[base] = _checkers - total;
-  }
-
-  static int _maskOf(Iterable<int> pips, String name) {
-    var mask = 0;
-    for (final p in pips) {
-      if (p < 1 || p > 24) {
-        throw ArgumentError.value(p, name, 'pinned pips must be 1..24');
-      }
-      mask |= 1 << p;
-    }
-    return mask;
-  }
-
-  static List<int> _pipsOf(int mask) => [
-        for (var p = 1; p <= 24; p++)
-          if ((mask >> p) & 1 == 1) p,
-      ];
-
-  static List<int> _pipList(Object? v, String name) {
-    if (v is! List<Object?> || v.any((e) => e is! int)) {
-      throw FormatException('Position: "$name" must be a list of pips', v);
-    }
-    return v.cast<int>();
   }
 }

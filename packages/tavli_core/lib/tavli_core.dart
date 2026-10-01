@@ -4,6 +4,7 @@
 /// mobile app and the Cloud Run game server so both always agree on rules.
 library;
 
+export 'src/board/board_view.dart';
 export 'src/board/geometry.dart';
 export 'src/board/position.dart';
 export 'src/board/side.dart';

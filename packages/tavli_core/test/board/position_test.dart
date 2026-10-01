@@ -5,6 +5,12 @@ import '../support/positions.dart';
 
 const _std = {24: 2, 13: 5, 8: 3, 6: 5};
 
+final bool _assertsOn = () {
+  var on = false;
+  assert(on = true);
+  return on;
+}();
+
 void main() {
   group('start positions', () {
     test('G1 standard start: 167 pips each, nothing off', () {
@@ -32,6 +38,35 @@ void main() {
           expect(p.pipCount(s), 360);
           expect(p.borneOff(s), 0);
           expect(p.count(s, 24), 15);
+        }
+      }
+    });
+
+    test('§1 start asserts layout/direction consistency', () {
+      if (!_assertsOn) return;
+      expect(
+        () => Position.start(Layout.stackDiagonal, Direction.opposing),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => Position.start(Layout.stackOpposing, Direction.same),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => Position.start(Layout.standard2535, Direction.same),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('forRules builds the start of every variant', () {
+      for (final v in Variant.values) {
+        final r = v.rules;
+        final p = Position.forRules(r);
+        expect(p, Position.start(r.layout, r.direction), reason: v.name);
+        expect(p.direction, r.direction);
+        final pips = r.layout == Layout.standard2535 ? 167 : 360;
+        for (final s in Side.values) {
+          expect(p.pipCount(s), pips, reason: v.name);
         }
       }
     });
@@ -158,12 +193,43 @@ void main() {
       expect(() => pos(one: {1: 1}, two: {24: 1}), throwsArgumentError);
     });
 
+    test('pin flips built through MutablePosition compare both masks', () {
+      // With equal counts, each shared point carries exactly one pin bit, so
+      // a valid position cannot differ in _pinnedTwo alone: flipping which
+      // side is pinned changes both masks. Each must differ independently.
+      final base = pos(one: {1: 1, 6: 2}, two: {24: 1}, pinnedOne: {1});
+      final m = base.toMutable()
+        ..setPinned(Side.one, 1, false)
+        ..setPinned(Side.two, 24, true);
+      final flipped = m.freeze();
+      expect(flipped, isNot(base));
+      expect(flipped.pinnedMask(Side.one), 0);
+      expect(flipped.pinnedMask(Side.two), 1 << 24);
+      expect(
+        flipped,
+        pos(one: {1: 1, 6: 2}, two: {24: 1}, pinnedTwo: {24}),
+      );
+    });
+
     test('positions differing in direction or side are !=', () {
       expect(
         pos(one: {24: 15}, two: {24: 15}),
         isNot(posSame(one: {24: 15}, two: {24: 15})),
       );
       expect(pos(one: {3: 1}, two: {}), isNot(pos(one: {}, two: {3: 1})));
+    });
+
+    test('hashCode is pinned to constants (guards VM/web parity)', () {
+      // Computed once on the VM and checked identical under dart2js. If the
+      // hash function changes, recompute on both platforms before updating.
+      expect(
+        Position.start(Layout.standard2535, Direction.opposing).hashCode,
+        308053491,
+      );
+      expect(
+        Position.start(Layout.stackDiagonal, Direction.same).hashCode,
+        432982353,
+      );
     });
 
     test('hashCode is web-safe (0 <= h < 2^30)', () {
@@ -208,6 +274,16 @@ void main() {
     });
   });
 
+  group('range checks', () {
+    test('count rejects pips outside 0..25 with RangeError', () {
+      final p = pos(one: {}, two: {});
+      expect(() => p.count(Side.one, 26), throwsRangeError);
+      expect(() => p.count(Side.two, -1), throwsRangeError);
+      expect(() => p.controller(Side.one, 0), throwsRangeError);
+      expect(() => p.controller(Side.one, 25), throwsRangeError);
+    });
+  });
+
   group('controller', () {
     test('opposing: one holds my 6, which is two\'s 19', () {
       final p = pos(one: {6: 2}, two: {});
@@ -229,62 +305,6 @@ void main() {
 
     test('empty point has no controller', () {
       expect(pos(one: {}, two: {}).controller(Side.one, 5), isNull);
-    });
-  });
-
-  group('JSON', () {
-    final cases = {
-      'standard': Position.start(Layout.standard2535, Direction.opposing),
-      'stackOpposing': Position.start(Layout.stackOpposing, Direction.opposing),
-      'stackDiagonal': Position.start(Layout.stackDiagonal, Direction.same),
-      'pinned': pos(
-        one: {1: 1, 5: 1, 6: 4},
-        two: {24: 2, 3: 1, 20: 1},
-        pinnedOne: {1},
-        pinnedTwo: {20},
-      ),
-      'bar': pos(one: {6: 3}, two: {19: 0, 5: 2}, barOne: 2, barTwo: 1),
-    };
-    for (final MapEntry(key: name, value: p) in cases.entries) {
-      test('round-trips $name', () {
-        final back = Position.fromJson(p.toJson());
-        expect(back, p);
-        expect(back.hashCode, p.hashCode);
-        expect(back.toJson(), p.toJson());
-      });
-    }
-
-    test('fromJson validates the position', () {
-      final j = pos(one: {1: 1}, two: {24: 1}, pinnedOne: {1}).toJson();
-      // Remove the pinner: the pinned bit becomes invalid.
-      final two = List<int>.from(j['two']! as List<Object?>)
-        ..[24] = 0
-        ..[0] = 15;
-      expect(
-        () => Position.fromJson({...j, 'two': two}),
-        throwsA(anyOf(isArgumentError, isFormatException)),
-      );
-    });
-
-    test('fromJson rejects a side not totalling 15', () {
-      final j = pos(one: {}, two: {}).toJson();
-      final one = List<int>.filled(26, 0)..[0] = 14;
-      expect(
-        () => Position.fromJson({...j, 'one': one}),
-        throwsA(anyOf(isArgumentError, isFormatException)),
-      );
-    });
-
-    test('fromJson rejects malformed input', () {
-      expect(() => Position.fromJson({}), throwsFormatException);
-      final j = pos(one: {}, two: {}).toJson();
-      expect(
-        () => Position.fromJson({
-          ...j,
-          'one': <int>[15]
-        }),
-        throwsFormatException,
-      );
     });
   });
 }

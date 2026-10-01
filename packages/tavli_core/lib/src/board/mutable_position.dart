@@ -4,7 +4,7 @@ part of 'position.dart';
 ///
 /// Mutators do no rule checking (that is `StepRules`' job); they only assert
 /// that counts stay in range. [freeze] produces an immutable [Position].
-final class MutablePosition with _PositionReads {
+final class MutablePosition with _PositionReads implements BoardView {
   @override
   final Direction direction;
   @override
@@ -53,12 +53,22 @@ final class MutablePosition with _PositionReads {
   }
 
   /// An immutable snapshot; later mutations do not affect it.
-  Position freeze() => Position._(
-        direction,
-        Uint8List.fromList(_counts),
-        _pinnedOne,
-        _pinnedTwo,
-      );
+  ///
+  /// In debug builds (asserts on) the snapshot is fully validated and an
+  /// invalid board throws [ArgumentError]; release builds skip the check.
+  Position freeze() {
+    final p = Position._(
+      direction,
+      Uint8List.fromList(_counts),
+      _pinnedOne,
+      _pinnedTwo,
+    );
+    assert(() {
+      _validateBoard(p);
+      return true;
+    }());
+    return p;
+  }
 
   static int _index(Side s, int pip) {
     if (pip < 0 || pip > 25) throw RangeError.range(pip, 0, 25, 'pip');
