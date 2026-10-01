@@ -5,6 +5,9 @@
 library;
 
 export 'src/board/side.dart';
+export 'src/variant/catalog.dart';
+export 'src/variant/variant.dart';
+export 'src/variant/variant_rules.dart';
 
 /// Version of the serialized state / action-log format.
 ///
