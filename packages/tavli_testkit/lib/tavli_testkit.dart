@@ -2,3 +2,4 @@
 library;
 
 export 'src/bench.dart';
+export 'src/import_lint.dart';
