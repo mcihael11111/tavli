@@ -198,8 +198,13 @@ It shares only the single-step legality predicates. Differential fuzzing on rand
 - the current `PlayTree` node plus the steps taken so far (for undo)
 - `cube` (value, owner, offered by)
 - `pendingRemainder` (Gul Bara)
-- the deferred mother trigger (D8-b)
 - `result`
+
+The mother rule (D8) needs no stored trigger. It is evaluated statelessly from the position after every step:
+- **Both mothers pinned:** draw.
+- **One mother pinned and the pinner's start empty:** the pinner wins.
+
+That covers the immediate case (a), the deferred case (b) and the draw.
 
 ### 5.2 Actions
 
