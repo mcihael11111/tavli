@@ -37,6 +37,36 @@ PlayTree generatePlays(
   return _generate(p, s, d, rules, ctx.withDice(d), ordered: false);
 }
 
+/// Ordered cascade queue for double [d] (D15):
+/// `[d, d, d, d, d+1 x4, ..., 6 x4]`. Throws [ArgumentError] outside 1..6.
+List<int> cascadeQueue(int d) {
+  if (d < 1 || d > 6) throw RangeError.range(d, 1, 6, 'd');
+  return List.unmodifiable([
+    for (var v = d; v <= 6; v++) ...[v, v, v, v],
+  ]);
+}
+
+/// Every legal cascade play (Gul Bara, D15-D16) for [s] in [p]: [queue] is
+/// played strictly in order, as far as possible (G4 over the queue).
+///
+/// The tree's `remainder` holds the queue entries no legal play reaches,
+/// including unplayed copies of the number that failed; it is the same
+/// for every legal play. [queue] must hold 1..24 dice in 1..6, e.g. a
+/// [cascadeQueue] or a remainder.
+PlayTree generateCascade(
+  Position p,
+  Side s,
+  List<int> queue,
+  VariantRules rules,
+  TurnContext ctx,
+) {
+  final q = List<int>.unmodifiable(queue);
+  if (q.isEmpty || q.length > 24 || q.any((v) => v < 1 || v > 6)) {
+    throw ArgumentError.value(queue, 'queue', 'not 1..24 dice in 1..6');
+  }
+  return _generate(p, s, q, rules, ctx.withDice(q), ordered: true);
+}
+
 PlayTree _generate(
   Position p,
   Side s,
@@ -59,11 +89,11 @@ PlayTree _generate(
       if (l.length == max) l,
   ];
   if (max == 1 && !ordered && dice.length == 2) {
-    final high = dice[0] > dice[1] ? dice[0] : dice[1];
-    if (plays.any((l) => l.firstDie == high)) {
+    final high = dice[0] > dice[1] ? 0 : 1;
+    if (plays.any((l) => l.used == 1 << high)) {
       plays = [
         for (final l in plays)
-          if (l.firstDie == high) l,
+          if (l.used == 1 << high) l,
       ];
     }
   }
@@ -75,13 +105,19 @@ PlayTree _generate(
     l.node._final = l.finalPosition;
     finals.add(l.finalPosition);
   }
-  _prune(root);
+  _prune(root, HashMap.identity());
   return PlayTree._(root, finals, max, remainder);
 }
 
-/// Drops every subtree without a complete node; returns whether [n] stays.
-bool _prune(PlayNode n) {
-  if (n.isComplete) return true;
-  n._children.removeWhere((_, c) => !_prune(c));
-  return n._children.isNotEmpty;
+/// Drops every edge to a subtree without a complete node; returns whether
+/// [n] stays. [seen] memoizes shared nodes of the DAG.
+bool _prune(PlayNode n, Map<PlayNode, bool> seen) {
+  final known = seen[n];
+  if (known != null) return known;
+  var alive = n.isComplete;
+  if (!alive) {
+    n._children.removeWhere((_, c) => !_prune(c, seen));
+    alive = n._children.isNotEmpty;
+  }
+  return seen[n] = alive;
 }

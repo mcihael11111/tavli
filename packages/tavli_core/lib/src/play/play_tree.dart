@@ -1,9 +1,11 @@
 part of 'play_generator.dart';
 
-/// A node of the [PlayTree] trie: a prefix of one or more legal plays.
+/// A node of the [PlayTree]: a prefix of one or more legal plays.
 ///
 /// Every node lies on at least one legal play, so [nextSteps] is empty only
-/// at a complete node.
+/// at a complete node. Prefixes reaching the same state (position, turn
+/// context and dice used) share one node, so walk the tree by steps; do not
+/// enumerate every path of a long cascade.
 final class PlayNode {
   PlayNode._();
 
@@ -24,11 +26,12 @@ final class PlayNode {
   Position? get finalPosition => _final;
 }
 
-/// Every legal play of one roll, as a prefix trie of step sequences
+/// Every legal play of one roll, as a prefix tree of step sequences
 /// (design spec §4.4).
 ///
-/// The trie holds every surviving sequence, in every step order that is
+/// The tree holds every surviving sequence, in every step order that is
 /// legal, so a play can be entered step by step in any valid order.
+/// Equal states share nodes (a DAG), which keeps cascades tractable.
 final class PlayTree {
   PlayTree._(this.root, Set<Position> finals, this.diceUsed, this.remainder)
       : finals = Set.unmodifiable(finals);
