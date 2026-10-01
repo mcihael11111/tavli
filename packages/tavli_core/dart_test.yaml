@@ -1,0 +1,5 @@
+tags:
+  fuzz:
+    timeout: 20x
+  bench:
+    timeout: 5x
