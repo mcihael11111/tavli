@@ -8,6 +8,7 @@ export 'src/board/board_view.dart';
 export 'src/board/geometry.dart';
 export 'src/board/position.dart';
 export 'src/board/side.dart';
+export 'src/play/play_generator.dart';
 export 'src/play/step.dart';
 export 'src/rules/step_rules.dart';
 export 'src/rules/step_validators.dart';
