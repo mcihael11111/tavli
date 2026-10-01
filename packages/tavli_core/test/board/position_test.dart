@@ -1,15 +1,10 @@
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../support/asserts.dart';
 import '../support/positions.dart';
 
 const _std = {24: 2, 13: 5, 8: 3, 6: 5};
-
-final bool _assertsOn = () {
-  var on = false;
-  assert(on = true);
-  return on;
-}();
 
 void main() {
   group('start positions', () {
@@ -43,7 +38,7 @@ void main() {
     });
 
     test('§1 start asserts layout/direction consistency', () {
-      if (!_assertsOn) return;
+      if (!assertsOn) return;
       expect(
         () => Position.start(Layout.stackDiagonal, Direction.opposing),
         throwsA(isA<AssertionError>()),
@@ -195,8 +190,9 @@ void main() {
 
     test('pin flips built through MutablePosition compare both masks', () {
       // With equal counts, each shared point carries exactly one pin bit, so
-      // a valid position cannot differ in _pinnedTwo alone: flipping which
-      // side is pinned changes both masks. Each must differ independently.
+      // a valid position cannot differ in one mask alone: flipping which side
+      // is pinned changes both masks at once. This checks that such a flip is
+      // seen as unequal; per-mask independence is not reachable here.
       final base = pos(one: {1: 1, 6: 2}, two: {24: 1}, pinnedOne: {1});
       final m = base.toMutable()
         ..setPinned(Side.one, 1, false)

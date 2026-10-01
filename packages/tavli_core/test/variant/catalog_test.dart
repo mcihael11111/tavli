@@ -1,13 +1,8 @@
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../support/asserts.dart';
 import 'catalog_expect.dart';
-
-final bool _assertsOn = () {
-  var on = false;
-  assert(on = true);
-  return on;
-}();
 
 void main() {
   test('catalog has all 13 variants', () {
@@ -180,7 +175,7 @@ void main() {
     });
 
     test('M2 const constructors assert their invariants', () {
-      if (!_assertsOn) return;
+      if (!assertsOn) return;
       // Parameters are variables, so the constructors run at runtime.
       VariantRules build({
         Contact contact = Contact.block,

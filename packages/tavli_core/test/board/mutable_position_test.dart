@@ -1,13 +1,8 @@
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../support/asserts.dart';
 import '../support/positions.dart';
-
-final bool _assertsOn = () {
-  var on = false;
-  assert(on = true);
-  return on;
-}();
 
 void main() {
   group('MutablePosition', () {
@@ -84,20 +79,20 @@ void main() {
     });
 
     test('freeze validates in debug builds: pin bit with no pinner', () {
-      if (!_assertsOn) return;
+      if (!assertsOn) return;
       final m = pos(one: {3: 1}, two: {}).toMutable()
         ..setPinned(Side.one, 3, true);
       expect(m.freeze, throwsArgumentError);
     });
 
     test('freeze validates in debug builds: side not totalling 15', () {
-      if (!_assertsOn) return;
+      if (!assertsOn) return;
       final m = pos(one: {3: 1}, two: {}).toMutable()..add(Side.one, 5);
       expect(m.freeze, throwsArgumentError);
     });
 
     test('freeze validates in debug builds: shared unpinned point', () {
-      if (!_assertsOn) return;
+      if (!assertsOn) return;
       final m = pos(one: {8: 1}, two: {19: 1}).toMutable()
         ..move(Side.one, 8, 6);
       expect(m.freeze, throwsArgumentError);
