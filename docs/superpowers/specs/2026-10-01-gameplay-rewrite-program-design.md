@@ -383,12 +383,12 @@ Ordering: 0 → 1 → 2 → 3 → 4 → 5. Sub-project 4's server work may start
 - The new code is built alongside the old under `lib/gameplay/` and `packages/`.
 - A developer flag routes each mode to the new or legacy implementation until that mode's sub-project exits, then the legacy code for that mode is deleted in the same sub-project.
 - Assets, settings keys, design tokens, personalities and dialogue databases are reused unchanged.
-- **Shared-vocabulary carve-outs (decided 2026-10-01 in SP0 review).** These legacy files are imported by about 20 non-gameplay features (learn, discovery, progression, achievements, settings, copy):
-  - `GameVariant` (`features/game/domain/engine/variants/game_variant.dart`)
-  - `Tradition`
-  - `GameResult`
+- **Shared-vocabulary carve-outs (decided 2026-10-01 in SP0 review).** The architecture test permits these legacy files as boundary files and does not traverse into them:
+  - `GameVariant` (`features/game/domain/engine/variants/game_variant.dart`) and `GameResult` (`features/game/data/models/game_result.dart`). Together they form the shared vocabulary of about 20 non-gameplay features: learn, discovery, progression, achievements, settings, copy. `Tradition` reaches legacy code only through `GameVariant`, so it needs no carve-out.
+  - `features/game/presentation/widgets/turn_handoff_pill.dart`: reusable chrome.
+  - `features/multiplayer/domain/` (rating system, per-variant rating): targets of the SP5 results pipeline.
 
-  The architecture test permits them as boundary files and does not traverse into them. Then:
+  Then:
   - **SP1** adds canonical `tavli_core` variant/result types and adapters to and from the app types.
   - **SP5** moves the app-level variant metadata (display names, tradition grouping) to a neutral home, deletes the legacy engine directory, and removes the carve-outs.
 - The boundary check is **transitive**: no file reachable from `lib/gameplay/**` may be legacy gameplay code, except through a carve-out.
