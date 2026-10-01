@@ -358,6 +358,12 @@ This replaces the ad-hoc calls in `victory_screen.dart`.
 - Runs `dart analyze --fatal-infos`, format check, all package and app tests, the benchmark suite, and the emulator-backed online suite on every push.
 - Builds an AAB and split-per-ABI APKs on tags.
 
+**CI scope by stage (amended 2026-10-01 at SP0 close):**
+- **Now:** SP0's CI runs `tool/ci/check.sh`: analyze, format of new code, and all package and app tests.
+- **SP1/SP2:** benchmark budgets enter CI as each package gains budgeted benchmarks, scaled by `TAVLI_BENCH_SCALE`.
+- **SP4:** the emulator-backed online suite enters CI.
+- **SP5:** the tag-triggered AAB / split-APK build job returns, with secrets-based signing and `google-services.json` injection. It was dropped in SP0 because those files are not in git.
+
 **Device workflow:**
 - Performance is judged only on profile or release builds on the Galaxy S, never on debug or the emulator.
 - The emulator is for functional checks only.
@@ -376,6 +382,15 @@ Effort is relative, in focused development sessions. Each row's exit criteria ar
 | **3** | Board & play | Session layer, Flame `BoardScene` rewrite, input model, animation system, assets pipeline, audio/haptics, autoplay settings. Vs-bot and pass & play migrated. Old `game_provider`, `flame_game/` and `ai_player` deleted. | Every §3.3 interaction budget passes on the Galaxy S. Full games in all 13 variants via integration tests. Manual QA checklist signed off by the user. |
 | **4** | Online | Server, Firestore model, rules, matchmaking, presence/clock, reconnect, auth fixes (SHA-1, release signing), online screen on `MatchSession`, spectate. | Two-client end-to-end suite green on the emulators. A real two-device game on Galaxy S plus emulator. Cheating suite rejected. Opponent latency ≤ 500 ms p90. |
 | **5** | Wire-up & ship | Results pipeline into progression, achievements, history, coins, rating, challenges, discovery, marathon, replay. Victory screen fixes. Dual-board over BLE. Startup (non-blocking init, bundled fonts). APK diet (AAB, split ABIs, drop TFLite, WebP). Release build on device. | All remaining §3.3 budgets pass. Every mode reachable and working. Release AAB ≤ 45 MB arm64. |
+
+**SP0 close-out (2026-10-01).** All engineering items are done and `tool/ci/check.sh` is green locally. Two exit items depend on user actions and carry forward as tracked gates:
+- **(a) Remote CI green.** Needs approval to push `rewrite/gameplay`.
+- **(b) Galaxy S legacy device baseline.** Needs the phone and ≥ 15 GB of free disk. **It must be captured before SP3 begins**, because SP3 deletes the legacy game screen that `integration_test/perf/legacy_game_perf_test.dart` drives.
+
+**SP1 setup notes from the SP0 review:**
+- **Test config:** `tavli_core` needs its own `dart_test.yaml`, because the root one only applies to `flutter test`. It should define a `fuzz` tag with extended timeouts and an iteration count CI can scale, so the 100k-games-per-variant suite fits the 30-minute CI job.
+- **Purity allowlist:** the `tavli_core` purity allowlist (`dart:core/async/collection/convert/math/typed_data` plus itself) is deliberate. Adding `package:meta` or `package:collection` means widening it on purpose.
+- **Adapter location:** adapters between core types and the app's `GameVariant`/`GameResult` live in the app under `lib/gameplay/`, never in core.
 
 Ordering: 0 → 1 → 2 → 3 → 4 → 5. Sub-project 4's server work may start in parallel with 3 once 1 is done, because both depend only on `tavli_core`.
 
@@ -402,7 +417,7 @@ Ordering: 0 → 1 → 2 → 3 → 4 → 5. Sub-project 4's server work may start
 | Risk / item | Mitigation |
 |---|---|
 | Variant rules are ambiguous or regional (Gul Bara, Long Nard head-rule exceptions, Tawla 31 scoring, Tapa) | SP1 opens with a per-variant rules matrix, with sources, for **user sign-off** before coding |
-| Blaze plan, gcloud project and Cloud Run deploy need the user's account actions | SP0 checklist. Claude prepares commands and config; the user performs billing and console steps |
+| Blaze plan, gcloud project and Cloud Run deploy need the user's account actions | SP0's `tool/doctor.sh` checks that the CLIs are installed. The account-setup checklist (Blaze, gcloud project, Cloud Run, service accounts) is part of the SP4 plan. Claude prepares commands and config; the user performs billing and console steps |
 | SHA-1 registration and release keystore need the user's Firebase console access | SP4 step-by-step instructions; verified by a real sign-in on device |
 | Low disk space (≈ 1.9 GB free) blocks Android builds | SP0 prerequisite: free ≥ 15 GB |
 | No Xcode → iOS untested | Code stays platform-neutral. iOS verification deferred until Xcode is installed |

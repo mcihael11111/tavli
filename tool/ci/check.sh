@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 echo "== pub get"
-flutter pub get
+flutter pub get --enforce-lockfile
 
 echo "== analyze (whole workspace)"
 dart analyze --fatal-infos

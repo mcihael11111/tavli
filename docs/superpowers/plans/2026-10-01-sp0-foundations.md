@@ -1535,8 +1535,8 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ## SP0 exit checklist (spec §6)
 
-- [ ] Workspace with `tavli_testkit`, `tavli_core`, `tavli_bot` resolves; purity guards pass.
-- [ ] `tool/ci/check.sh` prints `ALL GREEN` locally.
-- [ ] CI workflow on Flutter 3.41.5 runs `tool/ci/check.sh`. Remote CI goes green once the branch is pushed; **pushing requires user approval**.
-- [ ] Legacy desktop baseline recorded.
-- [ ] Galaxy S device baseline recorded, or explicitly PENDING on device connection and ≥ 15 GB free disk (user actions).
+- [x] Workspace with `tavli_testkit`, `tavli_core`, `tavli_bot` resolves; purity guards pass.
+- [x] `tool/ci/check.sh` prints `ALL GREEN` locally.
+- [x] CI workflow on Flutter 3.41.5 runs `tool/ci/check.sh` (written + validated). **OPEN GATE (a):** Remote CI goes green once the branch is pushed; **pushing requires user approval**.
+- [x] Legacy desktop baseline recorded.
+- [ ] **OPEN GATE (b) — must close before SP3:** Galaxy S device baseline recorded, or explicitly PENDING on device connection and ≥ 15 GB free disk (user actions).

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Checks the machine is ready for the gameplay rewrite (spec §7 prerequisites).
 # Prints a checklist; exits non-zero if any REQUIRED item fails.
+# macOS-only (developer machine): uses `df -g` and /usr/libexec/java_home.
 set -uo pipefail
 fail=0
 ok()   { printf '  \xE2\x9C\x93 %s\n' "$1"; }
@@ -13,12 +14,16 @@ if command -v flutter >/dev/null; then
   v=$(flutter --version 2>/dev/null | head -1)
   case "$v" in *"3.41."*) ok "$v";; *) bad "Flutter 3.41.x required, found: $v";; esac
 else bad "flutter not on PATH"; fi
-ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
-if [ -x "$ADB" ]; then ok "adb at $ADB"; else bad "adb not found"; fi
+# Same lookup order as tool/device/check_device.sh.
+ADB=$(command -v adb || true)
+for sdk in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Library/Android/sdk"; do
+  [ -z "$ADB" ] && [ -n "$sdk" ] && [ -x "$sdk/platform-tools/adb" ] && ADB="$sdk/platform-tools/adb"
+done
+if [ -n "$ADB" ]; then ok "adb at $ADB"; else bad "adb not found"; fi
 
 echo "Needed for device verification"
-if "$(dirname "$0")/device/check_device.sh" >/dev/null 2>&1; then
-  ok "device: $("$(dirname "$0")/device/check_device.sh" | head -1)"
+if devices_out=$("$(dirname "$0")/device/check_device.sh" 2>/dev/null); then
+  ok "device: $(printf '%s\n' "$devices_out" | awk 'NR==1')"
 else bad "no Android device connected (USB debugging)" opt; fi
 
 echo "Needed from SP4 (online)"
