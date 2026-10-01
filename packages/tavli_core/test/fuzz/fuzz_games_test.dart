@@ -26,6 +26,12 @@ final int _games =
     int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? '') ??
         _defaultGames;
 
+/// Per variant: about 5 ms a game (asserts on) with a wide margin, so
+/// that a 100k-game run is not cut off by the default timeout. Each game
+/// is capped by [_maxActions], so a hang still fails.
+final Timeout _timeout = Timeout(
+    const Duration(seconds: 60) + const Duration(milliseconds: 20) * _games);
+
 /// Actions per game before it counts as non-terminating.
 const _maxActions = 3000;
 
@@ -213,6 +219,10 @@ void main() {
       final sw = Stopwatch()..start();
       for (var g = 0; g < _games; g++) {
         _playGame(v, g, st);
+        // Progress for long runs (every 10%).
+        if (_games >= 10000 && (g + 1) % (_games ~/ 10) == 0) {
+          print('  ${v.name}: ${g + 1}/$_games games in ${sw.elapsed}');
+        }
       }
       print('fuzz ${v.name.padRight(10)} ${sw.elapsed} $st');
       expect(st.games, _games);
@@ -224,7 +234,7 @@ void main() {
         ..oracle += st.oracle
         ..replays += st.replays
         ..json += st.json;
-    });
+    }, timeout: _timeout);
   }
   tearDownAll(() {
     print('fuzz total: ${totals.games} games, ${totals.actions} actions, '
