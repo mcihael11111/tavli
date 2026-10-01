@@ -929,6 +929,9 @@ Games per variant = `int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? ''
 
 **Steps:**
 - [ ] Add `paths: [test, benchmark]` to `dart_test.yaml`.
+- [ ] **Budget numbers must come from runs with asserts off.** `dart test` enables asserts, and `MutablePosition.freeze()` runs full invariant validation under assert.
+  - Add `benchmark/run_benchmarks.dart`, a plain `main()` that reuses the same fixtures and prints `BenchStats`, and run it with `dart run --no-enable-asserts benchmark/run_benchmarks.dart`. Use those numbers for the SP1 report.
+  - The `dart test` benchmark keeps the budget assertion with a documented 2× assert allowance (`budget × 2`), so CI still catches regressions.
 - [ ] Implement, verify that it passes locally at scale 1, commit `"tavli_core: generation and reducer benchmarks with budgets"`.
 
 ---
