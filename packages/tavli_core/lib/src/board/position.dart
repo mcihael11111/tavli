@@ -21,7 +21,8 @@ const int _checkers = 15;
 /// (0 = borne off, 25 = bar) plus a pinned bitmask over pips 1..24
 /// (bit p set => this side's checker on its pip p is pinned).
 ///
-/// Equality is structural; [hashCode] is cached and web-safe (< 2^30).
+/// Equality is structural; [hashCode] is cached and web-safe (< 2^30):
+/// the board's Zobrist hash, as [MutablePosition.zobristHash].
 final class Position with _PositionReads implements BoardView {
   @override
   final Direction direction;
@@ -33,7 +34,8 @@ final class Position with _PositionReads implements BoardView {
   final int _pinnedTwo;
   int? _hash;
 
-  Position._(this.direction, this._counts, this._pinnedOne, this._pinnedTwo);
+  Position._(this.direction, this._counts, this._pinnedOne, this._pinnedTwo,
+      [this._hash]);
 
   /// Builds a validated position from own-pip maps (keys 1..24 only).
   ///
@@ -103,6 +105,9 @@ final class Position with _PositionReads implements BoardView {
   int get hashCode => _hash ??= _computeHash();
 
   @override
+  int get _zobristHashOf => hashCode;
+
+  @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! Position ||
@@ -135,23 +140,7 @@ final class Position with _PositionReads implements BoardView {
         'two: ${side(Side.two)})';
   }
 
-  // Jenkins one-at-a-time mixing with every intermediate kept < 2^30 so the
-  // result is identical on the VM and on the web.
-  int _computeHash() {
-    var h = direction.index;
-    for (var i = 0; i < _counts.length; i++) {
-      h = _combine(h, _counts[i]);
-    }
-    h = _combine(h, _pinnedOne);
-    h = _combine(h, _pinnedTwo);
-    h = 0x1fffffff & (h + ((0x03ffffff & h) << 3));
-    h ^= h >> 11;
-    return 0x1fffffff & (h + ((0x00003fff & h) << 15));
-  }
-
-  static int _combine(int h, int v) {
-    h = 0x1fffffff & (h + v);
-    h = 0x1fffffff & (h + ((0x0007ffff & h) << 10));
-    return h ^ (h >> 6);
-  }
+  // The Zobrist hash (position_zobrist.dart): web-safe, and handed over
+  // by MutablePosition.freeze() at no cost.
+  int _computeHash() => _zobristOf(direction, _counts, _pinnedOne, _pinnedTwo);
 }

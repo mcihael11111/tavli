@@ -218,13 +218,14 @@ void main() {
     test('hashCode is pinned to constants (guards VM/web parity)', () {
       // Computed once on the VM and checked identical under dart2js. If the
       // hash function changes, recompute on both platforms before updating.
+      // (The Zobrist hash since the Task 17 benchmarks.)
       expect(
         Position.start(Layout.standard2535, Direction.opposing).hashCode,
-        308053491,
+        729091268,
       );
       expect(
         Position.start(Layout.stackDiagonal, Direction.same).hashCode,
-        432982353,
+        168815348,
       );
     });
 

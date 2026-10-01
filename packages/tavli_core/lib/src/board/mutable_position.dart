@@ -23,12 +23,15 @@ final class MutablePosition with _PositionReads implements BoardView {
     this._zobristHash,
   );
 
-  /// A 30-bit Zobrist hash of the board (counts and pinned bits, not the
-  /// direction), kept up to date by every mutator in O(1) (design spec
-  /// §9). Equal boards have equal hashes; unequal boards usually differ,
-  /// so a match must still be confirmed with [sameBoardAs]. Web-safe, but
-  /// unrelated to [Position.hashCode].
+  /// A 30-bit Zobrist hash of the board, kept up to date by every
+  /// mutator in O(1) (design spec §9); it equals the frozen position's
+  /// [Position.hashCode]. Equal boards have equal hashes; unequal boards
+  /// usually differ, so a match must still be confirmed with
+  /// [sameBoardAs]. Web-safe.
   int get zobristHash => _zobristHash;
+
+  @override
+  int get _zobristHashOf => _zobristHash;
 
   /// Whether this board equals [p] (direction, counts and pinned bits),
   /// without freezing.
@@ -93,10 +96,12 @@ final class MutablePosition with _PositionReads implements BoardView {
       Uint8List.fromList(_counts),
       _pinnedOne,
       _pinnedTwo,
+      _zobristHash,
     );
     assert(() {
       _validateBoard(p);
-      if (_zobristHash != _zobristOf(_counts, _pinnedOne, _pinnedTwo)) {
+      if (_zobristHash !=
+          _zobristOf(direction, _counts, _pinnedOne, _pinnedTwo)) {
         throw StateError('stale Zobrist hash');
       }
       return true;

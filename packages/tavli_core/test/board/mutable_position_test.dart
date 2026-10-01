@@ -125,6 +125,7 @@ void main() {
             steps.undo(m, s, a);
           }
           expect(m.zobristHash, fresh(m));
+          expect(m.zobristHash, m.freeze().hashCode);
           expect(m.zobristHash, inInclusiveRange(0, (1 << 30) - 1));
         }
         while (applied.isNotEmpty) {

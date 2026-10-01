@@ -62,12 +62,16 @@ mixin _PositionReads implements BoardView {
     return null;
   }
 
+  /// The board's Zobrist hash (cached by [Position], maintained by
+  /// [MutablePosition]).
+  int get _zobristHashOf;
+
   /// A mutable copy for make/unmake.
   MutablePosition toMutable() => MutablePosition._(
         direction,
         Uint8List.fromList(_counts),
         _pinnedOne,
         _pinnedTwo,
-        _zobristOf(_counts, _pinnedOne, _pinnedTwo),
+        _zobristHashOf,
       );
 }
