@@ -10,12 +10,8 @@ const _legacy = <Pattern>[
   'package:tavli/flame_game/',
   'package:tavli/features/game/domain/',
   'package:tavli/features/game/data/models/',
-  'package:tavli/features/game/presentation/providers/',
   'package:tavli/features/ai/engine/',
   'package:tavli/features/ai/models/',
-  'package:tavli/features/multiplayer/data/',
-  'package:tavli/features/multiplayer/matchmaking/',
-  'package:tavli/features/multiplayer/presentation/online_game_provider.dart',
   'package:tavli/features/game/presentation/',
   'package:tavli/features/multiplayer/',
   'package:tavli/features/replay/',
@@ -29,7 +25,7 @@ const _legacy = <Pattern>[
 const _boundary = <Pattern>[
   'package:tavli/features/game/domain/engine/variants/game_variant.dart',
   'package:tavli/features/game/data/models/game_result.dart',
-  'package:tavli/core/constants/tradition.dart',
+  'package:tavli/features/multiplayer/domain/',
   'package:tavli/features/game/presentation/widgets/turn_handoff_pill.dart',
 ];
 

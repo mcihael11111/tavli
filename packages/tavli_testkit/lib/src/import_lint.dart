@@ -66,7 +66,9 @@ List<ImportViolation> findForbiddenImports(
       final escapes = r.resolved == null;
       final candidate = r.resolved ?? r.uri;
       if (escapes ||
-          forbidden.any((p) => _matches(p, candidate) || _matches(p, r.uri))) {
+          forbidden.any((p) =>
+              _matches(p, candidate) ||
+              (candidate == r.uri && _matches(p, r.uri)))) {
         violations.add(ImportViolation(
           file: file.path,
           line: r.line,
@@ -85,10 +87,15 @@ class ImportChainViolation {
   /// Package URIs from the entry file to the forbidden file.
   final List<String> chain;
 
-  const ImportChainViolation(this.chain);
+  /// Why this was reported when it is not an ordinary pattern match
+  /// (e.g. `'escapes lib/'`); null otherwise.
+  final String? reason;
+
+  const ImportChainViolation(this.chain, {this.reason});
 
   @override
-  String toString() => chain.join(' -> ');
+  String toString() =>
+      chain.join(' -> ') + (reason != null ? ' [$reason]' : '');
 }
 
 /// Follows `package:<packageName>/` imports (incl. normalized relative ones and
@@ -123,7 +130,8 @@ List<ImportChainViolation> findForbiddenReachable(
   final queue = Queue<String>();
   for (final f in _dartFiles(root)) {
     final u = uriOf(f);
-    if (u != null && parents.putIfAbsent(u, () => null) == null) {
+    if (u != null && !parents.containsKey(u)) {
+      parents[u] = null;
       queue.add(u);
     }
   }
@@ -143,9 +151,18 @@ List<ImportChainViolation> findForbiddenReachable(
     if (!file.existsSync()) continue;
     for (final r in _directiveUris(file, packageName, libPath)) {
       final target = r.resolved;
-      if (target == null) continue;
+      if (target == null) {
+        if (reported.add('escape:$current->${r.uri}')) {
+          violations.add(ImportChainViolation(
+            [...chainTo(current), r.uri],
+            reason: 'escapes lib/',
+          ));
+        }
+        continue;
+      }
       if (boundary.any((p) => _matches(p, target))) continue;
-      if (forbidden.any((p) => _matches(p, target) || _matches(p, r.uri))) {
+      if (forbidden.any((p) =>
+          _matches(p, target) || (target == r.uri && _matches(p, r.uri)))) {
         if (reported.add(target)) {
           violations.add(ImportChainViolation([...chainTo(current), target]));
         }
@@ -181,32 +198,52 @@ Directory packageLibDir(String packageName) {
 }
 
 Uri? _resolveFromPackageConfig(String packageName) {
-  final starts = <Directory>[
+  for (final start in [
     if (Platform.script.scheme == 'file') File.fromUri(Platform.script).parent,
     Directory.current,
-  ];
-  for (final start in starts) {
-    for (var dir = start.absolute;; dir = dir.parent) {
-      final config = File('${dir.path}/.dart_tool/package_config.json');
-      if (config.existsSync()) {
-        final json =
-            jsonDecode(config.readAsStringSync()) as Map<String, Object?>;
-        for (final entry in (json['packages']! as List<Object?>)
-            .cast<Map<String, Object?>>()) {
-          if (entry['name'] != packageName) continue;
-          final root = config.uri.resolve(entry['rootUri']! as String);
-          final lib = (entry['packageUri'] as String?) ?? '';
-          final resolved = root.resolve(lib);
-          return resolved.path.endsWith('/')
-              ? resolved
-              : resolved.replace(path: '${resolved.path}/');
-        }
-        break;
-      }
-      if (dir.parent.path == dir.path) break;
+  ]) {
+    try {
+      return packageLibDirFromConfig(packageName, start).uri;
+    } on StateError {
+      continue;
     }
   }
   return null;
+}
+
+/// Resolves [packageName]'s lib directory from the nearest
+/// `.dart_tool/package_config.json` found walking up from [startDir].
+///
+/// Public only so tests can exercise the `flutter test` fallback of
+/// [packageLibDir]. Throws [StateError] when no config is found, the package
+/// is not listed, or the resolved directory does not exist.
+Directory packageLibDirFromConfig(String packageName, Directory startDir) {
+  for (var dir = startDir.absolute;; dir = dir.parent) {
+    final config = File('${dir.path}/.dart_tool/package_config.json');
+    if (config.existsSync()) {
+      final json =
+          jsonDecode(config.readAsStringSync()) as Map<String, Object?>;
+      for (final entry in (json['packages']! as List<Object?>)
+          .cast<Map<String, Object?>>()) {
+        if (entry['name'] != packageName) continue;
+        var rootUri = entry['rootUri']! as String;
+        if (!rootUri.endsWith('/')) rootUri = '$rootUri/';
+        var packageUri = (entry['packageUri'] as String?) ?? 'lib/';
+        if (!packageUri.endsWith('/')) packageUri = '$packageUri/';
+        final lib = Directory.fromUri(
+          config.uri.resolve(rootUri).resolve(packageUri),
+        );
+        if (!lib.existsSync()) {
+          throw StateError(
+              'package:$packageName/ resolves to missing ${lib.path}');
+        }
+        return lib;
+      }
+      throw StateError('package:$packageName is not in ${config.path}');
+    }
+    if (dir.parent.path == dir.path) break;
+  }
+  throw StateError('No .dart_tool/package_config.json above ${startDir.path}');
 }
 
 Iterable<File> _dartFiles(Directory root) => root

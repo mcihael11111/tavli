@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:tavli_bot/tavli_bot.dart';
 import 'package:tavli_testkit/tavli_testkit.dart';
 import 'package:test/test.dart';
@@ -14,6 +16,23 @@ final _notAllowed = RegExp(
 void main() {
   test('tavli_bot imports only allowlisted pure-Dart libraries', () {
     final lib = packageLibDir('tavli_bot');
+    final violations = findForbiddenImports(
+      lib,
+      [_notAllowed],
+      packageName: 'tavli_bot',
+      libRoot: lib,
+    );
+    expect(violations, isEmpty, reason: violations.join('\n'));
+  });
+
+  test('allowlist does not flag relative imports inside the package', () {
+    final tmp = Directory.systemTemp.createTempSync('purity_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final lib = Directory('${tmp.path}/lib')..createSync();
+    File('${lib.path}/src/x.dart')
+      ..createSync(recursive: true)
+      ..writeAsStringSync('');
+    File('${lib.path}/a.dart').writeAsStringSync("export 'src/x.dart';\n");
     final violations = findForbiddenImports(
       lib,
       [_notAllowed],

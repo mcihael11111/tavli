@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:tavli_testkit/tavli_testkit.dart';
@@ -166,6 +167,53 @@ void main() {
     expect(() => packageLibDir('no_such_package_xyz'), throwsStateError);
   });
 
+  test('allowlist-style patterns do not flag normalized relative imports', () {
+    write('lib/src/x.dart', '');
+    write('lib/a.dart', "export 'src/x.dart';\n");
+    final violations = findForbiddenImports(
+      dir('lib'),
+      [RegExp(r'^(?!package:tavli/)')],
+      packageName: 'tavli',
+      libRoot: dir('lib'),
+    );
+    expect(violations, isEmpty);
+  });
+
+  group('packageLibDirFromConfig', () {
+    void config(List<Map<String, String>> packages) {
+      write(
+        '.dart_tool/package_config.json',
+        jsonEncode({'configVersion': 2, 'packages': packages}),
+      );
+    }
+
+    test('resolves root and slash-less workspace member roots', () {
+      write('lib/a.dart', '');
+      write('packages/foo/lib/b.dart', '');
+      config([
+        {'name': 'root', 'rootUri': '../', 'packageUri': 'lib/'},
+        {'name': 'foo', 'rootUri': '../packages/foo', 'packageUri': 'lib/'},
+      ]);
+      final start = dir('packages/foo/lib');
+      final root = packageLibDirFromConfig('root', start);
+      final foo = packageLibDirFromConfig('foo', start);
+      expect(File('${root.path}/a.dart').existsSync(), isTrue);
+      expect(File('${foo.path}/b.dart').existsSync(), isTrue);
+    });
+
+    test('unknown package or missing directory throws StateError', () {
+      write('lib/a.dart', '');
+      config([
+        {'name': 'root', 'rootUri': '../', 'packageUri': 'lib/'},
+        {'name': 'ghost', 'rootUri': '../packages/ghost', 'packageUri': 'lib/'},
+      ]);
+      expect(
+          () => packageLibDirFromConfig('nope', dir('lib')), throwsStateError);
+      expect(
+          () => packageLibDirFromConfig('ghost', dir('lib')), throwsStateError);
+    });
+  });
+
   group('findForbiddenReachable', () {
     final forbidden = ['package:tavli/legacy/'];
 
@@ -239,6 +287,15 @@ void main() {
       final v = run();
       expect(v, hasLength(1));
       expect(v.single.chain, hasLength(2));
+    });
+
+    test('relative imports escaping libRoot are reported with a reason', () {
+      write('lib/gameplay/x.dart', "import '../../tool/h.dart';\n");
+      final v = run();
+      expect(v.single.chain,
+          ['package:tavli/gameplay/x.dart', '../../tool/h.dart']);
+      expect(v.single.reason, 'escapes lib/');
+      expect(v.single.toString(), endsWith(' [escapes lib/]'));
     });
 
     test('other packages and dart: URIs are not traversed', () {
