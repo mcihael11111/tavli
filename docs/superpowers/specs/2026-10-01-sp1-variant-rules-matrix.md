@@ -506,10 +506,10 @@ The position must hold, per point, **the occupant count plus a "pinned opponent 
 
 ## 9. Addenda — interpretations made during implementation
 
-These are conservative readings chosen where the approved rules didn't settle an edge case. Each one is covered by a test. They will be surfaced to the user in the SP1 report, and any can be flipped.
+These are conservative readings chosen where the approved rules didn't settle an edge case. A1 and A2 are covered by tests. A3 is implemented but untested, because no current variant can reach it. They will be surfaced to the user in the SP1 report, and any can be flipped.
 
 | # | Topic | Reading chosen | Where |
 |---|---|---|---|
 | A1 | Sole runner (Fevga, Moultezim, Tawla 31) with ≥ 2 checkers already off an unreleased head. Unreachable in normal play | The head stays locked; any checker already off the head may move | `step_validators.dart`, Task 5 |
 | A2 | Tavla D4 "no checker may leave the hit point" during bear-off | Applies literally: after a hit on home pip *h*, nothing may bear off from *h* for the rest of that turn | Task 5 |
-| A3 | D19 six-block and pinned checkers. Only matters if D19 is ever enabled for a pinning game; today only Long Nard uses it | Points where my checker is pinned don't count as held. A pinned opposing checker at the run's start is not "in front" | Task 5 |
+| A3 | D19 six-block and pinned checkers. Only matters if D19 is ever enabled for a pinning game; today only Long Nard uses it | Points where my checker is pinned don't count as held. A pinned opposing checker at the run's start is not "in front" | Task 5 (untested: unreachable today) |
