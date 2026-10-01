@@ -32,7 +32,7 @@ const _ctx = TurnContext();
         final a = steps.apply(m, s, step);
         if (!v.checksAfter || v.allowsAfter(m, s, a, ctx)) {
           final f = m.freeze();
-          if (f.checkersOnBoard(s) == 0) {
+          if (endsGame(f, rules, s)) {
             ended.add(f);
           } else {
             next.add((f, v.next(ctx, a)));
@@ -67,7 +67,7 @@ const _ctx = TurnContext();
 /// Walks every node of [t] once and returns the finals of complete nodes,
 /// checking that incomplete nodes always continue and that complete nodes
 /// sit at [PlayTree.diceUsed] steps (or ended the game).
-Set<Position> walkAll(PlayTree t, Side s) {
+Set<Position> walkAll(PlayTree t, Side s, VariantRules rules) {
   final seen = HashSet<PlayNode>.identity();
   final finals = <Position>{};
   void visit(PlayNode n, int depth) {
@@ -75,7 +75,7 @@ Set<Position> walkAll(PlayTree t, Side s) {
     final f = n.finalPosition;
     if (f != null) {
       expect(n.nextSteps, isEmpty);
-      expect(depth == t.diceUsed || f.checkersOnBoard(s) == 0, isTrue);
+      expect(depth == t.diceUsed || endsGame(f, rules, s), isTrue);
       finals.add(f);
       return;
     }
@@ -137,7 +137,7 @@ void main() {
         final want = bruteForce(p, S.one, q, _gul);
         expect(t.diceUsed, want.used);
         expect(t.remainder, q.sublist(want.used));
-        expect(walkAll(t, S.one), want.finals);
+        expect(walkAll(t, S.one, _gul), want.finals);
         expect(t.enumerateFinals(), want.finals);
         expect(t.isForced, want.finals.length == 1);
         expect(t.hasPlay, want.used > 0);

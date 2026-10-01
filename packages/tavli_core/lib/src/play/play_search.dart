@@ -8,7 +8,7 @@ final class _Leaf implements PlayCandidate {
 
   final PlayNode node;
 
-  /// Dice used; a game-ending sequence counts all its dice (G8).
+  /// Dice used; a game-ending sequence counts all its dice (A4).
   final int length;
 
   /// Bit i set => `dice[i]` was stepped.
@@ -51,11 +51,12 @@ final class _Key {
 /// From depth 2 on, states are memoized by (position, context, dice used),
 /// so transpositions share one subtree and the trie is a DAG.
 final class _Search {
-  _Search(VariantRules rules, this.side, this.dice)
-      : _steps = StepRules(rules),
-        _validators = StepValidators(rules),
-        _checksAfter = StepValidators(rules).checksAfter;
+  _Search(this._rules, this.side, this.dice)
+      : _steps = StepRules(_rules),
+        _validators = StepValidators(_rules),
+        _checksAfter = StepValidators(_rules).checksAfter;
 
+  final VariantRules _rules;
   final Side side;
 
   /// The dice; each distinct unused value is tried at every node.
@@ -89,8 +90,8 @@ final class _Search {
     final node = PlayNode._();
     if (key != null) _memo[key] = node;
 
-    // G8: the last checker borne off ends the game and the turn.
-    if (depth > 0 && _p.checkersOnBoard(side) == 0) {
+    // A4: a game-ending step ends the play; it counts as all the dice.
+    if (depth > 0 && endsGame(_p, _rules, side)) {
       _leaf(node, dice.length, used, frozen);
       return node;
     }

@@ -9,11 +9,12 @@ part of 'play_generator.dart';
 /// continuation still reaches [diceUsed]. Sound only without play filters
 /// (Gul Bara has none, D17).
 final class _Cascade {
-  _Cascade(VariantRules rules, this.side, this.queue)
-      : _steps = StepRules(rules),
-        _validators = StepValidators(rules),
-        _checksAfter = StepValidators(rules).checksAfter;
+  _Cascade(this._rules, this.side, this.queue)
+      : _steps = StepRules(_rules),
+        _validators = StepValidators(_rules),
+        _checksAfter = StepValidators(_rules).checksAfter;
 
+  final VariantRules _rules;
   final Side side;
   final List<int> queue;
   final StepRules _steps;
@@ -87,8 +88,8 @@ final class _Cascade {
     return _max[key] = best;
   }
 
-  /// Whether the step just applied to [m] ended the game.
-  bool _endsGame(MutablePosition m) => m.checkersOnBoard(side) == 0;
+  /// Whether the step just applied to [m] ended the game (A4).
+  bool _endsGame(MutablePosition m) => endsGame(m, _rules, side);
 
   /// Applies [step] to [m] if the validators allow it, else leaves [m]
   /// untouched and returns null. The caller must undo a returned step.

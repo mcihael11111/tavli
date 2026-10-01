@@ -6,6 +6,7 @@ import 'dart:collection';
 
 import '../board/position.dart';
 import '../board/side.dart';
+import '../rules/game_end.dart';
 import '../rules/play_filters.dart';
 import '../rules/step_rules.dart';
 import '../rules/step_validators.dart';

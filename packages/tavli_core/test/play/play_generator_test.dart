@@ -223,7 +223,7 @@ void main() {
       }
     });
 
-    test('G8 bearing off the last checker completes the play', () {
+    test('A4 G8 bearing off the last checker completes the play', () {
       // Portes, one on 3, dice 5-2: 3 off with the 5 ends the game at once;
       // 3->1, 1 off also uses both dice. Same final, both orders legal.
       final p = pos(one: {3: 1}, two: {1: 15});
@@ -251,6 +251,47 @@ void main() {
           reason: '$d',
         );
       }
+    });
+  });
+
+  group('A4 game-ending steps', () {
+    final plakoto = Variant.plakoto.rules;
+
+    test('D8a a 1-die mother pin is a full play', () {
+      // two's mother on its 24 (= my 1); none of mine on my 24. 3->1 with
+      // the 2 pins it and ends the game; the 5 could not follow (10->5 is
+      // closed by two's 20). 10->8->3 uses both dice.
+      final p = pos(one: {3: 1, 10: 14}, two: {24: 1, 20: 2, 13: 12});
+      final t = generatePlays(p, S.one, const [2, 5], plakoto, _ctx);
+      expectWellFormed(t);
+      expect(t.diceUsed, 2);
+      final mother = t.walk(const [Step(3, 1, 2)]);
+      expect(mother?.isComplete, isTrue);
+      expect(mother!.nextSteps, isEmpty);
+      expect(t.finals, contains(mother.finalPosition));
+      expect(
+        t.finals,
+        contains(after(p, S.one, plakoto, const [
+          Step(10, 8, 2),
+          Step(8, 3, 5),
+        ])),
+      );
+      expect(t.finals, hasLength(2));
+    });
+
+    test('D8b leaving the start with the opp mother pinned ends the play', () {
+      final p = pos(
+        one: {24: 1, 1: 1, 10: 13},
+        two: {24: 1, 20: 2, 13: 12},
+        pinnedTwo: {24},
+      );
+      final t = generatePlays(p, S.one, const [6, 2], plakoto, _ctx);
+      expectWellFormed(t);
+      expect(t.diceUsed, 2);
+      expect(t.walk(const [Step(24, 18, 6)])?.isComplete, isTrue);
+      expect(t.walk(const [Step(24, 22, 2)])?.isComplete, isTrue);
+      // A non-ending first step must still be followed by the other die.
+      expect(t.walk(const [Step(10, 4, 6)])?.isComplete, isFalse);
     });
   });
 
