@@ -3,106 +3,16 @@
 library;
 
 import '../board/side.dart';
-import '../game/game_action.dart';
 import '../game/game_event.dart';
 import '../game/game_result.dart';
 import '../game/game_state.dart';
 import '../game/rule_violation.dart';
-import '../variant/variant.dart';
+import '../serial/json_read.dart';
 import '../variant/variant_rules.dart';
+import 'match_action.dart';
+import 'match_config.dart';
 
-/// What is played: the variant cycle, the target and the cube.
-final class MatchConfig {
-  /// The variants in order, repeating: `[v]` for one variant,
-  /// [tavliMarathon] for Tavli. Unmodifiable, never empty.
-  final List<Variant> cycle;
-
-  /// Points to win; null for a single game.
-  final int? target;
-
-  /// Whether games use the cube (only where the variant has one).
-  final bool cubeEnabled;
-
-  /// The Greek Tavli marathon: Portes, Plakoto, Fevga in turn.
-  static const tavliMarathon = [Variant.portes, Variant.plakoto, Variant.fevga];
-
-  MatchConfig._(List<Variant> cycle, this.target, this.cubeEnabled)
-      : cycle = List.unmodifiable(cycle);
-
-  /// One game of [v]. A variant with a fixed target (Tawla 31, D21) is
-  /// always a match to that target.
-  factory MatchConfig.single(Variant v, {bool? cubeEnabled}) =>
-      MatchConfig._build(null, [v], cubeEnabled);
-
-  /// A match to [target] over [cycle]. A cycle with a fixed-target variant
-  /// (Tawla 31) plays to that target instead. Throws [ArgumentError] for
-  /// an empty cycle or a target below 1.
-  factory MatchConfig.to(int target, List<Variant> cycle, {bool? cubeEnabled}) {
-    if (target < 1) throw ArgumentError.value(target, 'target', 'below 1');
-    return MatchConfig._build(target, cycle, cubeEnabled);
-  }
-
-  factory MatchConfig._build(int? target, List<Variant> cycle, bool? cube) {
-    if (cycle.isEmpty) throw ArgumentError.value(cycle, 'cycle', 'empty');
-    for (final v in cycle) {
-      target = v.rules.match.fixedTarget ?? target;
-    }
-    return MatchConfig._(
-      cycle,
-      target,
-      cube ?? cycle.any((v) => v.rules.cube.enabledByDefault),
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      other is MatchConfig &&
-      other.target == target &&
-      other.cubeEnabled == cubeEnabled &&
-      _listEq(other.cycle, cycle);
-
-  @override
-  int get hashCode => Object.hash(Object.hashAll(cycle), target, cubeEnabled);
-
-  @override
-  String toString() =>
-      'MatchConfig(${cycle.map((v) => v.name).join(', ')}, to $target, '
-      'cube $cubeEnabled)';
-}
-
-/// An input to `reduceMatch`.
-sealed class MatchAction {
-  const MatchAction();
-}
-
-/// An action for the current game.
-final class GameMove extends MatchAction {
-  final GameAction action;
-  const GameMove(this.action);
-
-  @override
-  bool operator ==(Object other) => other is GameMove && other.action == action;
-
-  @override
-  int get hashCode => Object.hash('move', action);
-
-  @override
-  String toString() => 'GameMove($action)';
-}
-
-/// Starts the next game of the cycle once the current one is over.
-final class NextGame extends MatchAction {
-  const NextGame();
-
-  @override
-  bool operator ==(Object other) => other is NextGame;
-
-  @override
-  int get hashCode => 'nextGame'.hashCode;
-
-  @override
-  String toString() => 'NextGame()';
-}
+part 'match_json.dart';
 
 /// A match, immutable. Advance it only with `reduceMatch`.
 final class MatchState {
@@ -148,6 +58,16 @@ final class MatchState {
         crawfordUsed: false,
         winner: null,
       );
+
+  /// Schema v1 JSON (plan Task 15); the game is embedded as
+  /// `GameState.toJson`.
+  Map<String, Object?> toJson() => _matchToJson(this);
+
+  /// Parses [toJson] output from untrusted input. Throws only
+  /// [FormatException], also for a match `reduceMatch` could not have
+  /// produced (the game out of the cycle, a finished game missing from
+  /// the history, a winner that does not follow from the scores).
+  static MatchState fromJson(Object? json) => _matchFromJson(json);
 
   /// Whether the match is decided: a side reached the target, or the
   /// single game is over.

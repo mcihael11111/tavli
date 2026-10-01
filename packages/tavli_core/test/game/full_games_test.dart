@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../support/random_play.dart';
 import '../support/reducer.dart';
 
 /// Games per variant played to their natural end.
@@ -12,31 +13,11 @@ const _gamesPerVariant = 12;
 /// drop) until it ends; returns the final state and how many remainders
 /// were handed over.
 (GameState, int) _playOut(Variant v, Random r) {
-  int die() => 1 + r.nextInt(6);
   var s = GameState.initial(v, cubeEnabled: true);
   var remainders = 0;
   for (var i = 0; i < 3000; i++) {
-    final GameAction a;
-    switch (s.phase) {
-      case GamePhase.opening:
-        a = RollOpening(die(), die());
-      case GamePhase.awaitingRoll:
-        a = s.cube.enabled && r.nextInt(20) == 0
-            ? const OfferDouble()
-            : RollDice(die(), die());
-      case GamePhase.cubeOffered:
-        a = const Take();
-      case GamePhase.moving:
-        final n = s.node;
-        if (n.isComplete) {
-          a = const CommitPlay();
-        } else {
-          final next = n.nextSteps.toList();
-          a = StepAction(next[r.nextInt(next.length)]);
-        }
-      case GamePhase.gameOver:
-        return (s, remainders);
-    }
+    final a = randomLegalAction(s, r);
+    if (a == null) return (s, remainders);
     final res = reduce(s, a);
     if (res is GameUpdate) {
       remainders += res.events.whereType<RemainderPassed>().length;

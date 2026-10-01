@@ -9,6 +9,7 @@ import '../rules/game_end.dart';
 import '../rules/step_rules.dart';
 import '../rules/step_validators.dart';
 import '../rules/turn_context.dart';
+import '../serial/json_read.dart';
 import '../variant/variant.dart';
 import '../variant/variant_rules.dart';
 import 'cube.dart';
@@ -17,6 +18,7 @@ import 'game_event.dart';
 import 'game_result.dart';
 import 'rule_violation.dart';
 
+part 'game_state_json.dart';
 part 'reducer.dart';
 part 'reducer_cube.dart';
 part 'reducer_forfeit.dart';
@@ -168,6 +170,17 @@ final class GameState {
     }
     return _copy(position: position, turnStart: position);
   }
+
+  /// Schema v1 JSON (plan Task 15). The board after [steps], [context],
+  /// [pendingRemainder] and [tree] are not stored; [fromJson] rebuilds
+  /// them from [turnStart], [dice], [cascadeMode] and [steps].
+  Map<String, Object?> toJson() => _gameStateToJson(this);
+
+  /// Parses [toJson] output from untrusted input. Throws only
+  /// [FormatException]: for a wrong `schemaVersion`, a malformed field, or
+  /// a state `reduce` could not have produced (e.g. steps that are not a
+  /// legal prefix of a play, a finished board outside `gameOver`).
+  static GameState fromJson(Object? json) => _gameStateFromJson(json);
 
   /// Every legal play of the current moving phase, generated on first use
   /// from [turnStart], [dice], [cascadeMode] and the turn-start context,

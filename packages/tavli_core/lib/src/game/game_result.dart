@@ -3,6 +3,7 @@ library;
 
 import '../board/board_view.dart';
 import '../board/side.dart';
+import '../serial/json_read.dart';
 import '../variant/variant_rules.dart';
 
 /// The kind of game end.
@@ -35,6 +36,35 @@ final class GameResult {
     required this.points,
     required this.cubeValue,
   });
+
+  /// `{"winner": "one"|"two"|null, "kind": name, "points": int,
+  /// "cubeValue": int}`.
+  Map<String, Object?> toJson() => {
+        'winner': winner?.toJson(),
+        'kind': kind.name,
+        'points': points,
+        'cubeValue': cubeValue,
+      };
+
+  /// Parses [toJson] output. Throws only [FormatException]: points 0..64*3,
+  /// a cube value that is a power of two up to 64, and a draw exactly when
+  /// there is no winner.
+  static GameResult fromJson(Object? json) {
+    final r = JsonReader(json, 'GameResult');
+    final winner = r.nullableSide('winner');
+    final kind = r.byName('kind', ResultKind.values);
+    final cube = r.integer('cubeValue', min: 1, max: 64);
+    if (cube & (cube - 1) != 0) r.fail('cubeValue', 'a power of two');
+    if ((winner == null) != (kind == ResultKind.draw)) {
+      r.fail('winner', 'null exactly for a draw');
+    }
+    return GameResult(
+      winner: winner,
+      kind: kind,
+      points: r.integer('points', max: 64 * 3),
+      cubeValue: cube,
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
