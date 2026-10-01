@@ -1,0 +1,14 @@
+name: tavli_core
+description: Pure-Dart Tavli rules engine and game model shared by the app and server.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dev_dependencies:
+  lints: '>=3.0.0 <7.0.0'
+  tavli_testkit:
+    path: ../tavli_testkit
+  test: ^1.25.0
