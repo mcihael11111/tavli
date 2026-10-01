@@ -939,8 +939,8 @@ Games per variant = `int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? ''
 - On a sample of positions: `generatePlays(...).finals == referenceFinals(...)`.
 
 **Steps:**
-- [ ] Run the default (40/variant) inside `dart test`. Also run `TAVLI_FUZZ_GAMES=2000 dart test --tags fuzz` locally and record the duration.
-- [ ] Commit `"tavli_core: fuzz suite with invariants, replay and oracle checks"`.
+- [x] Run the default (40/variant) inside `dart test`. Also run `TAVLI_FUZZ_GAMES=2000 dart test --tags fuzz` locally and record the duration.
+- [x] Commit `"tavli_core: fuzz suite with invariants, replay and oracle checks"`.
 
 ---
 
@@ -954,15 +954,15 @@ Games per variant = `int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? ''
 - Print all stats.
 
 **Steps:**
-- [ ] Add `paths: [test, benchmark]` to `dart_test.yaml`.
-- [ ] **Failing-cascade budget.** A Gul Bara cascade that cannot reach the full queue must prove that by visiting every reachable state. Measured after Task 8: up to about 117k states and about 230 ms, asserts off. Target ≤ 50 ms p95 over cascades sampled from random games.
+- [x] Add `paths: [test, benchmark]` to `dart_test.yaml`.
+- [x] **Failing-cascade budget.** A Gul Bara cascade that cannot reach the full queue must prove that by visiting every reachable state. Measured after Task 8: up to about 117k states and about 230 ms, asserts off. Target ≤ 50 ms p95 over cascades sampled from random games.
   - Implement the incremental web-safe 30-bit XOR-Zobrist hash in `MutablePosition` (design spec §9) so the memo can key on the hash plus a verified freeze only on collision.
   - Or add a sound pruning bound.
   - Add the worst failing-cascade fixture to the benchmarks.
-- [ ] **Budget numbers must come from runs with asserts off.** `dart test` enables asserts, and `MutablePosition.freeze()` runs full invariant validation under assert.
+- [x] **Budget numbers must come from runs with asserts off.** `dart test` enables asserts, and `MutablePosition.freeze()` runs full invariant validation under assert.
   - Add `benchmark/run_benchmarks.dart`, a plain `main()` that reuses the same fixtures and prints `BenchStats`, and run it with `dart run --no-enable-asserts benchmark/run_benchmarks.dart`. Use those numbers for the SP1 report.
   - The `dart test` benchmark keeps the budget assertion with a documented 2× assert allowance (`budget × 2`), so CI still catches regressions.
-- [ ] Implement, verify that it passes locally at scale 1, commit `"tavli_core: generation and reducer benchmarks with budgets"`.
+- [x] Implement, verify that it passes locally at scale 1, commit `"tavli_core: generation and reducer benchmarks with budgets"`.
 
 ---
 
@@ -978,28 +978,28 @@ Games per variant = `int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? ''
 - Bars and borne-off counts map directly.
 
 **Steps:**
-- [ ] Test: for 40 positions from legacy seeded easy self-play × 21 rolls, map legacy `generateAllLegalTurns` resulting boards to core positions. They must equal the core `generatePlays(...).finals` (`Variant.portes` rules; for the legacy side to move).
+- [x] Test: for 40 positions from legacy seeded easy self-play × 21 rolls, map legacy `generateAllLegalTurns` resulting boards to core positions. They must equal the core `generatePlays(...).finals` (`Variant.portes` rules; for the legacy side to move).
   - If they differ, write the position and roll to the test output.
   - Determine which engine is right **using matrix G1–G9**.
   - If legacy is wrong, add the case to a documented `knownLegacyBugs` list with the rule ID. If core is wrong, fix core.
-- [ ] Run the exit fuzz: `TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz` in `packages/tavli_core`. This may take a long time; run it in the background and record the wall time.
-- [ ] Write the report:
+- [ ] Run the exit fuzz: `TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz` in `packages/tavli_core`. This may take a long time; run it in the background and record the wall time. *(Started 2026-10-02 00:29 AEST, est. ~1.5 h; see the SP1 report §3.)*
+- [x] Write the report:
   - test counts per suite;
   - benchmark table (p50/p95/max per variant);
   - fuzz totals (games, actions, durations, zero failures);
   - oracle comparisons run;
   - the Portes differential summary with any known legacy bugs;
   - comparison against the legacy baseline (`docs/superpowers/perf/2026-10-01-legacy-baseline.md`).
-- [ ] Commit `"SP1: Portes legacy differential + exit report"`.
+- [x] Commit `"SP1: Portes legacy differential + exit report"`.
 
 ---
 
 ## SP1 exit checklist
 
-- [ ] All 13 variants in the catalog with decision tests (Task 2).
-- [ ] Every matrix rule ID (G1–G9, §4 topics, D1–D22 where engine-relevant) has ≥ 1 test. Generate a list with `grep -ho "test('[A-Z][0-9]*" -r test | sort -u` and compare it with the matrix.
-- [ ] Oracle differential clean.
-- [ ] Fuzz: 100,000 games per variant with zero failures, recorded.
-- [ ] Benchmarks within budget.
-- [ ] `tool/ci/check.sh` → `ALL GREEN`.
-- [ ] SP1 report committed.
+- [x] All 13 variants in the catalog with decision tests (Task 2).
+- [x] Every matrix rule ID (G1–G9, §4 topics, D1–D22 where engine-relevant) has ≥ 1 test. Generate a list with `grep -ho "test('[A-Z][0-9]*" -r test | sort -u` and compare it with the matrix.
+- [x] Oracle differential clean.
+- [ ] Fuzz: 100,000 games per variant with zero failures, recorded. *(In progress; 2,000/variant recorded with zero failures.)*
+- [x] Benchmarks within budget.
+- [x] `tool/ci/check.sh` → `ALL GREEN`.
+- [x] SP1 report committed.
