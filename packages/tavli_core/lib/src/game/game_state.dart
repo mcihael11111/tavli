@@ -19,6 +19,7 @@ import 'rule_violation.dart';
 
 part 'reducer.dart';
 part 'reducer_cube.dart';
+part 'reducer_remainder.dart';
 
 /// Where a game is in its turn cycle.
 enum GamePhase { opening, awaitingRoll, cubeOffered, moving, gameOver }
@@ -60,10 +61,14 @@ final class GameState {
   final Map<Side, int> turnsTaken;
   final CubeState cube;
 
-  /// Gul Bara D16-B: dice the opponent is to play (Task 12).
+  /// Gul Bara D16-B: during a cascade that cannot reach the end of its
+  /// queue, the entries no legal play reaches (`tree.remainder`); the
+  /// opponent plays them after this play is committed. Empty otherwise,
+  /// and always empty in a [remainderTurn] (that remainder is discarded).
   final List<int> pendingRemainder;
 
-  /// Whether the side to move is playing an opponent's remainder (Task 12).
+  /// Whether the side to move is playing the opponent's cascade remainder
+  /// (D16-B) before its own turn.
   final bool remainderTurn;
   final GameResult? result;
   final bool crawfordGame;
@@ -188,6 +193,8 @@ final class GameState {
     Map<Side, int>? turnsTaken,
     CubeState? cube,
     GameResult? result,
+    List<int>? pendingRemainder,
+    bool? remainderTurn,
     bool keepTree = false,
   }) =>
       GameState._(
@@ -203,8 +210,8 @@ final class GameState {
         rollIndex: rollIndex ?? this.rollIndex,
         turnsTaken: turnsTaken ?? this.turnsTaken,
         cube: cube ?? this.cube,
-        pendingRemainder: pendingRemainder,
-        remainderTurn: remainderTurn,
+        pendingRemainder: pendingRemainder ?? this.pendingRemainder,
+        remainderTurn: remainderTurn ?? this.remainderTurn,
         result: result ?? this.result,
         crawfordGame: crawfordGame,
         tree: keepTree ? _tree : null,

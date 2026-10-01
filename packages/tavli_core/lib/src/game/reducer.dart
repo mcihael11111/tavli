@@ -129,8 +129,18 @@ ReduceResult _beginMoving(
     context: _startContext(side, s.turnsTaken, dice),
     rollIndex: rollIndex,
   );
-  if (moving.tree.hasPlay) return GameUpdate(moving, events);
+  final pending = _pendingRemainder(moving);
+  if (moving.tree.hasPlay) {
+    return GameUpdate(
+      pending.isEmpty
+          ? moving
+          : moving._copy(pendingRemainder: pending, keepTree: true),
+      events,
+    );
+  }
   events.add(TurnPassed(side, rolled));
+  // A6: a cascade with no playable step hands the whole queue over.
+  if (pending.isNotEmpty) return _handOver(moving, pending, events);
   return GameUpdate(_passTurn(moving), events);
 }
 
@@ -147,6 +157,8 @@ GameState _passTurn(GameState s) {
     steps: const [],
     context: _startContext(next, turns, const []),
     turnsTaken: turns,
+    pendingRemainder: const [],
+    remainderTurn: false,
   );
 }
 
@@ -212,7 +224,8 @@ ReduceResult _undo(GameState s) {
   );
 }
 
-/// Ends the turn with a full legal play.
+/// Ends the turn with a full legal play; a Gul Bara remainder then goes
+/// to the opponent (D16-B).
 ReduceResult _commit(GameState s) {
   if (!s.node.isComplete) {
     return const RuleViolation(
@@ -220,9 +233,10 @@ ReduceResult _commit(GameState s) {
       'the steps taken are not a full legal play',
     );
   }
-  final side = s.sideToMove!;
-  // A Gul Bara cascade that fell short leaves `tree.remainder` for the
-  // opponent (D16-B). Handing it over is plan Task 12; until then the turn
-  // passes normally and the remainder is dropped.
-  return GameUpdate(_passTurn(s), [PlayCommitted(side, s.steps)]);
+  final events = <GameEvent>[PlayCommitted(s.sideToMove!, s.steps)];
+  if (s.remainderTurn) return GameUpdate(_endRemainderTurn(s), events);
+  if (s.pendingRemainder.isNotEmpty) {
+    return _handOver(s, s.pendingRemainder, events);
+  }
+  return GameUpdate(_passTurn(s), events);
 }

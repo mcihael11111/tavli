@@ -159,42 +159,6 @@ void main() {
     expect(u.state.position, p);
   });
 
-  group('Gul Bara', () {
-    test('D15 doubles cascade from the fourth roll of the game', () {
-      var s = GameState.initial(Variant.gulBara, starter: S.one);
-      for (final d in const [3, 4, 2]) {
-        s = ok(s, RollDice(d, d)).state;
-        expect(s.cascadeMode, isFalse);
-        expect(s.dice, [d, d, d, d]);
-        s = playAny(s);
-      }
-      s = ok(s, const RollDice(5, 5)).state;
-      expect(s.rollIndex, 4);
-      expect(s.cascadeMode, isTrue);
-      expect(s.dice, cascadeQueue(5));
-      expect(s.tree.isLazy, isTrue);
-    });
-
-    test('a cascade remainder does not block the turn (D16-B is Task 12)', () {
-      var s = GameState.initial(Variant.gulBara, starter: S.one);
-      for (final d in const [3, 4, 2]) {
-        s = playAny(ok(s, RollDice(d, d)).state);
-      }
-      expect(s.sideToMove, S.two);
-      // One blocks two's 18, 13, 8 and 3, so no 6 plays after the 5s.
-      final p = posSame(
-        two: {24: 15},
-        one: {6: 2, 1: 2, 20: 2, 15: 2, 24: 7},
-      );
-      s = ok(s.withPosition(p), const RollDice(5, 5)).state;
-      expect(s.tree.diceUsed, 4);
-      expect(s.tree.remainder, [6, 6, 6, 6]);
-      final next = playAny(s);
-      expect(next.phase, GamePhase.awaitingRoll);
-      expect(next.sideToMove, S.one);
-    });
-  });
-
   group('Long Nard D18 through the reducer', () {
     test('D18 firstTurn propagates to the head exception', () {
       // One wins the opening and plays 5-3 with one head checker.

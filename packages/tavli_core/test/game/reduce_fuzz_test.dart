@@ -49,6 +49,14 @@ void _invariants(GameState s) {
     expect(s.position.borneOff(side) + s.position.checkersOnBoard(side), 15);
   }
   expect(s.cube.value, inInclusiveRange(1, 64));
+  if (s.remainderTurn) {
+    expect(s.phase, isIn([GamePhase.moving, GamePhase.gameOver]));
+    expect(s.cascadeMode, isTrue);
+  }
+  if (s.remainderTurn || !s.cascadeMode) expect(s.pendingRemainder, isEmpty);
+  if (s.phase == GamePhase.moving && s.cascadeMode && !s.remainderTurn) {
+    expect(s.pendingRemainder, s.tree.remainder);
+  }
   switch (s.phase) {
     case GamePhase.opening:
       expect(s.sideToMove, isNull);
