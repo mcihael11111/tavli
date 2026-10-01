@@ -25,6 +25,7 @@ class BleBoardImpl implements BleBoardService {
   // ── Connection state ──────────────────────────────────────────
   bool _connected = false;
   DualPhoneRole? _currentRole;
+  // ignore: unused_field — consumed by the SP5 BLE transport rewrite.
   String? _connectedDeviceId;
   String? _connectedDeviceName;
 
@@ -37,6 +38,7 @@ class BleBoardImpl implements BleBoardService {
       StreamController<BleConnectionState>.broadcast();
 
   // ── Calibration ───────────────────────────────────────────────
+  // ignore: unused_field — consumed by the SP5 BLE transport rewrite.
   ScreenCalibration? _localCalibration;
   ScreenCalibration? _remoteCalibration;
 
@@ -259,6 +261,7 @@ class BleBoardImpl implements BleBoardService {
   // ── Internal: Message handling ────────────────────────────────
 
   /// Called when data is received from the BLE characteristic.
+  // ignore: unused_element — wired to the platform BLE plugin in SP5.
   void _onDataReceived(List<int> data) {
     try {
       final decoded = utf8.decode(data);
