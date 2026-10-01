@@ -28,7 +28,9 @@ final class MatchState {
   /// Results of the finished games, in order. Unmodifiable.
   final List<GameResult> history;
 
-  /// Whether the Crawford game has been played or is being played.
+  /// Whether a side has reached `target - 1`, which decides the Crawford
+  /// game once: it is being or has been played, or it was skipped because
+  /// the next game's variant has no Crawford rule.
   final bool crawfordUsed;
 
   /// The match winner, once decided.
@@ -63,10 +65,15 @@ final class MatchState {
   /// `GameState.toJson`.
   Map<String, Object?> toJson() => _matchToJson(this);
 
-  /// Parses [toJson] output from untrusted input. Throws only
-  /// [FormatException], also for a match `reduceMatch` could not have
-  /// produced (the game out of the cycle, a finished game missing from
-  /// the history, a winner that does not follow from the scores).
+  /// Parses [toJson] output. Throws only [FormatException], also for a
+  /// match `reduceMatch` could not have produced in ways that would break
+  /// it (the game out of the cycle, a finished game missing from the
+  /// history, a winner that does not follow from the scores).
+  ///
+  /// Trusted storage only: the scores, history and Crawford flag are not
+  /// checked against each other, so a crafted state can carry any score.
+  /// The server keeps the authoritative state; untrusted peers send
+  /// actions (`MatchAction.fromJson`), never states.
   static MatchState fromJson(Object? json) => _matchFromJson(json);
 
   /// Whether the match is decided: a side reached the target, or the
@@ -154,8 +161,9 @@ Side? _matchWinner(int? target, Map<Side, int> scores) {
 
 /// The next game of the cycle: the previous winner starts where its rules
 /// say so (D2) and the last game had a winner; otherwise an opening roll.
-/// The first game after a side reaches `target - 1` is the Crawford game
-/// when that variant's cube uses the Crawford rule.
+/// The first game after a side first reaches `target - 1` is the Crawford
+/// game when that variant's cube uses the Crawford rule; either way the
+/// chance is used up.
 MatchState _nextGame(MatchState m) {
   final index = m.gameIndex + 1;
   final variant = m.config.cycle[index % m.config.cycle.length];
@@ -164,10 +172,12 @@ MatchState _nextGame(MatchState m) {
   final starter =
       rules.nextGame == NextGameStarter.previousWinner ? last.winner : null;
   final target = m.config.target;
-  final crawford = target != null &&
+  // The first time a side stands at target - 1 decides the Crawford game:
+  // this game, if its variant uses the rule; otherwise never.
+  final firstReach = target != null &&
       !m.crawfordUsed &&
-      rules.cube.crawford &&
       m.scores.values.any((s) => s == target - 1);
+  final crawford = firstReach && rules.cube.crawford;
   return _with(
     m,
     gameIndex: index,
@@ -177,7 +187,7 @@ MatchState _nextGame(MatchState m) {
       crawfordGame: crawford,
       cubeEnabled: m.config.cubeEnabled,
     ),
-    crawfordUsed: m.crawfordUsed || crawford,
+    crawfordUsed: m.crawfordUsed || firstReach,
   );
 }
 

@@ -90,6 +90,67 @@ void main() {
     expect(MatchState.fromJson(wire(live.toJson())), live);
   });
 
+  group('GameLog start', () {
+    // A Plakoto puzzle: one to roll on a set board.
+    final board = Position.fromPips(
+      one: const {24: 1, 3: 1, 10: 13},
+      two: const {24: 1, 5: 2, 13: 12},
+      direction: Direction.opposing,
+    );
+    final config = MatchConfig.single(Variant.plakoto);
+    final start = MatchState(
+      config: config,
+      scores: const {S.one: 0, S.two: 0},
+      gameIndex: 0,
+      game: GameState.initial(Variant.plakoto, starter: S.one)
+          .withPosition(board),
+      history: const [],
+      crawfordUsed: false,
+      winner: null,
+    );
+
+    test('a withPosition game logs and replays to the live state', () {
+      final r = Random(3);
+      var m = start;
+      var log = GameLog(config, const [], start: start);
+      for (GameAction? a; (a = randomLegalAction(m.game, r)) != null;) {
+        final res = reduceMatch(m, GameMove(a!));
+        if (res is MatchUpdate) {
+          m = res.state;
+          log = log.add(GameMove(a));
+        }
+      }
+      expect(m.game.phase, GamePhase.gameOver);
+      expect(log.start, start);
+      final back = GameLog.fromJson(wire(log.toJson()));
+      expect(back.start, start);
+      expect(replay(back), m);
+      expect(replay(log), m);
+    });
+
+    test('JSON with and without start', () {
+      final plain = GameLog(config, const [GameMove(RollOpening(3, 1))]);
+      expect(plain.toJson().containsKey('start'), isFalse);
+      final back = GameLog.fromJson(wire(plain.toJson()));
+      expect(back.start, isNull);
+      expect(back.startState, MatchState.initial(config));
+      expect(
+          GameLog.fromJson({...plain.toJson(), 'start': null}).start, isNull);
+      final withStart = GameLog(config, const [], start: start);
+      expect(GameLog.fromJson(wire(withStart.toJson())).start, start);
+    });
+
+    test('a start with another config is rejected', () {
+      final other = MatchConfig.to(5, [Variant.plakoto]);
+      expect(() => GameLog(other, const [], start: start), throwsArgumentError);
+      final json = {
+        ...GameLog(config, const [], start: start).toJson(),
+        'config': other.toJson(),
+      };
+      expect(() => GameLog.fromJson(json), throwsFormatException);
+    });
+  });
+
   test('every state of random matches round-trips (all variants)', () {
     final r = Random(5);
     var states = 0;

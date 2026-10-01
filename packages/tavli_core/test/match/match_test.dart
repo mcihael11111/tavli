@@ -192,6 +192,63 @@ void main() {
     expect((r as RuleViolation).code, ViolationCode.cannotDouble);
   });
 
+  test('Crawford is decided at the first reach of target - 1', () {
+    // Portes (no Crawford) and Long Nard (Crawford) alternate, to 5. One
+    // reaches 4 before a Portes game: no Crawford game then, and none
+    // later either.
+    var m = MatchState.initial(MatchConfig.to(
+        5, [Variant.portes, Variant.longNard],
+        cubeEnabled: true));
+    m = resignGame(m, S.two); // Portes: one 2
+    m = resignGame(m, S.two); // Long Nard: one 4, next is Portes
+    expect(m.scores[S.one], 4);
+    expect(m.game.variant, Variant.portes);
+    expect(m.game.crawfordGame, isFalse);
+    expect(m.crawfordUsed, isTrue);
+    m = resignGame(m, S.one); // Portes: two 2
+    expect(m.game.variant, Variant.longNard);
+    expect(m.game.crawfordGame, isFalse, reason: 'the chance was used up');
+  });
+
+  group('both sides reach the target on one draw', () {
+    // Tapa: my 3 -> 1 pins two's lone mother while mine is pinned: a draw
+    // worth 1 to each side.
+    final p = pos(
+      one: {24: 1, 3: 1, 6: 13},
+      two: {24: 1, 1: 1, 13: 13},
+      pinnedOne: {24},
+    );
+    MatchState drawFrom(Map<S, int> scores) {
+      var m = MatchState(
+        config: MatchConfig.to(4, [Variant.tapa]),
+        scores: scores,
+        gameIndex: 5,
+        game: GameState.initial(Variant.tapa, starter: S.one).withPosition(p),
+        history: const [],
+        crawfordUsed: true,
+        winner: null,
+      );
+      m = step(m, const GameMove(RollDice(2, 5)));
+      return step(m, const GameMove(StepAction(Step(3, 1, 2))));
+    }
+
+    test('equal scores: the match continues', () {
+      final m = drawFrom(const {S.one: 3, S.two: 3});
+      expect(m.scores, {S.one: 4, S.two: 4});
+      expect(m.winner, isNull);
+      expect(m.isOver, isFalse);
+      expect(step(m, const NextGame()).game.phase, GamePhase.opening);
+    });
+
+    test('unequal scores: the higher wins', () {
+      // Only a crafted state gets here (one draw point each means both
+      // stood at target - 1); the rule still holds.
+      final m = drawFrom(const {S.one: 3, S.two: 4});
+      expect(m.scores, {S.one: 4, S.two: 5});
+      expect(m.winner, S.two);
+    });
+  });
+
   test('D21 Tawla 31 reaches 31 across games', () {
     var m = MatchState.initial(MatchConfig.single(Variant.tawla31));
     expect(m.config.target, 31);

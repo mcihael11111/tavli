@@ -7,45 +7,68 @@ import '../match/match_action.dart';
 import '../match/match_config.dart';
 import 'json_read.dart';
 
-/// Everything needed to rebuild a match: its config and every accepted
-/// action, in order. The match starts from `MatchState.initial(config)`.
+/// Everything needed to rebuild a match (design spec §7): its config, the
+/// starting state and every accepted action, in order.
 final class GameLog {
   final int schemaVersion;
   final MatchConfig config;
 
+  /// Where the match starts; null means `MatchState.initial(config)`. Set
+  /// it for puzzles, challenges, resumed saves or spectators joining
+  /// mid-match (e.g. a game built with `GameState.withPosition`).
+  final MatchState? start;
+
   /// Unmodifiable.
   final List<MatchAction> actions;
 
-  GameLog(this.config, List<MatchAction> actions)
+  /// Throws [ArgumentError] if [start] has a different config.
+  GameLog(this.config, List<MatchAction> actions, {this.start})
       : schemaVersion = tavliCoreSchemaVersion,
-        actions = List.unmodifiable(actions);
+        actions = List.unmodifiable(actions) {
+    if (start != null && start!.config != config) {
+      throw ArgumentError.value(start, 'start', 'config differs from $config');
+    }
+  }
+
+  /// The state [replay] starts from.
+  MatchState get startState => start ?? MatchState.initial(config);
 
   /// A log with [a] appended.
-  GameLog add(MatchAction a) => GameLog(config, [...actions, a]);
+  GameLog add(MatchAction a) => GameLog(config, [...actions, a], start: start);
 
-  /// `{"schemaVersion": 1, "config": {...}, "actions": [...]}`.
+  /// `{"schemaVersion": 1, "config": {...}, "start": {...}|null,
+  /// "actions": [...]}`; `start` is omitted for the initial state.
   Map<String, Object?> toJson() => {
         'schemaVersion': schemaVersion,
         'config': config.toJson(),
+        if (start != null) 'start': start!.toJson(),
         'actions': [for (final a in actions) a.toJson()],
       };
 
   /// Parses [toJson] output. Throws only [FormatException], including for
-  /// a `schemaVersion` other than [tavliCoreSchemaVersion].
+  /// a `schemaVersion` other than [tavliCoreSchemaVersion] and a `start`
+  /// whose config differs from the log's.
   static GameLog fromJson(Object? json) {
     final r = JsonReader(json, 'GameLog')..checkSchema();
+    final config = MatchConfig.fromJson(r.raw('config'));
+    final rawStart = r.raw('start');
+    final start = rawStart == null ? null : MatchState.fromJson(rawStart);
+    if (start != null && start.config != config) {
+      r.fail('start', "a match with the log's config");
+    }
     return GameLog(
-      MatchConfig.fromJson(r.raw('config')),
+      config,
       [for (final a in r.list('actions')) MatchAction.fromJson(a)],
+      start: start,
     );
   }
 }
 
 /// The match [log] describes: `reduceMatch` folded over its actions from
-/// the initial state. Deterministic. Throws [FormatException] if an action
+/// [GameLog.startState]. Deterministic. Throws [FormatException] if an action
 /// is rejected (the log is corrupt or from another rule set).
 MatchState replay(GameLog log) {
-  var m = MatchState.initial(log.config);
+  var m = log.startState;
   for (final (i, a) in log.actions.indexed) {
     switch (reduceMatch(m, a)) {
       case MatchUpdate(:final state):
