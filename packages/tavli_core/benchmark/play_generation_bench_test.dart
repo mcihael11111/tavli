@@ -35,7 +35,7 @@ void main() {
     }
   });
 
-  test('gulBara worst cascades (reported, not budgeted)', () {
+  test('gulBara worst cascades within loose regression caps (1 s, 2 s)', () {
     check(benchGeneration(worstCascade, samples: 5, minWarmup: warmup));
     check(benchGeneration(worstFailingCascade,
         samples: 3, warmup: 1, minWarmup: Duration.zero));

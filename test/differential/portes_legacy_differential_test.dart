@@ -1,75 +1,24 @@
-import 'dart:convert';
-import 'dart:math';
-
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tavli/features/ai/difficulty/difficulty_level.dart';
-import 'package:tavli/features/ai/engine/ai_player.dart';
-import 'package:tavli/features/game/data/models/board_state.dart';
-import 'package:tavli/features/game/data/models/dice_roll.dart';
 import 'package:tavli/features/game/domain/engine/game_engine.dart';
 import 'package:tavli/features/game/domain/engine/move_generator.dart';
 import 'package:tavli_core/tavli_core.dart' hide DiceRoll;
 
+import 'portes_legacy.dart';
+
 /// Portes differential (SP1 plan Task 18): the legacy `MoveGenerator`'s
 /// final boards must equal `tavli_core`'s legal finals, on positions from
-/// a seeded legacy easy-vs-easy self-play x all 21 rolls.
-///
-/// Mapping (matrix §1, hitting layout): `points[i] > 0` is player 1 =
-/// `Side.one` on pip `i + 1`; `points[i] < 0` is player 2 = `Side.two` on
-/// pip `24 - i`; bars and borne-off counts map directly.
+/// a seeded legacy easy-vs-easy self-play x all 21 rolls (mapping:
+/// [toCore], matrix §1).
 ///
 /// A mismatch is settled by the matrix (G1-G9). A legacy bug goes into
-/// [knownLegacyBugs] with its rule ID; a core bug is fixed in core.
-
-/// Legacy bugs found by this test, by rule ID. Each entry is a
-/// `(position, roll)` key as printed by a mismatch, with the reason.
-const knownLegacyBugs = <String, String>{};
+/// [knownLegacyBugs] under its rule ID; a core bug is fixed in core.
 
 /// Positions sampled from the self-play.
 const _positions = 40;
 
 /// Keep every [_every]th ply, so samples span openings, contact play,
-/// bar entries and bear-offs.
+/// bar entries and bear-offs, with both sides to move.
 const _every = 3;
-
-Position toCore(BoardState b) {
-  final one = <int, int>{}, two = <int, int>{};
-  for (var i = 0; i < 24; i++) {
-    final n = b.points[i];
-    if (n > 0) one[i + 1] = n;
-    if (n < 0) two[24 - i] = -n;
-  }
-  final p = Position.fromPips(
-    one: one,
-    two: two,
-    barOne: b.bar1,
-    barTwo: b.bar2,
-    direction: Direction.opposing,
-  );
-  expect(p.borneOff(Side.one), b.borneOff1, reason: 'borne off 1: $b');
-  expect(p.borneOff(Side.two), b.borneOff2, reason: 'borne off 2: $b');
-  return p;
-}
-
-/// Seeded legacy easy-vs-easy self-play, as the legacy baseline: dice
-/// `Random(42)`, AI `Random(7)`; a finished game starts a new one.
-List<BoardState> _selfPlayPositions() {
-  const eng = GameEngine();
-  final ai = AiPlayer(rng: Random(7));
-  final rng = Random(42);
-  final out = <BoardState>[];
-  var board = BoardState.initial();
-  for (var ply = 0; out.length < _positions; ply++) {
-    if (ply % _every == 0) out.add(board);
-    final turn =
-        ai.selectTurn(board, DiceRoll.random(rng), DifficultyLevel.easy);
-    if (turn != null) board = eng.applyMoves(board, turn.moves);
-    board = eng.isGameOver(board)
-        ? BoardState.initial(activePlayer: board.activePlayer == 1 ? 2 : 1)
-        : eng.endTurn(board);
-  }
-  return out;
-}
 
 void main() {
   test(
@@ -78,44 +27,69 @@ void main() {
     const gen = MoveGenerator();
     const eng = GameEngine();
     final rules = Variant.portes.rules;
-    final mismatches = <String>[];
+    final mismatches = <Mismatch>[];
     var compared = 0, finals = 0, bar = 0, bearOff = 0;
-    for (final board in _selfPlayPositions()) {
-      final p = toCore(board);
-      final side = board.activePlayer == 1 ? Side.one : Side.two;
+    final boards =
+        legacySelfPlay(count: _positions, keep: (ply) => ply % _every == 0);
+    for (final board in boards) {
+      final p = toCore(board), side = sideToMove(board);
       if (p.onBar(side) > 0) bar++;
       if (p.allHome(side)) bearOff++;
-      for (var a = 1; a <= 6; a++) {
-        for (var b = a; b <= 6; b++) {
-          final roll = DiceRoll(die1: b, die2: a);
-          final legacy = {
-            for (final t in gen.generateAllLegalTurns(board, roll))
-              toCore(eng.applyMoves(board, t.moves)),
-          };
-          final core = generatePlays(
-                  p, side, a == b ? [a, a, a, a] : [b, a], rules, TurnContext())
-              .finals;
-          compared++;
-          finals += core.length;
-          final onlyLegacy = legacy.difference(core);
-          final onlyCore = core.difference(legacy);
-          if (onlyLegacy.isEmpty && onlyCore.isEmpty) continue;
-          final key = '${jsonEncode(p.toJson())} ${side.name} $b-$a';
-          if (knownLegacyBugs.containsKey(key)) continue;
-          mismatches.add('$key\n  $p\n'
-              '  legacy ${legacy.length}, core ${core.length}\n'
-              '  only legacy: ${onlyLegacy.take(3).toList()}\n'
-              '  only core: ${onlyCore.take(3).toList()}');
-        }
+      for (final roll in allRolls) {
+        final legacy = {
+          for (final t in gen.generateAllLegalTurns(board, roll))
+            toCore(eng.applyMoves(board, t.moves)),
+        };
+        final core =
+            generatePlays(p, side, coreDice(roll), rules, TurnContext()).finals;
+        compared++;
+        finals += core.length;
+        final m = compareFinals(p, side, roll, legacy, core);
+        if (m != null) mismatches.add(m);
       }
     }
+    final open = unexplained(mismatches);
     // ignore: avoid_print
     print('Portes differential: $compared position x roll pairs, '
         '$finals core finals, $bar with a checker on the bar, $bearOff '
-        'bearing off; ${mismatches.length} mismatches, '
-        '${knownLegacyBugs.length} known legacy bugs');
-    printOnFailure(mismatches.take(5).join('\n\n'));
-    expect(mismatches, isEmpty, reason: '${mismatches.length} mismatches');
+        'bearing off; ${mismatches.length} mismatches '
+        '(${mismatches.length - open.length} known legacy bugs)');
+    printOnFailure(open.take(5).join('\n\n'));
+    expect(open, isEmpty, reason: '${open.length} unexplained mismatches');
     expect(compared, _positions * 21);
+  });
+
+  group('known legacy bugs', () {
+    // A fake mismatch: the start position, 3-1, where "legacy" has one
+    // final core lacks.
+    final p = toCore(legacySelfPlay(count: 1, keep: (_) => true).single);
+    final roll = allRolls.firstWhere((r) => r.die1 == 3 && r.die2 == 1);
+    final core = generatePlays(
+            p, Side.one, coreDice(roll), Variant.portes.rules, TurnContext())
+        .finals;
+    final bogus = Position.forRules(Variant.plakoto.rules);
+
+    test('compareFinals reports a difference and keys it by case', () {
+      expect(compareFinals(p, Side.one, roll, core, core), isNull);
+      final m = compareFinals(p, Side.one, roll, {...core, bogus}, core)!;
+      expect(m.onlyLegacy, {bogus});
+      expect(m.onlyCore, isEmpty);
+      expect(m.key, endsWith(' one 3-1'));
+    });
+
+    test('a case listed under a rule ID is suppressed, others are not', () {
+      final m = compareFinals(p, Side.one, roll, {...core, bogus}, core)!;
+      final bugs = {
+        'G6': KnownLegacyBug('fake, for this test', {m.key}),
+      };
+      expect(knownBugRule(m, bugs), 'G6');
+      expect(unexplained([m], bugs), isEmpty);
+      expect(unexplained([m], const {}), [m]);
+      expect(
+          knownBugRule(m, const {
+            'G6': KnownLegacyBug('other', {'x'})
+          }),
+          isNull);
+    });
   });
 }

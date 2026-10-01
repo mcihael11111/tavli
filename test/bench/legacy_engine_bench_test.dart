@@ -13,11 +13,18 @@ import 'package:tavli/features/game/data/models/board_state.dart';
 import 'package:tavli/features/game/data/models/dice_roll.dart';
 import 'package:tavli/features/game/domain/engine/game_engine.dart';
 import 'package:tavli/features/game/domain/engine/move_generator.dart';
+import 'package:tavli_core/tavli_core.dart' hide DiceRoll;
 import 'package:tavli_testkit/tavli_testkit.dart';
 
+import '../differential/portes_legacy.dart';
+
 /// Baseline numbers for the LEGACY engine and AI, recorded before the rewrite
-/// so every later sub-project can show its improvement against them.
+/// so every later sub-project can show its improvement against them, plus
+/// the core-vs-legacy generation comparison (SP1 report §6).
 /// Reports only — no budget assertions (the legacy code cannot meet them).
+///
+/// Run: flutter test --run-skipped --tags legacy-bench test/bench
+/// (core vs legacy only: add --plain-name 'core generatePlays vs legacy').
 void main() {
   test('legacy engine + AI baseline', () {
     const gen = MoveGenerator();
@@ -89,4 +96,64 @@ void main() {
     debugPrint('Wrote ${out.path}');
     expect(results, hasLength(4));
   }, timeout: const Timeout(Duration(minutes: 9)));
+
+  // SP1 report §6: core generatePlays vs the legacy MoveGenerator on the
+  // SAME 12 baseline positions and the same roll sweep, mapped with the
+  // differential's toCore (matrix §1). Both sides run under the same
+  // `flutter test` settings (asserts on), so the comparison is fair; the
+  // asserts-off core numbers are in benchmark/run_benchmarks.dart.
+  test('core generatePlays vs legacy MoveGenerator (baseline positions)', () {
+    const gen = MoveGenerator();
+    final rules = Variant.portes.rules;
+    final positions = baselinePositions();
+    final core = [for (final b in positions) toCore(b)];
+    final side = sideToMove(positions.first); // player 2 throughout
+    final doubles = allRolls.where((r) => r.isDoubles).toList();
+
+    // Index rolls fastest and positions slowest, as the baseline does.
+    BenchStats sweep(String name, List<DiceRoll> rolls, int samples,
+        Object? Function(int position, DiceRoll roll) body) {
+      var i = 0;
+      return measure(name: name, samples: samples, () {
+        final n = (i ~/ rolls.length) % positions.length;
+        return body(n, rolls[i++ % rolls.length]);
+      });
+    }
+
+    final results = <BenchStats>[
+      sweep('legacy.movegen.all_rolls', allRolls, 500,
+          (n, r) => gen.generateAllLegalTurns(positions[n], r)),
+      sweep(
+          'core.generatePlays.all_rolls',
+          allRolls,
+          500,
+          (n, r) =>
+              generatePlays(core[n], side, coreDice(r), rules, TurnContext())),
+      sweep('legacy.movegen.doubles', doubles, 300,
+          (n, r) => gen.generateAllLegalTurns(positions[n], r)),
+      sweep(
+          'core.generatePlays.doubles',
+          doubles,
+          300,
+          (n, r) =>
+              generatePlays(core[n], side, coreDice(r), rules, TurnContext())),
+    ];
+
+    final out = File('build/bench/core_vs_legacy.json')
+      ..createSync(recursive: true)
+      ..writeAsStringSync(const JsonEncoder.withIndent('  ')
+          .convert([for (final r in results) r.toJson()]));
+    for (final r in results) {
+      debugPrint(r.toString());
+    }
+    for (final k in ['all_rolls', 'doubles']) {
+      final legacy = results.firstWhere((r) => r.name == 'legacy.movegen.$k');
+      final c = results.firstWhere((r) => r.name == 'core.generatePlays.$k');
+      debugPrint('$k p95 speed-up: '
+          '${(legacy.p95Ns / c.p95Ns).toStringAsFixed(1)}x');
+    }
+    debugPrint('Wrote ${out.path}');
+    expect(positions, hasLength(12));
+    expect(positions.every((b) => sideToMove(b) == Side.two), isTrue);
+  });
 }

@@ -25,6 +25,12 @@ const reducerStepBudget = Duration(microseconds: 50);
 /// may exceed it; it is reported, not budgeted.
 const cascadeBudget = Duration(milliseconds: 50);
 
+/// Loose regression caps (not budgets) on the single worst cascades,
+/// which may exceed [cascadeBudget]: about 13x and 5x their asserts-off
+/// p95 when added, so only a big regression trips them.
+const worstCascadeCap = Duration(seconds: 1);
+const worstFailingCascadeCap = Duration(seconds: 2);
+
 /// `dart test` runs with asserts on, where `MutablePosition.freeze()`
 /// validates every board: its budgets are this many times the real ones.
 const assertAllowance = 2;
@@ -106,8 +112,12 @@ BenchResult benchGeneration(
   return BenchResult(
     measure(() => f.run(p),
         name: 'generate ${f.label}', samples: samples, minWarmup: minWarmup),
-    f.cascade ? null : generationBudget,
-    note: f.cascade ? 'reported only' : '${f.finals} finals',
+    !f.cascade
+        ? generationBudget
+        : f.finals == f.dice.length
+            ? worstCascadeCap
+            : worstFailingCascadeCap,
+    note: f.cascade ? 'regression cap' : '${f.finals} finals',
   );
 }
 

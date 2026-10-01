@@ -11,13 +11,13 @@
 - **424 package tests pass**, plus the app-level Portes legacy differential.
 - **Oracle differential:** clean. **Portes legacy differential:** clean, with 0 known legacy bugs.
 - **Fuzz:** 2,000 games per variant (26,000 games, 6.9 M actions) with zero failures.
-- **100k run: IN PROGRESS.** It was started 2026-10-02 00:29 AEST and should take about 1.5 h. The log is at `/private/tmp/claude-501/-Users-michaelpapanikolaou-Documents-1-programs-Tavli/bcbaceb3-1f9a-4c6c-a75a-dc9055b6f38e/scratchpad/fuzz100k.log`.
+- **100k run: IN PROGRESS.** It was started 2026-10-02 00:29 AEST and should take about 1.5 h. Its output goes to a local run log (not committed); the command is `cd packages/tavli_core && TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz --reporter expanded`.
 - **Benchmarks:** every budget is met with asserts off.
   - Worst generation fixture p95: 1.72 ms (budget 2 ms).
   - Reducer `StepAction` p95: 0.5 µs (budget 50 µs).
   - Sampled Gul Bara failing cascades p95: 0.20 ms (budget 50 ms).
-  - The worst single cascades are reported, not budgeted (see below).
-- **Against the legacy generator:** on the legacy baseline positions, core generation p95 is 3.5–4.5× faster, even though it builds a full step-order play tree.
+  - The worst single cascades exceed the 50 ms budget and are held only to loose regression caps (see below).
+- **Against the legacy generator:** on the legacy baseline positions, core generation p95 is 4.0× faster on all rolls and 4.7× on doubles (§6, reproducible), even though it builds a full step-order play tree.
 
 ## 1. Tests per suite
 
@@ -36,12 +36,16 @@ From `dart test` in `packages/tavli_core`. The default run includes the 40-game 
 | `test/purity_test.dart` | 4 | Import purity of `lib/` |
 | `benchmark` (tag `bench`) | 28 | Budgets (Task 17) |
 | **Total** | **424** | |
-| App `test/differential` | 1 | Portes legacy differential (Task 18) |
+| App `test/differential` | 3 | Portes legacy differential, plus 2 tests of the known-legacy-bug mechanism (Task 18) |
 
 **Rule-ID coverage.** `grep -ho "test('[A-Z][0-9]*" -r test` (plus group names) finds:
 - G1–G9;
 - D1–D22 (D20 sits in multi-line test names);
 - A2, A4, A6 and A9.
+
+Two addenda are covered by tests named for their rule:
+- **A5:** `test/rules/play_filters_test.dart` covers it with `D12a every play completes it: all survive`, the `D12b` tests (with the opponent head occupied and empty) and the two `D14 Moultezim` tests.
+- **A8:** `D5 most checkers borne off first` in the same file pins the "most borne off" stage. With dice 6-3, Portes keeps both finals and Tavla keeps only the all-off final.
 
 A1, A3 and A7 have no test because no reachable position triggers them. For A7, `play_generator_test` has a comment arguing why.
 
@@ -70,8 +74,8 @@ Command: `dart run --no-enable-asserts benchmark/run_benchmarks.dart`.
 | generate mahbusa 1-1-1-1 (749 finals) | 200 | 1014.3 | 1062.8 | 1464.2 | 2000 | yes |
 | generate mahbusaArab 1-1-1-1 (727 finals) | 200 | 1099.4 | 1722.6 | 2851.8 | 2000 | yes |
 | generate tawla31 1-1-1-1 (349 finals) | 200 | 469.1 | 478.5 | 763.5 | 2000 | yes |
-| gulBara worst succeeding cascade 1×24 | 50 | 64926.0 | 77139.0 | 79296.3 | reported only | – |
-| gulBara worst failing cascade 1×24 (fails at 21) | 20 | 353900.8 | 381237.2 | 389159.3 | reported only | – |
+| gulBara worst succeeding cascade 1×24 | 50 | 64926.0 | 77139.0 | 79296.3 | cap 1000000 | yes |
+| gulBara worst failing cascade 1×24 (fails at 21) | 20 | 353900.8 | 381237.2 | 389159.3 | cap 2000000 | yes |
 | gulBara sampled cascades (18,000; p99 0.67 ms) | 18000 | 26.2 | 156.4 | 314990.2 | 50000 | yes |
 | gulBara sampled failing cascades (3,077; p99 2.64 ms) | 3077 | 4.0 | 204.7 | 314990.2 | 50000 | yes |
 | reduce StepAction (all 13 variants, mid-game) | 2000 each | 0.4–0.5 | 0.5 | 1.6–55.2 | 50 | yes |
@@ -91,7 +95,7 @@ All oracle and lazy-vs-brute tests stayed green. Measurements before → after (
 | Sampled failing cascades p99 | 5.4 ms | 2.6 ms |
 | Worst single cascade | 401 ms | 315 ms |
 
-**Not budgeted (deviation).** Two kinds of single cascade are outliers and are reported only:
+**Regression caps, not budgets (deviation).** Two kinds of single cascade are outliers that exceed the 50 ms budget. They are held only to loose regression caps (`worstCascadeCap`, `worstFailingCascadeCap`), so that only a big regression fails: 1 s for the worst succeeding cascade and 2 s for the worst failing one. Like every budget, `dart test` multiplies these by 2 for asserts and by `TAVLI_BENCH_SCALE`.
 - **Failing cascades.** A failing 24-entry cascade (1-1 at roll ≥ 4) must visit every reachable state to prove that the queue's end cannot be reached. The worst found takes about 0.35 s.
 - **Succeeding cascades.** A succeeding cascade can still search deep before it finds a full path. The worst found takes about 65 ms.
 
@@ -129,8 +133,8 @@ Both are under 0.1 % of sampled cascades. A sound pruning bound (or move orderin
 | mahbusaArab | 456,851 | mother 935, single 450, draw 454, gammon 161 |
 | tawla31 | 602,922 | checkersRemaining 2000 |
 
-**100k run: IN PROGRESS.** Log: `/private/tmp/claude-501/-Users-michaelpapanikolaou-Documents-1-programs-Tavli/bcbaceb3-1f9a-4c6c-a75a-dc9055b6f38e/scratchpad/fuzz100k.log`.
-- Command: `TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz --reporter expanded`, started 2026-10-02 00:29 AEST.
+**100k run: IN PROGRESS.** Output goes to a local run log (not committed).
+- Command: `cd packages/tavli_core && TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz --reporter expanded`, started 2026-10-02 00:29 AEST.
 - Estimate: about 1.5 h (Portes did 10k games in 41 s), so about 1.3 M games.
 - When it finishes, record its totals here and tick the exit-checklist item.
 
@@ -155,7 +159,13 @@ Both are under 0.1 % of sampled cascades. A sound pruning bound (or move orderin
 |---:|---:|---:|---:|---:|---:|
 | 840 | 14,909 | 7 | 7 | **0** | 0 |
 
-The legacy Portes generator agrees with core on G2, G4 (max dice and higher die), G5, G6 and bar entry for every sampled case. `knownLegacyBugs` is empty.
+The legacy Portes generator agrees with core on G2, G4 (max dice and higher die), G5, G6 and bar entry for every sampled case.
+
+**Known legacy bugs.** `knownLegacyBugs` (in `test/differential/portes_legacy.dart`) maps a matrix rule ID to a `KnownLegacyBug(why, cases)`. Only mismatches that no entry lists fail the test. It is empty. Two tests check the mechanism with a fake `G6` entry:
+- the listed mismatch is suppressed;
+- unlisted cases still fail.
+
+`toCore`, the self-play and the baseline positions live in the same helper, which the legacy benchmark also uses (§6).
 
 **Legacy discrepancies that do not change final sets.** A7 and A4 cannot show up as different final sets in Portes:
 - **A7:** legacy keeps lower-die orderings that reach the same board.
@@ -163,12 +173,25 @@ The legacy Portes generator agrees with core on G2, G4 (max dice and higher die)
 
 ## 6. Comparison with the legacy baseline
 
-The comparison uses the legacy baseline's own 12 positions, player 2 to move, sampled the same way. Both were measured under `flutter test` with asserts on, JIT:
+**What is measured.** Core `generatePlays` and the legacy `MoveGenerator` run on the legacy baseline's own 12 positions (player 2 to move), with the same roll sweep and sample counts:
+- positions come from `baselinePositions()`, which was checked to equal the baseline's inline sampling;
+- boards are mapped with the differential's `toCore`;
+- the harness is `test/bench/legacy_engine_bench_test.dart`, test `core generatePlays vs legacy MoveGenerator (baseline positions)`, tag `legacy-bench` (opt-in).
 
-| | Legacy `MoveGenerator` p95 | Core `generatePlays` p95 | Speed-up |
+**How to reproduce:**
+
+    flutter test --run-skipped --tags legacy-bench test/bench --plain-name 'core generatePlays vs legacy'
+
+It writes `build/bench/core_vs_legacy.json` (not committed).
+
+**Asserts.** Like the original baseline, this runs under `flutter test`, which has asserts on (JIT). The asserts apply equally to both engines, so the ratio is fair. Core's asserts-off numbers are in §2.
+
+| | Legacy `MoveGenerator` p95 | Core `generatePlays` p95 | Speed-up (p95) |
 |---|---:|---:|---:|
-| All 21 rolls | 456–461 µs (baseline 472.6) | 121–132 µs | ≈ 3.5–3.8× |
-| Doubles | 1016–1020 µs (baseline 1012.3) | 225–239 µs | ≈ 4.3–4.5× |
+| All 21 rolls (500 samples) | 474.4 µs (baseline 472.6) | 118.8 µs | 4.0× |
+| Doubles (300 samples) | 1010.1 µs (baseline 1012.3) | 216.0 µs | 4.7× |
+
+p50 values: legacy 20.3 / 153.0 µs, core 18.1 / 53.7 µs.
 
 The core result is richer: a step-order play tree with filters, not a flat move list.
 
@@ -177,7 +200,7 @@ The core result is richer: a step-order play tree with filters, not a flat move 
 ## 7. Deviations from the plan
 
 1. **Fixture location.** The fixtures live in `benchmark/bench_fixtures.dart`, not inside the test file. It is shared by the bench test and `run_benchmarks.dart`, and generated by `--scan`.
-2. **Unbudgeted cascades.** The worst single Gul Bara cascades (succeeding and failing) are reported, not budgeted (§2). The 50 ms budget applies to the p95 of sampled cascades, all and failing.
+2. **Worst cascades under caps only.** The worst single Gul Bara cascades (succeeding and failing) are held only to loose regression caps of 1 s and 2 s, not the 50 ms budget (§2). The 50 ms budget applies to the p95 of sampled cascades, all and failing.
 3. **CI benchmark run.** `tool/ci/check.sh` runs package tests with `--exclude-tags bench`, then the benchmarks alone with `--concurrency=1`. In a plain `dart test` the `bench` tag has `retry: 2`, to absorb timing noise from parallel suites.
 4. **Fuzz cube answers.** Fuzz cube offers are always taken, never dropped, so that every game ends naturally. Drops are fuzzed in `reduce_fuzz_test`.
 5. **Fuzz timeout.** Each variant's fuzz test gets 60 s + 20 ms per game, so a 100k run is not cut off by the tag's 20× timeout.
