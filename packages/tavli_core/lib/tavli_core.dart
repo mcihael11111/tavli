@@ -10,6 +10,7 @@ export 'src/board/position.dart';
 export 'src/board/side.dart';
 export 'src/play/step.dart';
 export 'src/rules/step_rules.dart';
+export 'src/rules/step_validators.dart';
 export 'src/rules/turn_context.dart';
 export 'src/variant/catalog.dart';
 export 'src/variant/variant.dart';
