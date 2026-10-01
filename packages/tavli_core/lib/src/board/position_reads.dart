@@ -68,5 +68,6 @@ mixin _PositionReads implements BoardView {
         Uint8List.fromList(_counts),
         _pinnedOne,
         _pinnedTwo,
+        _zobristOf(_counts, _pinnedOne, _pinnedTwo),
       );
 }

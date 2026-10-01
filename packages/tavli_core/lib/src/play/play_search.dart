@@ -21,8 +21,8 @@ final class _Leaf implements PlayCandidate {
   final int waste;
 }
 
-/// A search state: equal states have identical continuations. Shared by
-/// both searches, which measure [progress] differently.
+/// A frozen search state: equal states have identical continuations.
+/// Keys the lazy cascade's nodes; the hot memos use [_Memo] instead.
 final class _Key {
   _Key(this.position, this.ctx, this.progress)
       : hashCode = Object.hash(position, ctx, progress);
@@ -30,9 +30,7 @@ final class _Key {
   final Position position;
   final TurnContext ctx;
 
-  /// How far through the dice the state is: in [_Search] the bitmask of
-  /// dice used (bit i => `dice[i]`); in [_Cascade] the queue index of the
-  /// next die.
+  /// How far through the dice the state is (as in [_MemoEntry.progress]).
   final int progress;
 
   @override
@@ -46,6 +44,52 @@ final class _Key {
       other.ctx == ctx;
 }
 
+/// A memo of search states keyed by the board's incremental Zobrist hash
+/// (design spec §9), the context and the progress, so a lookup needs no
+/// freeze. Entries keep their frozen board, and a hash match counts only
+/// once the board is confirmed equal ([MutablePosition.sameBoardAs]).
+final class _Memo<V extends Object> {
+  final _table = HashMap<int, _MemoEntry<V>>();
+
+  static int _slot(int zobrist, TurnContext ctx, int progress) =>
+      (zobrist ^ ctx.hashCode ^ (progress * 0x01000193)) & 0x3fffffff;
+
+  /// The value for the state of [m], or null.
+  V? lookup(MutablePosition m, TurnContext ctx, int progress) {
+    for (var e = _table[_slot(m.zobristHash, ctx, progress)];
+        e != null;
+        e = e.next) {
+      if (e.progress == progress && e.ctx == ctx && m.sameBoardAs(e.board)) {
+        return e.value;
+      }
+    }
+    return null;
+  }
+
+  /// Records [value] for the state of [m], whose frozen board is [board].
+  void add(MutablePosition m, Position board, TurnContext ctx, int progress,
+      V value) {
+    final slot = _slot(m.zobristHash, ctx, progress);
+    _table[slot] = _MemoEntry(board, ctx, progress, value, _table[slot]);
+  }
+}
+
+final class _MemoEntry<V> {
+  _MemoEntry(this.board, this.ctx, this.progress, this.value, this.next);
+
+  final Position board;
+  final TurnContext ctx;
+
+  /// How far through the dice the state is: in [_Search] the bitmask of
+  /// dice used (bit i => `dice[i]`); in [_Cascade] the queue index of the
+  /// next die.
+  final int progress;
+  final V value;
+
+  /// The next entry in the same slot (a hash collision).
+  final _MemoEntry<V>? next;
+}
+
 /// Eager depth-first make/unmake search over one [MutablePosition], for
 /// normal rolls (cascades use the lazy [_Cascade]).
 ///
@@ -53,8 +97,8 @@ final class _Key {
 /// (only when the validators check after) -> recurse with
 /// `StepValidators.next` -> `undo`.
 ///
-/// From depth 2 on, states are memoized by (position, context, dice used),
-/// so transpositions share one subtree and the trie is a DAG.
+/// From depth 2 on, states are memoized by (position, context, dice used)
+/// in a [_Memo], so transpositions share one subtree and the trie is a DAG.
 final class _Search {
   _Search(this._rules, this.side, this.dice)
       : _steps = StepRules(_rules),
@@ -72,7 +116,7 @@ final class _Search {
   final bool _checksAfter;
   late MutablePosition _p;
   late int _startPips;
-  final _memo = HashMap<_Key, PlayNode>();
+  final _memo = _Memo<PlayNode>();
 
   /// Leaves recorded so far; those shorter than [maxLength] are stale.
   final leaves = <_Leaf>[];
@@ -86,14 +130,12 @@ final class _Search {
 
   PlayNode _visit(TurnContext ctx, int used, int depth) {
     Position? frozen;
-    _Key? key;
-    if (depth >= 2) {
-      key = _Key(frozen = _p.freeze(), ctx, used);
-      final known = _memo[key];
-      if (known != null) return known;
-    }
     final node = PlayNode._();
-    if (key != null) _memo[key] = node;
+    if (depth >= 2) {
+      final known = _memo.lookup(_p, ctx, used);
+      if (known != null) return known;
+      _memo.add(_p, frozen = _p.freeze(), ctx, used, node);
+    }
 
     // A4: a game-ending step ends the play; it counts as all the dice.
     if (depth > 0 && endsGame(_p, _rules, side)) {

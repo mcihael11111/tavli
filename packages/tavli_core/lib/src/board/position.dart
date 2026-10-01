@@ -12,6 +12,7 @@ part 'mutable_position.dart';
 part 'position_json.dart';
 part 'position_reads.dart';
 part 'position_validation.dart';
+part 'position_zobrist.dart';
 
 const int _stride = 26; // pips 0..25 per side
 const int _checkers = 15;

@@ -22,7 +22,7 @@ final class _Cascade {
   final bool _checksAfter;
 
   /// Most entries playable from (position, context, queue index).
-  final _max = HashMap<_Key, int>();
+  final _max = _Memo<int>();
   final _nodes = HashMap<_Key, PlayNode>();
   int diceUsed = 0;
 
@@ -71,8 +71,7 @@ final class _Cascade {
   int _maxFrom(MutablePosition m, TurnContext ctx, int index) {
     final full = queue.length - index;
     if (full == 0) return 0;
-    final key = _Key(m.freeze(), ctx, index);
-    final known = _max[key];
+    final known = _max.lookup(m, ctx, index);
     if (known != null) return known;
     var best = 0;
     for (final step in _steps.basicSteps(m, side, queue[index])) {
@@ -85,7 +84,8 @@ final class _Cascade {
       if (r > best) best = r;
       if (best == full) break;
     }
-    return _max[key] = best;
+    _max.add(m, m.freeze(), ctx, index, best);
+    return best;
   }
 
   /// Whether the step just applied to [m] ended the game (A4).

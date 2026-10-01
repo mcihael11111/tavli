@@ -13,26 +13,54 @@ final class MutablePosition with _PositionReads implements BoardView {
   int _pinnedOne;
   @override
   int _pinnedTwo;
+  int _zobristHash;
 
   MutablePosition._(
     this.direction,
     this._counts,
     this._pinnedOne,
     this._pinnedTwo,
+    this._zobristHash,
   );
+
+  /// A 30-bit Zobrist hash of the board (counts and pinned bits, not the
+  /// direction), kept up to date by every mutator in O(1) (design spec
+  /// §9). Equal boards have equal hashes; unequal boards usually differ,
+  /// so a match must still be confirmed with [sameBoardAs]. Web-safe, but
+  /// unrelated to [Position.hashCode].
+  int get zobristHash => _zobristHash;
+
+  /// Whether this board equals [p] (direction, counts and pinned bits),
+  /// without freezing.
+  bool sameBoardAs(Position p) {
+    if (p.direction != direction ||
+        p._pinnedOne != _pinnedOne ||
+        p._pinnedTwo != _pinnedTwo) {
+      return false;
+    }
+    final a = _counts, b = p._counts;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   /// Adds one checker of [s] on its own [pip] (0..25).
   void add(Side s, int pip) {
     final i = _index(s, pip);
-    assert(_counts[i] < _checkers, 'overflow at ${s.name}:$pip');
-    _counts[i]++;
+    final c = _counts[i];
+    assert(c < _checkers, 'overflow at ${s.name}:$pip');
+    _zobristHash ^= _zobrist[i * _zCounts + c] ^ _zobrist[i * _zCounts + c + 1];
+    _counts[i] = c + 1;
   }
 
   /// Removes one checker of [s] from its own [pip] (0..25).
   void remove(Side s, int pip) {
     final i = _index(s, pip);
-    assert(_counts[i] > 0, 'no ${s.name} checker on $pip');
-    _counts[i]--;
+    final c = _counts[i];
+    assert(c > 0, 'no ${s.name} checker on $pip');
+    _zobristHash ^= _zobrist[i * _zCounts + c] ^ _zobrist[i * _zCounts + c - 1];
+    _counts[i] = c - 1;
   }
 
   /// Moves one checker of [s] from own pip [from] to own pip [to].
@@ -45,6 +73,9 @@ final class MutablePosition with _PositionReads implements BoardView {
   void setPinned(Side s, int pip, bool pinned) {
     assert(pip >= 1 && pip <= 24, 'pinned pip $pip outside 1..24');
     final bit = 1 << pip;
+    if (((pinnedMask(s) & bit) != 0) != pinned) {
+      _zobristHash ^= _zobrist[_zPinBase + s.index * 25 + pip];
+    }
     if (s == Side.one) {
       _pinnedOne = pinned ? _pinnedOne | bit : _pinnedOne & ~bit;
     } else {
@@ -65,6 +96,9 @@ final class MutablePosition with _PositionReads implements BoardView {
     );
     assert(() {
       _validateBoard(p);
+      if (_zobristHash != _zobristOf(_counts, _pinnedOne, _pinnedTwo)) {
+        throw StateError('stale Zobrist hash');
+      }
       return true;
     }());
     return p;
