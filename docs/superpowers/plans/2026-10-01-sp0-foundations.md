@@ -965,8 +965,8 @@ void main() {
     const eng = GameEngine();
     // Seeded so the AI's tie-breaking/randomness is identical across runs.
     final ai = AiPlayer(rng: Random(7));
-    final rng = Random(
-        42); // positions: seed 42 (dice) + AI seed 7 => identical every run
+    // Dice seed 42 + AI seed 7 => identical positions every run.
+    final rng = Random(42);
 
     // Positions come from a seeded (dice Random(42), AI Random(7)) easy-vs-easy
     // self-play: opening to early-middle plies, always with player 2 to move
@@ -1004,7 +1004,7 @@ void main() {
         return gen.generateAllLegalTurns(p, doubles[i++ % doubles.length]);
       }),
       measure(name: 'legacy.ai.easy.selectTurn', samples: 200, () {
-        final p = positions[i % positions.length];
+        final p = positions[(i ~/ rolls.length) % positions.length];
         return ai.selectTurn(
             p, rolls[i++ % rolls.length], DifficultyLevel.easy);
       }),
@@ -1147,6 +1147,9 @@ void main() {
       ),
     ));
     await tester.pump(const Duration(seconds: 1));
+    // GameScreen.initState overrides the orientation; re-assert the lock.
+    await SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.landscapeLeft]);
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(GameScreen)),

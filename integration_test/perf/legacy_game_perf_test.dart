@@ -40,6 +40,9 @@ void main() {
       ),
     ));
     await tester.pump(const Duration(seconds: 1));
+    // GameScreen.initState overrides the orientation; re-assert the lock.
+    await SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.landscapeLeft]);
 
     final container = ProviderScope.containerOf(
       tester.element(find.byType(GameScreen)),
