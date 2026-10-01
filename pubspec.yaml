@@ -9,6 +9,7 @@ environment:
 workspace:
   - packages/tavli_testkit
   - packages/tavli_core
+  - packages/tavli_bot
 
 dependencies:
   flutter:
@@ -17,6 +18,8 @@ dependencies:
     sdk: flutter
   tavli_core:
     path: packages/tavli_core
+  tavli_bot:
+    path: packages/tavli_bot
 
   # Game engine
   flame: ^1.14.0

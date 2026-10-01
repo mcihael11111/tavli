@@ -1,0 +1,18 @@
+name: tavli_bot
+description: Pure-Dart Tavli bot (evaluation + search). Runs in a worker isolate in the app and in-process on the server.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dependencies:
+  tavli_core:
+    path: ../tavli_core
+
+dev_dependencies:
+  lints: '>=3.0.0 <7.0.0'
+  tavli_testkit:
+    path: ../tavli_testkit
+  test: ^1.25.0
