@@ -177,6 +177,29 @@ In the `dev_dependencies:` block, add after `flutter_lints: ^3.0.0`:
     path: packages/tavli_testkit
 ```
 
+- [ ] **Step 2b: Remove unused code-generation and dead dependencies (resolution blocker)**
+
+Flutter 3.41.5's `flutter_test` pins `test_api 0.7.10`. Every compatible `package:test` needs `analyzer >= 8`, but the legacy code-gen dev dependencies require an older analyzer, so the workspace cannot resolve.
+
+Verified on 2026-10-01 that **none of these are used**: zero `part '*.g.dart'`/`*.freezed.dart` files, zero code-gen annotations, and zero imports anywhere in `lib/` or `test/`.
+
+In `pubspec.yaml`:
+- Delete from `dependencies:` the lines (and their comment headers if left empty) for:
+  - `riverpod_annotation`
+  - `hive`, `hive_flutter`
+  - `drift`, `sqlite3_flutter_libs`
+  - `dio`
+  - `freezed_annotation`, `json_annotation`
+- Delete from `dev_dependencies:`:
+  - `build_runner`, `freezed`, `json_serializable`
+  - `riverpod_generator`, `drift_dev`, `hive_generator`
+
+Re-run the grep below to prove zero usage before deleting. It must print nothing:
+
+`grep -rlE "package:(hive|hive_flutter|drift|sqlite3_flutter_libs|dio|freezed_annotation|json_annotation|riverpod_annotation)/" lib test integration_test`
+
+List the removed packages in the Task 2 commit body.
+
 - [ ] **Step 3: Resolve and confirm the app still analyzes and tests**
 
 Run: `export PATH="/Users/michaelpapanikolaou/Documents/1_programs/flutter/bin:$PATH" && flutter pub get && dart analyze --fatal-infos`
