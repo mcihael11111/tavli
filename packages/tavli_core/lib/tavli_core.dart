@@ -15,6 +15,7 @@ export 'src/game/game_event.dart';
 export 'src/game/game_result.dart';
 export 'src/game/game_state.dart';
 export 'src/game/rule_violation.dart';
+export 'src/match/match.dart';
 export 'src/play/play_generator.dart';
 export 'src/play/step.dart';
 export 'src/rules/game_end.dart';
