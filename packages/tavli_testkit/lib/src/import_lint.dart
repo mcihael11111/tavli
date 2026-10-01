@@ -197,18 +197,37 @@ Directory packageLibDir(String packageName) {
   return Directory.fromUri(uri);
 }
 
-Uri? _resolveFromPackageConfig(String packageName) {
-  for (final start in [
-    if (Platform.script.scheme == 'file') File.fromUri(Platform.script).parent,
-    Directory.current,
-  ]) {
+Uri _resolveFromPackageConfig(String packageName) => packageLibDirFromStarts(
+      packageName,
+      [
+        if (Platform.script.scheme == 'file')
+          File.fromUri(Platform.script).parent,
+        Directory.current,
+      ],
+    ).uri;
+
+/// Tries [packageLibDirFromConfig] from each of [starts] in order and returns
+/// the first success. When all fail, throws a [StateError] that includes every
+/// underlying failure reason.
+///
+/// Public only so tests can exercise the aggregation of the `flutter test`
+/// fallback of [packageLibDir].
+Directory packageLibDirFromStarts(
+  String packageName,
+  Iterable<Directory> starts,
+) {
+  final reasons = <String>[];
+  for (final start in starts) {
     try {
-      return packageLibDirFromConfig(packageName, start).uri;
-    } on StateError {
-      continue;
+      return packageLibDirFromConfig(packageName, start);
+    } on StateError catch (e) {
+      reasons.add(e.message);
     }
   }
-  return null;
+  throw StateError(
+    'Cannot resolve package:$packageName/'
+    '${reasons.isEmpty ? '' : ': ${reasons.join('; ')}'}',
+  );
 }
 
 /// Resolves [packageName]'s lib directory from the nearest

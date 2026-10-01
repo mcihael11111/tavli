@@ -214,6 +214,38 @@ void main() {
     });
   });
 
+  group('packageLibDirFromStarts', () {
+    test('final error includes the underlying reasons', () {
+      write('lib/a.dart', '');
+      write(
+        '.dart_tool/package_config.json',
+        jsonEncode({
+          'configVersion': 2,
+          'packages': [
+            {
+              'name': 'ghost',
+              'rootUri': '../packages/ghost',
+              'packageUri': 'lib/'
+            },
+          ],
+        }),
+      );
+      expect(
+        () => packageLibDirFromStarts('ghost', [dir('lib')]),
+        throwsA(isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('Cannot resolve package:ghost/'),
+                contains('missing')))),
+      );
+      expect(
+        () => packageLibDirFromStarts('nope', [dir('lib'), dir('.')]),
+        throwsA(isA<StateError>()
+            .having((e) => e.message, 'message', contains('is not in'))),
+      );
+    });
+  });
+
   group('findForbiddenReachable', () {
     final forbidden = ['package:tavli/legacy/'];
 
