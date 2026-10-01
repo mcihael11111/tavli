@@ -615,7 +615,7 @@ final class OfferDouble extends GameAction {}
 final class Take extends GameAction {}
 final class Drop extends GameAction {}
 final class Resign extends GameAction { final Side side; }
-final class Timeout extends GameAction { final Side side; }
+final class ClockTimeout extends GameAction { final Side side; } // renamed from Timeout (clashes with package:test)
 
 sealed class GameEvent {}
 // Subclasses:
@@ -695,7 +695,7 @@ After `CommitPlay`:
 - **After a remainder turn is committed**, the remainder player goes to `awaitingRoll`. Their own remainder is discarded.
 - **Otherwise** the opponent goes to `awaitingRoll`.
 
-**Any phase:** `Resign` / `Timeout` → `gameOver` with `GameResult(winner: other, kind: single, points: 1 × cube)`. An action in `gameOver` → `gameOver` violation. Any other phase/action mismatch → `wrongPhase`.
+**Any phase:** `Resign` / `ClockTimeout` → `gameOver` with `GameResult(winner: other, kind: resign | timeout, points: 1 × cube)` (decided after Task 10). An action in `gameOver` → `gameOver` violation. Any other phase/action mismatch → `wrongPhase`.
 
 **Steps:**
 - [ ] Tests first:
@@ -717,7 +717,7 @@ After `CommitPlay`:
 **API:**
 
 ```dart
-enum ResultKind { single, gammon, triple, mother, draw, checkersRemaining, resign }
+enum ResultKind { single, gammon, triple, mother, draw, checkersRemaining, resign, timeout }
 
 class GameResult {
   final Side? winner;     // null => draw
