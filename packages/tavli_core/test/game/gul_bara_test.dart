@@ -145,6 +145,21 @@ void main() {
     expect(u.state.dice, [6, 6, 6, 6]);
   });
 
+  test('a remainder turn refuses the cube and the other side', () {
+    final p = posSame(one: {21: 1, 9: 1}, two: {12: 1, 15: 1});
+    final s = ok(_twoToRollAtRoll4(p), const RollDice(6, 6)).state;
+    final rem = play(s, const [StepAction(Step(12, 6, 6)), CommitPlay()]);
+    expect(rem.remainderTurn, isTrue);
+    expect(actorOf(rem, const StepAction(Step(21, 15, 6))), S.one);
+    rejects(rem, const OfferDouble(), ViolationCode.wrongPhase);
+    rejects(rem, const OfferDouble(), ViolationCode.notYourAction, by: S.two);
+    rejects(rem, const StepAction(Step(21, 15, 6)), ViolationCode.notYourAction,
+        by: S.two);
+    rejects(rem, const CommitPlay(), ViolationCode.notYourAction, by: S.two);
+    expect(reduce(rem, const StepAction(Step(21, 15, 6)), by: S.one),
+        isA<GameUpdate>());
+  });
+
   test('undo within a remainder turn stays in the remainder turn', () {
     final p = posSame(one: {21: 1, 9: 1}, two: {12: 1, 15: 1});
     final s = ok(_twoToRollAtRoll4(p), const RollDice(6, 6)).state;

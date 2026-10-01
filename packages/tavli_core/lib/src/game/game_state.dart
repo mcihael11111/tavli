@@ -19,6 +19,7 @@ import 'rule_violation.dart';
 
 part 'reducer.dart';
 part 'reducer_cube.dart';
+part 'reducer_forfeit.dart';
 part 'reducer_remainder.dart';
 
 /// Where a game is in its turn cycle.
@@ -141,17 +142,29 @@ final class GameState {
   /// setting up scenarios (tests, puzzles, a resumed game).
   ///
   /// Throws [StateError] during a moving phase, and [ArgumentError] when
-  /// [position]'s direction is not the variant's.
+  /// [position]'s direction is not the variant's or the position is
+  /// already finished (`endsGame` holds for either side: 15 borne off, a
+  /// pinned mother whose pinner has left its start, both mothers pinned).
   GameState withPosition(Position position) {
     if (phase == GamePhase.moving) {
       throw StateError('withPosition during a moving phase');
     }
-    if (position.direction != variant.rules.direction) {
+    final rules = variant.rules;
+    if (position.direction != rules.direction) {
       throw ArgumentError.value(
         position.direction,
         'position',
-        '${variant.name} plays ${variant.rules.direction.name}',
+        '${variant.name} plays ${rules.direction.name}',
       );
+    }
+    for (final side in Side.values) {
+      if (endsGame(position, rules, side)) {
+        throw ArgumentError.value(
+          position,
+          'position',
+          'already finished (as if ${side.name} just moved)',
+        );
+      }
     }
     return _copy(position: position, turnStart: position);
   }

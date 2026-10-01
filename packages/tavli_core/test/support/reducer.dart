@@ -30,10 +30,11 @@ void rejects(GameState s, GameAction a, ViolationCode code, {Side? by}) {
 }
 
 /// Plays the first legal play of the tree (first next step each time) and
-/// commits.
+/// commits, unless a step ended the game.
 GameState playAny(GameState s) {
   while (!s.node.isComplete) {
     s = ok(s, StepAction(s.node.nextSteps.first)).state;
+    if (s.phase == GamePhase.gameOver) return s;
   }
   return ok(s, const CommitPlay()).state;
 }

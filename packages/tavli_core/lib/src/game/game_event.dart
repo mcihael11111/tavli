@@ -122,7 +122,9 @@ final class TurnPassed extends GameEvent {
   String toString() => 'TurnPassed(${side.name}, $dice)';
 }
 
-/// Gul Bara D16-B: [to] must now play the cascade remainder [dice].
+/// Gul Bara D16-B: [to] must now play the cascade remainder [dice]. If
+/// [to] cannot play any of it, no other event follows: the new state has
+/// [to] about to roll its own turn.
 final class RemainderPassed extends GameEvent {
   final Side to;
   final List<int> dice;

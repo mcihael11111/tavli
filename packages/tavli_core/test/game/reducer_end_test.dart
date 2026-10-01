@@ -12,34 +12,72 @@ const _portes = Variant.portes;
 GameState _portesToRoll() => GameState.initial(_portes, starter: S.one);
 
 void main() {
-  group('resign and timeout', () {
-    test('resign in opening: the opponent wins 1 x cube, kind resign', () {
+  group('A9 resign and timeout score the threatened result', () {
+    GameResult res(S winner, ResultKind kind, int points, [int cube = 1]) =>
+        GameResult(winner: winner, kind: kind, points: points, cubeValue: cube);
+
+    test('in the opening nothing is borne off: a gammon (Portes)', () {
       final u = ok(GameState.initial(_portes), const Resign(S.one));
       expect(u.state.phase, GamePhase.gameOver);
-      expect(
-        u.state.result,
-        const GameResult(
-            winner: S.two, kind: ResultKind.resign, points: 1, cubeValue: 1),
-      );
+      expect(u.state.result, res(S.two, ResultKind.resign, 2));
       expect(u.events, [GameEnded(u.state.result!)]);
     });
 
-    test('resign and timeout while awaiting the roll', () {
-      final s = _portesToRoll();
-      expect(
-          ok(s, const Resign(S.one)).state.result,
-          const GameResult(
-              winner: S.two, kind: ResultKind.resign, points: 1, cubeValue: 1));
-      expect(
-          ok(s, const ClockTimeout(S.two)).state.result,
-          const GameResult(
-              winner: S.one,
-              kind: ResultKind.timeout,
-              points: 1,
-              cubeValue: 1));
+    test('single once the loser has borne off', () {
+      final p = pos(one: {2: 3}, two: {1: 2, 6: 10});
+      final s = _portesToRoll().withPosition(p);
+      expect(ok(s, const ClockTimeout(S.two)).state.result,
+          res(S.one, ResultKind.timeout, 1));
+      expect(ok(s, const Resign(S.one)).state.result,
+          res(S.two, ResultKind.resign, 1));
     });
 
-    test('resign or timeout during an offer: the offer lapses', () {
+    test('triple where the triple condition holds (Short Nard koks)', () {
+      // At the start the loser has checkers on its 24 (the winner's home).
+      final s = GameState.initial(Variant.shortNard, starter: S.one);
+      expect(ok(s, const Resign(S.two)).state.result,
+          res(S.one, ResultKind.resign, 3));
+      // Shesh Besh: none in the winner's home, only on the bar -> gammon.
+      final p = pos(one: {1: 2, 6: 10}, two: {6: 14}, barTwo: 1);
+      final sb =
+          GameState.initial(Variant.sheshBesh, starter: S.one).withPosition(p);
+      expect(ok(sb, const Resign(S.two)).state.result,
+          res(S.one, ResultKind.resign, 2));
+    });
+
+    test('mother points when the loser\'s mother is pinned', () {
+      // two pins my mother but still has a checker on its 24 (D8b).
+      final p = pos(
+        one: {24: 1, 6: 14},
+        two: {1: 1, 24: 1, 13: 13},
+        pinnedOne: {24},
+      );
+      final s =
+          GameState.initial(Variant.plakoto, starter: S.one).withPosition(p);
+      expect(ok(s, const Resign(S.one)).state.result,
+          res(S.two, ResultKind.resign, 2));
+      // Side two's mother is free and two has borne off one: single.
+      final p2 = pos(
+        one: {24: 1, 6: 14},
+        two: {1: 1, 24: 1, 13: 12},
+        pinnedOne: {24},
+      );
+      final s2 =
+          GameState.initial(Variant.plakoto, starter: S.one).withPosition(p2);
+      expect(ok(s2, const Resign(S.two)).state.result,
+          res(S.one, ResultKind.resign, 1));
+    });
+
+    test('Tawla 31: the loser\'s checkers on the board', () {
+      final s = GameState.initial(Variant.tawla31, starter: S.one);
+      expect(ok(s, const Resign(S.one)).state.result,
+          res(S.two, ResultKind.resign, 15));
+      final p = posSame(one: {3: 2}, two: {24: 9});
+      expect(ok(s.withPosition(p), const ClockTimeout(S.one)).state.result,
+          res(S.two, ResultKind.timeout, 2));
+    });
+
+    test('during an offer the offer lapses; the cube is not doubled', () {
       final offered = ok(GameState.initial(Variant.shortNard, starter: S.one),
               const OfferDouble())
           .state;
@@ -51,24 +89,17 @@ void main() {
         final end = ok(offered, a).state;
         expect(end.phase, GamePhase.gameOver);
         expect(end.cube.offeredBy, isNull);
-        expect(end.cube.value, 1, reason: 'the double was never taken');
-        expect(end.result,
-            GameResult(winner: S.one, kind: kind, points: 1, cubeValue: 1));
+        expect(end.cube.value, 1);
+        expect(end.result, res(S.one, kind, 3), reason: 'koks at the start');
       }
     });
 
-    test('timeout while moving, with the cube at 2', () {
+    test('times the cube, while moving', () {
       final s = play(GameState.initial(Variant.shortNard, starter: S.one),
           const [OfferDouble(), Take(), RollDice(3, 1)]);
       expect(s.phase, GamePhase.moving);
       final u = ok(s, const ClockTimeout(S.one));
-      expect(
-          u.state.result,
-          const GameResult(
-              winner: S.two,
-              kind: ResultKind.timeout,
-              points: 2,
-              cubeValue: 2));
+      expect(u.state.result, res(S.two, ResultKind.timeout, 6, 2));
     });
 
     test('every action after the game is over is gameOver', () {

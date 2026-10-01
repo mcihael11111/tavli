@@ -54,7 +54,8 @@ final class GameResult {
 
 /// The result if the step [justMoved] just made ended the game, else null
 /// (plan Task 11; matrix G8, D6, D8-D10, D21). Non-null exactly when
-/// `endsGame(p, rules, justMoved)` is true.
+/// `endsGame(p, rules, justMoved)` is true: only [justMoved] can win, and
+/// only the opponent's mother is examined.
 ///
 /// 1. Bear-off win: [justMoved] has borne off all 15.
 ///    - Checkers-remaining scoring (D21): the loser's checkers on board.
@@ -62,9 +63,13 @@ final class GameResult {
 ///      (1); upgraded to `scoring.triple` when set, the loser has borne
 ///      off none and the triple condition holds (bar or the winner's home
 ///      = the loser's pips 19..24). Times [cubeValue].
-/// 2. Mother rule (stateless): both mothers (pip 24) pinned is a draw at
-///    `pin.bothPinnedPoints` each; one side's mother pinned while the
-///    pinner has left its own start is a `mother` win at `pin.motherPoints`.
+/// 2. Mother rule, when the opponent's mother (its pip 24) is pinned: a
+///    draw at `pin.bothPinnedPoints` each if [justMoved]'s mother is
+///    pinned too; else a `mother` win at `pin.motherPoints` once
+///    [justMoved] has no checker left on its own start.
+///
+/// Mother, draw and checkers-remaining results are not multiplied: those
+/// variants have no cube, so [cubeValue] must be 1 there (asserted).
 GameResult? checkGameEnd(
   BoardView p,
   VariantRules rules, {
@@ -75,8 +80,10 @@ GameResult? checkGameEnd(
     return _bearOffResult(p, rules, justMoved, cubeValue);
   }
   final pin = rules.pin;
-  if (pin == null || !pin.motherRule) return null;
-  if (p.isPinned(Side.one, 24) && p.isPinned(Side.two, 24)) {
+  final them = justMoved.opponent;
+  if (pin == null || !pin.motherRule || !p.isPinned(them, 24)) return null;
+  assert(cubeValue == 1, 'pinning games have no cube');
+  if (p.isPinned(justMoved, 24)) {
     return GameResult(
       winner: null,
       kind: ResultKind.draw,
@@ -84,18 +91,47 @@ GameResult? checkGameEnd(
       cubeValue: cubeValue,
     );
   }
-  for (final mother in Side.values) {
-    final pinner = mother.opponent;
-    if (p.isPinned(mother, 24) && p.count(pinner, 24) == 0) {
-      return GameResult(
-        winner: pinner,
-        kind: ResultKind.mother,
-        points: pin.motherPoints,
-        cubeValue: cubeValue,
-      );
-    }
+  if (p.count(justMoved, 24) > 0) return null;
+  return GameResult(
+    winner: justMoved,
+    kind: ResultKind.mother,
+    points: pin.motherPoints,
+    cubeValue: cubeValue,
+  );
+}
+
+/// Matrix A9: [loser] resigns or runs out of time ([kind] is `resign` or
+/// `timeout`) and forfeits what the board threatens, times [cubeValue]:
+/// - checkers-remaining scoring (Tawla 31): the loser's checkers on board;
+/// - mother rule with the loser's mother pinned: `pin.motherPoints`;
+/// - otherwise triple if the variant has one, the loser has borne off
+///   none and the triple condition holds; gammon if the loser has borne
+///   off none; else single.
+///
+/// So resigning at the start, with nothing borne off, concedes a gammon
+/// (or a triple where the start position meets the triple condition).
+GameResult forfeitResult(
+  BoardView p,
+  VariantRules rules,
+  Side loser,
+  ResultKind kind,
+  int cubeValue,
+) {
+  final int points;
+  final pin = rules.pin;
+  if (rules.scoring.model == ScoringModel.checkersRemaining) {
+    points = p.checkersOnBoard(loser);
+  } else if (pin != null && pin.motherRule && p.isPinned(loser, 24)) {
+    points = pin.motherPoints;
+  } else {
+    points = _margin(p, rules.scoring, loser).points;
   }
-  return null;
+  return GameResult(
+    winner: loser.opponent,
+    kind: kind,
+    points: points * cubeValue,
+    cubeValue: cubeValue,
+  );
 }
 
 GameResult _bearOffResult(
@@ -107,6 +143,7 @@ GameResult _bearOffResult(
   final loser = winner.opponent;
   final scoring = rules.scoring;
   if (scoring.model == ScoringModel.checkersRemaining) {
+    assert(cubeValue == 1, 'checkers-remaining games have no cube');
     return GameResult(
       winner: winner,
       kind: ResultKind.checkersRemaining,
@@ -114,23 +151,28 @@ GameResult _bearOffResult(
       cubeValue: cubeValue,
     );
   }
-  var kind = ResultKind.single;
-  var points = 1;
-  if (p.borneOff(loser) == 0) {
-    kind = ResultKind.gammon;
-    points = 2;
-    final triple = scoring.triple;
-    if (triple != null && _tripleHolds(p, loser, scoring.tripleCondition!)) {
-      kind = ResultKind.triple;
-      points = triple;
-    }
-  }
+  final (:kind, :points) = _margin(p, scoring, loser);
   return GameResult(
     winner: winner,
     kind: kind,
     points: points * cubeValue,
     cubeValue: cubeValue,
   );
+}
+
+/// Single (1), gammon (2) or triple (`scoring.triple`) against [loser],
+/// before the cube (G8, D6).
+({ResultKind kind, int points}) _margin(
+  BoardView p,
+  Scoring scoring,
+  Side loser,
+) {
+  if (p.borneOff(loser) > 0) return (kind: ResultKind.single, points: 1);
+  final triple = scoring.triple;
+  if (triple != null && _tripleHolds(p, loser, scoring.tripleCondition!)) {
+    return (kind: ResultKind.triple, points: triple);
+  }
+  return (kind: ResultKind.gammon, points: 2);
 }
 
 /// D6: the loser has a checker in the winner's home (its own pips

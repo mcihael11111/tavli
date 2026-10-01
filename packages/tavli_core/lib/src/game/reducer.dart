@@ -7,6 +7,9 @@ part of 'game_state.dart';
 ///   the side to move;
 /// - `Take`, `Drop`: the side the double was offered to;
 /// - `Resign`, `ClockTimeout`: the action's own side.
+///
+/// Rolls carry their dice as data; a server must fill them from its own
+/// RNG and never accept dice from a client.
 Side? actorOf(GameState s, GameAction a) => switch (a) {
       RollOpening() => null,
       RollDice() || StepAction() || UndoStep() || CommitPlay() => s.sideToMove,
@@ -19,6 +22,10 @@ Side? actorOf(GameState s, GameAction a) => switch (a) {
 ///
 /// With [by] (the authenticated sender, e.g. on the game server), an
 /// action whose [actorOf] is another side is a `notYourAction` violation.
+///
+/// The dice in [RollOpening] and [RollDice] are taken as given: they must
+/// come from a trusted source (the server's or the local RNG), never from
+/// a client. `actorOf` says who may *trigger* a roll, not who rolls.
 ///
 /// Never throws on bad input: a rejected action returns a [RuleViolation]
 /// and leaves [s] as it was.
@@ -146,17 +153,27 @@ ReduceResult _beginMoving(
 
 /// The side to move has finished its turn: the opponent is to roll.
 GameState _passTurn(GameState s) {
-  final side = s.sideToMove!, next = side.opponent;
-  final turns = {...s.turnsTaken, side: s.turnsTaken[side]! + 1};
+  final side = s.sideToMove!;
+  return _toRoll(
+    s,
+    side.opponent,
+    {...s.turnsTaken, side: s.turnsTaken[side]! + 1},
+  );
+}
+
+/// [s] reset to [side] about to roll on the current board, with [turns]
+/// (default: unchanged): no dice, steps or remainder.
+GameState _toRoll(GameState s, Side side, [Map<Side, int>? turns]) {
+  final t = turns ?? s.turnsTaken;
   return s._copy(
-    sideToMove: next,
+    sideToMove: side,
     phase: GamePhase.awaitingRoll,
     turnStart: s.position,
     dice: const [],
     cascadeMode: false,
     steps: const [],
-    context: _startContext(next, turns, const []),
-    turnsTaken: turns,
+    context: _startContext(side, t, const []),
+    turnsTaken: t,
     pendingRemainder: const [],
     remainderTurn: false,
   );

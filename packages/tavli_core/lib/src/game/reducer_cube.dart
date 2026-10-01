@@ -1,6 +1,6 @@
 part of 'game_state.dart';
 
-// Cube and forfeit transitions of the reducer.
+// Cube transitions of the reducer (D7; plan Task 13).
 
 /// D7: the side to move offers to double before rolling.
 ReduceResult _offer(GameState s) {
@@ -35,12 +35,12 @@ ReduceResult _offer(GameState s) {
 /// The opponent takes: the cube doubles and passes to the taker; the
 /// offerer goes on to roll.
 ReduceResult _take(GameState s) {
-  final taker = s.sideToMove!.opponent;
+  final taker = s.cube.offeredBy!.opponent;
   final value = s.cube.value * 2;
   return GameUpdate(
     s._copy(
       phase: GamePhase.awaitingRoll,
-      cube: s.cube.copyWith(value: value, owner: taker),
+      cube: s.cube.copyWith(value: value, owner: taker).clearOffer(),
     ),
     [CubeTaken(taker, value)],
   );
@@ -49,7 +49,7 @@ ReduceResult _take(GameState s) {
 /// The opponent drops: the offerer wins a single game at the current
 /// value.
 ReduceResult _drop(GameState s) {
-  final offerer = s.sideToMove!;
+  final offerer = s.cube.offeredBy!;
   final value = s.cube.value;
   final result = GameResult(
     winner: offerer,
@@ -60,30 +60,9 @@ ReduceResult _drop(GameState s) {
   return GameUpdate(
     s._copy(
       phase: GamePhase.gameOver,
-      cube: s.cube.copyWith(),
+      cube: s.cube.clearOffer(),
       result: result,
     ),
     [CubeDropped(offerer.opponent), GameEnded(result)],
-  );
-}
-
-/// Resign or clock timeout by [loser], in any phase: the opponent wins
-/// 1 x cube, as [kind]. A pending cube offer lapses.
-ReduceResult _forfeit(GameState s, Side loser, ResultKind kind) {
-  final value = s.cube.value;
-  final result = GameResult(
-    winner: loser.opponent,
-    kind: kind,
-    points: value,
-    cubeValue: value,
-  );
-  return GameUpdate(
-    s._copy(
-      phase: GamePhase.gameOver,
-      cube: s.cube.copyWith(),
-      result: result,
-      keepTree: true,
-    ),
-    [GameEnded(result)],
   );
 }

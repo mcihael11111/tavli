@@ -24,13 +24,18 @@ final class CubeState {
     required this.enabled,
   });
 
-  /// A copy with the given fields replaced; [offeredBy] is always replaced.
+  /// A copy with the given fields replaced (use [clearOffer] to clear
+  /// [offeredBy]).
   CubeState copyWith({int? value, Side? owner, Side? offeredBy}) => CubeState(
         value: value ?? this.value,
         owner: owner ?? this.owner,
-        offeredBy: offeredBy,
+        offeredBy: offeredBy ?? this.offeredBy,
         enabled: enabled,
       );
+
+  /// A copy with no pending offer.
+  CubeState clearOffer() =>
+      CubeState(value: value, owner: owner, enabled: enabled);
 
   @override
   bool operator ==(Object other) =>

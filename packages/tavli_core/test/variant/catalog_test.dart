@@ -81,6 +81,18 @@ void main() {
       }
     });
 
+    test('D7 no cube where results are not cube-multiplied', () {
+      // checkGameEnd asserts cubeValue == 1 for mother, draw and
+      // checkers-remaining results.
+      for (final v in Variant.values) {
+        final r = v.rules;
+        if (r.pin != null ||
+            r.scoring.model == ScoringModel.checkersRemaining) {
+          expect(r.cube.available, isFalse, reason: v.name);
+        }
+      }
+    });
+
     test('D6 portes has no triple', () {
       expect(Variant.portes.rules.scoring.triple, isNull);
       expect(Variant.tavla.rules.scoring.triple, isNull);

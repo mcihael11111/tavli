@@ -16,7 +16,9 @@ List<int> _pendingRemainder(GameState s) {
 
 /// [s]'s player has finished its turn leaving [remainder]: the opponent
 /// plays it now, as a cascade that stops at its own first failure, then
-/// takes its own turn. With no play at all it goes straight to rolling.
+/// takes its own turn. With no play at all it goes straight to rolling,
+/// and the only event is [RemainderPassed] (no `TurnPassed`: the turn
+/// does not move on).
 ReduceResult _handOver(
   GameState s,
   List<int> remainder,
@@ -44,16 +46,4 @@ ReduceResult _handOver(
 /// The remainder player now rolls for its own turn. A remainder turn is
 /// not a turn of its own: `turnsTaken` and `rollIndex` stay, and the
 /// remainder's own unplayable tail is dropped.
-GameState _endRemainderTurn(GameState s) {
-  final side = s.sideToMove!;
-  return s._copy(
-    phase: GamePhase.awaitingRoll,
-    turnStart: s.position,
-    dice: const [],
-    cascadeMode: false,
-    steps: const [],
-    context: _startContext(side, s.turnsTaken, const []),
-    pendingRemainder: const [],
-    remainderTurn: false,
-  );
-}
+GameState _endRemainderTurn(GameState s) => _toRoll(s, s.sideToMove!);
