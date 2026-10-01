@@ -5,6 +5,9 @@ import '../play/step.dart';
 /// Immutable, with value equality, so the play generator can share the
 /// continuation of equal (position, context) pairs. Advance it only through
 /// `StepValidators.next`, which knows which fields the variant uses.
+///
+/// The constructor is not `const`: [hashCode] is computed once there, as
+/// the generator's memo hashes a context at every node.
 final class TurnContext {
   /// Checkers that have left the head (pip 24) this turn (D18).
   final int headDepartures;
@@ -16,18 +19,43 @@ final class TurnContext {
   /// turn (D4). Only recorded for variants with the D4 rule.
   final int homeHitMask;
 
-  /// The dice of this turn as rolled, e.g. `[5, 3]`, `[6, 6]` or
-  /// `[6, 6, 6, 6]`.
+  /// The dice of this turn (unmodifiable): as rolled for a normal roll,
+  /// e.g. `[5, 3]`, `[6, 6]` or `[6, 6, 6, 6]`; for a Gul Bara cascade,
+  /// the queue being played (`generateCascade` writes it here), e.g.
+  /// `[4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 6, 6]` or a remainder `[5, 6, 6, 6, 6]`.
   final List<int> diceOfTurn;
 
-  const TurnContext({
-    this.headDepartures = 0,
-    this.firstTurn = false,
-    this.homeHitMask = 0,
-    this.diceOfTurn = const [],
-  });
+  @override
+  final int hashCode;
 
-  /// Whether the turn's dice are a double (D18).
+  TurnContext({
+    int headDepartures = 0,
+    bool firstTurn = false,
+    int homeHitMask = 0,
+    List<int> diceOfTurn = const [],
+  }) : this._(
+          headDepartures,
+          firstTurn,
+          homeHitMask,
+          List.unmodifiable(diceOfTurn),
+          Object.hashAll(diceOfTurn),
+        );
+
+  TurnContext._(
+    this.headDepartures,
+    this.firstTurn,
+    this.homeHitMask,
+    this.diceOfTurn,
+    this._diceHash,
+  ) : hashCode = Object.hash(headDepartures, firstTurn, homeHitMask, _diceHash);
+
+  /// Hash of [diceOfTurn], kept so [afterStep] need not rehash the dice.
+  final int _diceHash;
+
+  /// Whether the first two entries of [diceOfTurn] are equal: a double
+  /// roll (D18). For a cascade queue this reads the queue's head, so it is
+  /// only meaningful for normal rolls; no variant combines a head rule
+  /// with cascades.
   bool get isDouble => diceOfTurn.length >= 2 && diceOfTurn[0] == diceOfTurn[1];
 
   /// A copy with [diceOfTurn] replaced.
@@ -53,11 +81,12 @@ final class TurnContext {
     final to = a.step.to;
     final hitMask = homeHit && to >= 1 && to <= 6 ? 1 << to : 0;
     if (!fromHead && homeHitMask & hitMask == hitMask) return this;
-    return TurnContext(
-      headDepartures: headDepartures + (fromHead ? 1 : 0),
-      firstTurn: firstTurn,
-      homeHitMask: homeHitMask | hitMask,
-      diceOfTurn: diceOfTurn,
+    return TurnContext._(
+      headDepartures + (fromHead ? 1 : 0),
+      firstTurn,
+      homeHitMask | hitMask,
+      diceOfTurn,
+      _diceHash,
     );
   }
 
@@ -65,6 +94,7 @@ final class TurnContext {
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     if (other is! TurnContext ||
+        other.hashCode != hashCode ||
         other.headDepartures != headDepartures ||
         other.firstTurn != firstTurn ||
         other.homeHitMask != homeHitMask ||
@@ -76,14 +106,6 @@ final class TurnContext {
     }
     return true;
   }
-
-  @override
-  int get hashCode => Object.hash(
-        headDepartures,
-        firstTurn,
-        homeHitMask,
-        Object.hashAll(diceOfTurn),
-      );
 
   @override
   String toString() => 'TurnContext(head: $headDepartures, first: $firstTurn, '

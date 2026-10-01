@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   test('defaults', () {
-    const c = TurnContext();
+    final c = TurnContext();
     expect(c.headDepartures, 0);
     expect(c.firstTurn, isFalse);
     expect(c.homeHitMask, 0);
@@ -12,13 +12,13 @@ void main() {
   });
 
   test('D18 isDouble for two- and four-dice forms', () {
-    expect(const TurnContext(diceOfTurn: [6, 6]).isDouble, isTrue);
-    expect(const TurnContext(diceOfTurn: [3, 3, 3, 3]).isDouble, isTrue);
-    expect(const TurnContext(diceOfTurn: [5, 3]).isDouble, isFalse);
+    expect(TurnContext(diceOfTurn: [6, 6]).isDouble, isTrue);
+    expect(TurnContext(diceOfTurn: [3, 3, 3, 3]).isDouble, isTrue);
+    expect(TurnContext(diceOfTurn: [5, 3]).isDouble, isFalse);
   });
 
   test('D18 afterStep counts head departures only when told', () {
-    const c = TurnContext(firstTurn: true, diceOfTurn: [6, 6]);
+    final c = TurnContext(firstTurn: true, diceOfTurn: [6, 6]);
     const a = AppliedStep(Step(24, 18, 6));
     final c1 = c.afterStep(a, fromHead: true, homeHit: false);
     expect(c1.headDepartures, 1);
@@ -31,7 +31,7 @@ void main() {
   });
 
   test('D4 afterStep records hits on home pips 1..6 only', () {
-    const c = TurnContext();
+    final c = TurnContext();
     final c1 = c.afterStep(
       const AppliedStep(Step(6, 4, 2), hit: true),
       fromHead: false,
@@ -59,7 +59,7 @@ void main() {
   });
 
   test('D4 afterStep ignores a hit when not told it is a D4 hit', () {
-    const c = TurnContext();
+    final c = TurnContext();
     final c1 = c.afterStep(
       const AppliedStep(Step(6, 4, 2), hit: true),
       fromHead: false,
@@ -69,27 +69,37 @@ void main() {
   });
 
   test('value equality and hashCode', () {
-    const a = TurnContext(firstTurn: true, diceOfTurn: [6, 6, 6, 6]);
+    final a = TurnContext(firstTurn: true, diceOfTurn: [6, 6, 6, 6]);
     final b = TurnContext(
       firstTurn: true,
       diceOfTurn: List.of([6, 6, 6, 6]),
     );
     expect(a, b);
     expect(a.hashCode, b.hashCode);
-    expect(a == const TurnContext(diceOfTurn: [6, 6, 6, 6]), isFalse);
+    expect(a == TurnContext(diceOfTurn: [6, 6, 6, 6]), isFalse);
     expect(a == a.withDice(const [6, 6]), isFalse);
     expect(
-      const TurnContext(headDepartures: 1) == const TurnContext(),
+      TurnContext(headDepartures: 1) == TurnContext(),
       isFalse,
     );
     expect(
-      const TurnContext(homeHitMask: 1 << 3) == const TurnContext(),
+      TurnContext(homeHitMask: 1 << 3) == TurnContext(),
       isFalse,
     );
   });
 
+  test('dice are copied, so the cached hash stays valid', () {
+    final dice = [5, 3];
+    final c = TurnContext(diceOfTurn: dice);
+    final h = c.hashCode;
+    dice[0] = 6;
+    expect(c.diceOfTurn, [5, 3]);
+    expect(c.hashCode, h);
+    expect(() => c.diceOfTurn[0] = 1, throwsUnsupportedError);
+  });
+
   test('withDice replaces only the dice', () {
-    const c = TurnContext(headDepartures: 1, firstTurn: true, homeHitMask: 4);
+    final c = TurnContext(headDepartures: 1, firstTurn: true, homeHitMask: 4);
     final d = c.withDice(const [3, 3, 3, 3]);
     expect(d.diceOfTurn, [3, 3, 3, 3]);
     expect(d.headDepartures, 1);

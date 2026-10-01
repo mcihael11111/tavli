@@ -11,7 +11,7 @@ final _tavla = Variant.tavla.rules;
 final _fevga = Variant.fevga.rules;
 final _moultezim = Variant.moultezim.rules;
 final _gulBara = Variant.gulBara.rules; // same board, no play filters
-const _ctx = TurnContext();
+final _ctx = TurnContext();
 
 /// Whether [s] holds (>= 1 checker on) every pip in [pips] of [p].
 bool holdsAll(Position p, Side s, Iterable<int> pips) =>

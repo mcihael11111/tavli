@@ -9,7 +9,7 @@ typedef S = Side;
 final _portes = Variant.portes.rules;
 final _fevga = Variant.fevga.rules;
 final _longNard = Variant.longNard.rules;
-const _ctx = TurnContext();
+final _ctx = TurnContext();
 
 /// Tree invariants that hold for every generated tree.
 void expectWellFormed(PlayTree t) {
@@ -136,6 +136,21 @@ void main() {
         after(p, S.one, _fevga, const [Step(20, 17, 3)]),
       });
     });
+
+    // A7 (lower-die sequences dropped even when they reach the same final as
+    // a higher-die one) has no test because no position can reach it. With
+    // one die played, a play is a single step; two single steps with
+    // different dice reach the same final only if they bear off the same
+    // checker from the same pip h, so at least one die overshoots (> h).
+    // G6 then puts every other checker on pips <= h, below the other die,
+    // so after either step the other die bears off the highest remaining
+    // checker. Nothing can block that: all are still home (G5), no own
+    // checker is pinned (D11 would have blocked the first bear-off), the
+    // turn has no hit (D4), and validators otherwise only restrict leaving
+    // pip 24 or occupying a point. Both dice play, or the first step ends
+    // the game (A4), so the max is never one die. The
+    // generator still drops such sequences: it filters by dice used, not by
+    // final (see the higher-die test above).
 
     test('G4 doubles play as many as possible', () {
       // A lone checker on 13; two holds my 5: 13->11->9->7, then 7->5 fails.
@@ -300,7 +315,7 @@ void main() {
       // The caller's context has no dice; the generator must add them, or
       // the first-turn exception would silently not apply.
       final start = Position.forRules(_longNard);
-      const ctx = TurnContext(firstTurn: true);
+      final ctx = TurnContext(firstTurn: true);
       final t = generatePlays(start, S.one, const [6, 6, 6, 6], _longNard, ctx);
       expectWellFormed(t);
       // 24->18 twice; 18->12 is two's head, so two steps in all.

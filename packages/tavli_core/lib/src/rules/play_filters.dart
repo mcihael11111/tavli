@@ -25,11 +25,18 @@ abstract interface class PlayCandidate {
 final class PlayFilters {
   PlayFilters(this.rules)
       : _noWaste = rules.hit?.bearOffNoWaste ?? false,
-        _primes = rules.primes;
+        _primes = rules.primes,
+        _steps = StepRules(rules),
+        _validators = StepValidators(rules);
 
   final VariantRules rules;
   final bool _noWaste;
   final PrimeRules _primes;
+
+  // For D13-A's opponent first-step check.
+  final StepRules _steps;
+  final StepValidators _validators;
+  static final _freshContext = TurnContext();
 
   bool get _hasPrimeLimit =>
       _primes.noSixOwnStartQuarter ||
@@ -121,18 +128,16 @@ final class PlayFilters {
   /// under its own validators and a fresh, not-first-turn context. A legal
   /// first step for die d means every roll containing d gives a play.
   bool _hasFirstStep(Position f, Side them) {
-    final steps = StepRules(rules);
-    final validators = StepValidators(rules);
-    const ctx = TurnContext();
+    final ctx = _freshContext;
     MutablePosition? m;
     for (var die = 1; die <= 6; die++) {
-      for (final step in steps.basicSteps(f, them, die)) {
-        if (!validators.allowsBefore(f, them, step, ctx)) continue;
-        if (!validators.checksAfter) return true;
+      for (final step in _steps.basicSteps(f, them, die)) {
+        if (!_validators.allowsBefore(f, them, step, ctx)) continue;
+        if (!_validators.checksAfter) return true;
         final p = m ??= f.toMutable();
-        final a = steps.apply(p, them, step);
-        final ok = validators.allowsAfter(p, them, a, ctx);
-        steps.undo(p, them, a);
+        final a = _steps.apply(p, them, step);
+        final ok = _validators.allowsAfter(p, them, a, ctx);
+        _steps.undo(p, them, a);
         if (ok) return true;
       }
     }

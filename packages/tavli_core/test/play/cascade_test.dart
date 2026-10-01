@@ -7,7 +7,7 @@ import '../support/positions.dart';
 typedef S = Side;
 
 final _gul = Variant.gulBara.rules;
-const _ctx = TurnContext();
+final _ctx = TurnContext();
 
 void main() {
   group('cascadeQueue', () {

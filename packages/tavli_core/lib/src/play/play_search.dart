@@ -21,14 +21,19 @@ final class _Leaf implements PlayCandidate {
   final int waste;
 }
 
-/// A search state: equal states have identical continuations.
+/// A search state: equal states have identical continuations. Shared by
+/// both searches, which measure [progress] differently.
 final class _Key {
-  _Key(this.position, this.ctx, this.used)
-      : hashCode = Object.hash(position, ctx, used);
+  _Key(this.position, this.ctx, this.progress)
+      : hashCode = Object.hash(position, ctx, progress);
 
   final Position position;
   final TurnContext ctx;
-  final int used;
+
+  /// How far through the dice the state is: in [_Search] the bitmask of
+  /// dice used (bit i => `dice[i]`); in [_Cascade] the queue index of the
+  /// next die.
+  final int progress;
 
   @override
   final int hashCode;
@@ -36,7 +41,7 @@ final class _Key {
   @override
   bool operator ==(Object other) =>
       other is _Key &&
-      other.used == used &&
+      other.progress == progress &&
       other.position == position &&
       other.ctx == ctx;
 }

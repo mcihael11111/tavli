@@ -8,7 +8,7 @@ import '../support/positions.dart';
 typedef S = Side;
 
 final _gul = Variant.gulBara.rules;
-const _ctx = TurnContext();
+final _ctx = TurnContext();
 
 /// Brute force without any max-playable search: expand every distinct
 /// (position, context) level by level along the queue. A game-ending step

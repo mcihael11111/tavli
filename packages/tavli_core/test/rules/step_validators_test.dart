@@ -28,7 +28,7 @@ void main() {
   group('head rule', () {
     test('D18 one head checker per turn (Long Nard 5-3)', () {
       final m = Position.forRules(_longNard).toMutable();
-      const ctx0 = TurnContext(firstTurn: true, diceOfTurn: [5, 3]);
+      final ctx0 = TurnContext(firstTurn: true, diceOfTurn: [5, 3]);
       final ctx1 = _play(_lnSteps, _ln, m, const Step(24, 19, 5), ctx0);
       expect(ctx1.headDepartures, 1);
       expect(_ln.allowsBefore(m, S.one, const Step(24, 21, 3), ctx1), isFalse);
@@ -37,7 +37,7 @@ void main() {
 
     test('D18 first-turn 6-6 allows two off the head, not three', () {
       final m = Position.forRules(_longNard).toMutable();
-      var ctx = const TurnContext(firstTurn: true, diceOfTurn: [6, 6, 6, 6]);
+      var ctx = TurnContext(firstTurn: true, diceOfTurn: [6, 6, 6, 6]);
       ctx = _play(_lnSteps, _ln, m, const Step(24, 18, 6), ctx);
       ctx = _play(_lnSteps, _ln, m, const Step(24, 18, 6), ctx);
       expect(ctx.headDepartures, 2);
@@ -65,9 +65,9 @@ void main() {
     test('D18 first-turn 5-5 allows only one', () {
       final p = Position.forRules(_longNard);
       const step = Step(24, 19, 5);
-      const ctx0 = TurnContext(firstTurn: true, diceOfTurn: [5, 5, 5, 5]);
+      final ctx0 = TurnContext(firstTurn: true, diceOfTurn: [5, 5, 5, 5]);
       expect(_ln.allowsBefore(p, S.one, step, ctx0), isTrue);
-      const ctx1 = TurnContext(
+      final ctx1 = TurnContext(
         firstTurn: true,
         diceOfTurn: [5, 5, 5, 5],
         headDepartures: 1,
@@ -77,7 +77,7 @@ void main() {
 
     test('D18 later-turn 6-6 allows only one', () {
       final p = posSame(one: {24: 14, 10: 1}, two: {24: 15});
-      const ctx = TurnContext(diceOfTurn: [6, 6, 6, 6], headDepartures: 1);
+      final ctx = TurnContext(diceOfTurn: [6, 6, 6, 6], headDepartures: 1);
       expect(_ln.allowsBefore(p, S.one, const Step(24, 18, 6), ctx), isFalse);
       expect(_ln.allowsBefore(p, S.one, const Step(10, 4, 6), ctx), isTrue);
     });
@@ -85,16 +85,16 @@ void main() {
     test('D18 head departures are only counted under a head rule', () {
       final fevga = StepValidators(Variant.fevga.rules);
       const a = AppliedStep(Step(24, 20, 4));
-      expect(fevga.next(const TurnContext(), a).headDepartures, 0);
-      expect(_ln.next(const TurnContext(), a).headDepartures, 1);
-      expect(_ln.next(const TurnContext(), const AppliedStep(Step(20, 16, 4))),
+      expect(fevga.next(TurnContext(), a).headDepartures, 0);
+      expect(_ln.next(TurnContext(), a).headDepartures, 1);
+      expect(_ln.next(TurnContext(), const AppliedStep(Step(20, 16, 4))),
           isA<TurnContext>().having((c) => c.headDepartures, 'head', 0));
     });
   });
 
   group('sole runner', () {
     final fevga = StepValidators(Variant.fevga.rules);
-    const ctx = TurnContext();
+    final ctx = TurnContext();
 
     test('§4.3 advancement Fevga runner', () {
       final start = Position.forRules(Variant.fevga.rules);
@@ -165,7 +165,7 @@ void main() {
       final m = p.toMutable();
       expect(_lnSteps.basicSteps(m, S.one, 2), contains(const Step(8, 6, 2)));
       final a = _lnSteps.apply(m, S.one, const Step(8, 6, 2));
-      return v.allowsAfter(m, S.one, a, const TurnContext());
+      return v.allowsAfter(m, S.one, a, TurnContext());
     }
 
     test('D19 trap illegal mid-turn: all 15 behind, none off', () {
@@ -191,7 +191,7 @@ void main() {
       const step = Step(16, 15, 1);
       expect(_lnSteps.basicSteps(m, S.one, 1), contains(step));
       final a = _lnSteps.apply(m, S.one, step);
-      expect(_ln.allowsAfter(m, S.one, a, const TurnContext()), isTrue);
+      expect(_ln.allowsAfter(m, S.one, a, TurnContext()), isTrue);
     });
 
     test('D19 applies to side two (mirror of the mid-turn trap)', () {
@@ -203,13 +203,13 @@ void main() {
       const step = Step(8, 6, 2);
       expect(_lnSteps.basicSteps(m, S.two, 2), contains(step));
       final a = _lnSteps.apply(m, S.two, step);
-      expect(_ln.allowsAfter(m, S.two, a, const TurnContext()), isFalse);
+      expect(_ln.allowsAfter(m, S.two, a, TurnContext()), isFalse);
     });
 
     test('D19 a non-completing step is allowed', () {
       final m = before.toMutable();
       final a = _lnSteps.apply(m, S.one, const Step(8, 5, 3));
-      expect(_ln.allowsAfter(m, S.one, a, const TurnContext()), isTrue);
+      expect(_ln.allowsAfter(m, S.one, a, TurnContext()), isTrue);
     });
 
     test('D19 allowed with one opposing checker in front', () {
@@ -261,7 +261,7 @@ void main() {
       final m = p.toMutable();
       final a = tavlaSteps.apply(m, S.one, hitStep);
       expect(a.hit, isTrue);
-      final ctx = tavla.next(const TurnContext(), a);
+      final ctx = tavla.next(TurnContext(), a);
       expect(ctx.homeHitMask, 1 << 4);
       expect(tavlaSteps.basicSteps(m, S.one, 1), contains(const Step(4, 3, 1)));
       expect(tavla.allowsBefore(m, S.one, const Step(4, 3, 1), ctx), isFalse);
@@ -278,7 +278,7 @@ void main() {
       final m = q.toMutable();
       final a = tavlaSteps.apply(m, S.one, hitStep);
       expect(a.hit, isTrue);
-      final ctx = tavla.next(const TurnContext(diceOfTurn: [2, 4]), a);
+      final ctx = tavla.next(TurnContext(diceOfTurn: [2, 4]), a);
       const off = Step(4, 0, 4);
       expect(tavlaSteps.basicSteps(m, S.one, 4), contains(off));
       expect(tavla.allowsBefore(m, S.one, off, ctx), isFalse);
@@ -291,7 +291,7 @@ void main() {
       final m = q.toMutable();
       final a = tavlaSteps.apply(m, S.two, hitStep);
       expect(a.hit, isTrue);
-      final ctx = tavla.next(const TurnContext(), a);
+      final ctx = tavla.next(TurnContext(), a);
       expect(ctx.homeHitMask, 1 << 4);
       expect(tavla.allowsBefore(m, S.two, const Step(4, 3, 1), ctx), isFalse);
       expect(tavla.allowsBefore(m, S.two, const Step(8, 4, 4), ctx), isTrue);
@@ -301,8 +301,8 @@ void main() {
       final portes = StepValidators(Variant.portes.rules);
       final m = p.toMutable();
       final a = hitRules.apply(m, S.one, hitStep);
-      final ctx = portes.next(const TurnContext(), a);
-      expect(ctx, const TurnContext(), reason: 'no D4 rule, no split');
+      final ctx = portes.next(TurnContext(), a);
+      expect(ctx, TurnContext(), reason: 'no D4 rule, no split');
       expect(portes.allowsBefore(m, S.one, const Step(4, 3, 1), ctx), isTrue);
     });
 
@@ -312,7 +312,7 @@ void main() {
       final m = q.toMutable();
       final a = tavlaSteps.apply(m, S.one, const Step(13, 7, 6));
       expect(a.hit, isTrue);
-      final ctx = tavla.next(const TurnContext(), a);
+      final ctx = tavla.next(TurnContext(), a);
       expect(ctx.homeHitMask, 0);
       expect(tavla.allowsBefore(m, S.one, const Step(7, 4, 3), ctx), isTrue);
     });
