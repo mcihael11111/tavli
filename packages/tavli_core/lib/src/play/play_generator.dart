@@ -13,6 +13,7 @@ import '../rules/turn_context.dart';
 import '../variant/variant_rules.dart';
 import 'step.dart';
 
+part 'play_cascade.dart';
 part 'play_search.dart';
 part 'play_tree.dart';
 
@@ -34,7 +35,7 @@ PlayTree generatePlays(
       (d.length == 2 && d[0] != d[1] ||
           d.length == 4 && d.every((v) => v == d[0]));
   if (!ok) throw ArgumentError.value(dice, 'dice', 'not [a, b] or [d x4]');
-  return _generate(p, s, d, rules, ctx.withDice(d), ordered: false);
+  return _generate(p, s, d, rules, ctx.withDice(d));
 }
 
 /// Ordered cascade queue for double [d] (D15):
@@ -49,10 +50,15 @@ List<int> cascadeQueue(int d) {
 /// Every legal cascade play (Gul Bara, D15-D16) for [s] in [p]: [queue] is
 /// played strictly in order, as far as possible (G4 over the queue).
 ///
+/// The tree is lazy (design spec §4.4): `diceUsed` and `remainder` are
+/// computed up front, nodes compute their next steps on first access, and
+/// `finals` is not materialized (it throws; see [PlayTree.finals]).
+///
 /// The tree's `remainder` holds the queue entries no legal play reaches,
 /// including unplayed copies of the number that failed; it is the same
 /// for every legal play. [queue] must hold 1..24 dice in 1..6, e.g. a
-/// [cascadeQueue] or a remainder.
+/// [cascadeQueue] or a remainder. Throws [ArgumentError] for a bad queue,
+/// or for [rules] with play filters (a lazy tree cannot apply them).
 PlayTree generateCascade(
   Position p,
   Side s,
@@ -64,7 +70,13 @@ PlayTree generateCascade(
   if (q.isEmpty || q.length > 24 || q.any((v) => v < 1 || v > 6)) {
     throw ArgumentError.value(queue, 'queue', 'not 1..24 dice in 1..6');
   }
-  return _generate(p, s, q, rules, ctx.withDice(q), ordered: true);
+  if (!PlayFilters(rules).isNoOp) {
+    throw ArgumentError.value(rules, 'rules', 'cascades take no filters');
+  }
+  final cascade = _Cascade(rules, s, q);
+  final root = cascade.start(p, ctx.withDice(q));
+  final used = cascade.diceUsed;
+  return PlayTree._(root, null, used, List.unmodifiable(q.sublist(used)));
 }
 
 PlayTree _generate(
@@ -72,15 +84,12 @@ PlayTree _generate(
   Side s,
   List<int> dice,
   VariantRules rules,
-  TurnContext ctx, {
-  required bool ordered,
-}) {
-  final search = _Search(rules, s, dice, ordered: ordered);
+  TurnContext ctx,
+) {
+  final search = _Search(rules, s, dice);
   final root = search.run(p, ctx);
   final max = search.maxLength;
-  final remainder =
-      ordered ? List<int>.unmodifiable(dice.sublist(max)) : const <int>[];
-  if (max == 0) return PlayTree._(root, const {}, 0, remainder);
+  if (max == 0) return PlayTree._(root, const {}, 0, const []);
 
   // G4: only plays using the most dice; with one die of a non-double, the
   // higher die if it has any (validator-approved) play.
@@ -88,7 +97,7 @@ PlayTree _generate(
     for (final l in search.leaves)
       if (l.length == max) l,
   ];
-  if (max == 1 && !ordered && dice.length == 2) {
+  if (max == 1 && dice.length == 2) {
     final high = dice[0] > dice[1] ? 0 : 1;
     if (plays.any((l) => l.used == 1 << high)) {
       plays = [
@@ -106,7 +115,7 @@ PlayTree _generate(
     finals.add(l.finalPosition);
   }
   _prune(root, HashMap.identity());
-  return PlayTree._(root, finals, max, remainder);
+  return PlayTree._(root, finals, max, const []);
 }
 
 /// Drops every edge to a subtree without a complete node; returns whether

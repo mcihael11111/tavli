@@ -36,6 +36,11 @@ final class PlayFilters {
       _primes.noSixBeforeOccupiedOppHead ||
       _primes.maxPointsInOppStartQuarter != null;
 
+  /// Whether no filter applies to these rules (so [apply] returns its
+  /// input), as lazy cascade trees require.
+  bool get isNoOp =>
+      !_noWaste && !_hasPrimeLimit && !_primes.mustLeaveOpponentAMove;
+
   /// The plays of [s] in [plays] that survive every filter, in order.
   List<C> apply<C extends PlayCandidate>(List<C> plays, Side s) {
     var out = plays;

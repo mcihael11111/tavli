@@ -67,7 +67,7 @@ void main() {
         Step(6, 1, 5),
       ];
       expect(t.walk(play)?.isComplete, isTrue);
-      expect(t.finals, contains(after(p, S.one, _gul, play)));
+      expect(t.enumerateFinals(), contains(after(p, S.one, _gul, play)));
       // Every legal play stops at the same point of the queue.
       expect(t.walk(play.sublist(0, 9))?.isComplete, isFalse);
     });
@@ -98,7 +98,7 @@ void main() {
       final t = generateCascade(p, S.one, cascadeQueue(5), _gul, _ctx);
       expect(t.diceUsed, 1);
       expect(t.remainder, [5, 5, 5, 6, 6, 6, 6]);
-      expect(t.finals, {
+      expect(t.enumerateFinals(), {
         after(p, S.one, _gul, const [Step(13, 8, 5)])
       });
       expect(sequencesOf(t), [
@@ -110,7 +110,7 @@ void main() {
       final none = generateCascade(q, S.one, cascadeQueue(5), _gul, _ctx);
       expect(none.hasPlay, isFalse);
       expect(none.diceUsed, 0);
-      expect(none.finals, isEmpty);
+      expect(none.enumerateFinals(), isEmpty);
       expect(none.remainder, cascadeQueue(5));
     });
 

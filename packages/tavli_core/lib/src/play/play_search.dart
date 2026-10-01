@@ -41,27 +41,25 @@ final class _Key {
       other.ctx == ctx;
 }
 
-/// Depth-first make/unmake search over one [MutablePosition].
+/// Eager depth-first make/unmake search over one [MutablePosition], for
+/// normal rolls (cascades use the lazy [_Cascade]).
 ///
 /// Per node: `basicSteps` -> `allowsBefore` -> `apply` -> `allowsAfter`
 /// (only when the validators check after) -> recurse with
 /// `StepValidators.next` -> `undo`.
 ///
 /// From depth 2 on, states are memoized by (position, context, dice used),
-/// so transpositions share one subtree and the trie is a DAG. Without this
-/// a 16- or 24-step cascade would be exponential in its length.
+/// so transpositions share one subtree and the trie is a DAG.
 final class _Search {
-  _Search(VariantRules rules, this.side, this.dice, {required this.ordered})
+  _Search(VariantRules rules, this.side, this.dice)
       : _steps = StepRules(rules),
         _validators = StepValidators(rules),
         _checksAfter = StepValidators(rules).checksAfter;
 
   final Side side;
 
-  /// The dice; [ordered] plays them strictly in list order (cascade),
-  /// otherwise each distinct unused value is tried at every node.
+  /// The dice; each distinct unused value is tried at every node.
   final List<int> dice;
-  final bool ordered;
 
   final StepRules _steps;
   final StepValidators _validators;
@@ -111,7 +109,6 @@ final class _Search {
           _steps.undo(_p, side, a);
         }
       }
-      if (ordered) break;
     }
     if (!any) _leaf(node, depth, used, frozen);
     return node;
