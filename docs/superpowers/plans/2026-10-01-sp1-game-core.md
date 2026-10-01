@@ -32,6 +32,12 @@ Implementers write the tests first, exactly as listed (more are welcome), then i
 - **File size:** one responsibility per file, ≤ about 300 lines. Split by responsibility if one grows.
 - **Commits:** one per task (or per sub-step where noted), with the message given. Every message ends with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`. Stage files explicitly.
 - **Rule IDs:** test names start with the rule ID, e.g. `test('G6 bear off from highest pip when die exceeds it', ...)`.
+- **Board access** (added after the Task 1–3 review):
+  - Read-only rule code takes the public **`BoardView`** interface, which both `Position` and `MutablePosition` implement. This applies to validators that only read, play filters, `checkGameEnd`, and the SP2 evaluators.
+  - Only make/unmake code takes `MutablePosition`.
+  - The reducer and tests build start positions with **`Position.forRules(rules)`**.
+  - `freeze()` validates invariants in debug builds.
+  - `Position.fromJson` throws only `FormatException`.
 
 ### Test notation used below
 

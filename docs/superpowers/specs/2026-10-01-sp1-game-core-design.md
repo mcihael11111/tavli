@@ -86,7 +86,7 @@ Equality is structural. `hashCode` is computed once, cached, and **web-safe** (3
 `MutablePosition` gives make/unmake for the generator, and `freeze()` produces a `Position`.
 
 **Who controls a point** (contact helpers):
-- `owner(point)` is the side on top. For a pinned pair, that is the pinner.
+- `controller(me, myPip)` is the side on top. For a pinned pair, that is the pinner.
 - `isOpenFor(side, pip, contact)`:
   - **hit:** open if the opponent has ≤ 1 checker there;
   - **pin:** open if the opponent has ≤ 1 checker there, and that checker is not itself pinning one of mine;
@@ -334,3 +334,4 @@ Readers reject unknown schema versions.
 | Leave-a-move cost | ≤ 6 single-step checks per candidate with early exit; covered by a benchmark |
 | Gul Bara remainder chains | A cap: a remainder can't itself spawn a further remainder beyond the opponent's first failure (D16-B). A fuzz invariant checks termination |
 | Web-safety | No 64-bit hashing; ints stay in safe range; core compiles for all platforms (CI analyze) |
+| Dedup allocation pressure (every leaf is frozen before dedup) | If Task 17 benchmarks show pressure, add a web-safe incremental 30-bit XOR-Zobrist hash maintained in `MutablePosition` add/remove/setPinned, so duplicates are rejected before freezing |
