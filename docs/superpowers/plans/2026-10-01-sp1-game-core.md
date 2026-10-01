@@ -666,6 +666,14 @@ Object /* GameUpdate | RuleViolation */ reduce(GameState s, GameAction a);
 
 Prefer a small `sealed class ReduceResult` with two subclasses, `GameUpdate` and `RuleViolation`, so callers can `switch`.
 
+**Actor attribution** (added after the Task 10 review; the SP4 online server depends on it):
+- `Side? actorOf(GameState s, GameAction a)` returns who may send `a`:
+  - `RollOpening` → null (system);
+  - `RollDice`, `StepAction`, `UndoStep`, `CommitPlay`, `OfferDouble` → `sideToMove`;
+  - `Take`, `Drop` → the offerer's opponent;
+  - `Resign`, `ClockTimeout` → the action's own side.
+- `reduce(s, a, {Side? by})` rejects with `ViolationCode.notYourAction` when `by` is given and differs from a non-null `actorOf`.
+
 **Phase machine (binding):**
 
 **`opening` + `RollOpening(a, b)`:**
