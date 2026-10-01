@@ -3,6 +3,7 @@ library;
 
 import '../board/side.dart';
 import '../play/step.dart';
+import '../util/list_eq.dart';
 
 /// An input to `reduce`. Dice always arrive as data.
 ///
@@ -49,6 +50,17 @@ sealed class GameAction {
           throw FormatException('GameAction: step must be an object', j);
         }
         return StepAction(Step.fromJson(s));
+      case 'submitPlay':
+        final steps = j['steps'];
+        if (steps is! List<Object?>) {
+          throw FormatException('GameAction: steps must be a list', j);
+        }
+        return SubmitPlay([
+          for (final st in steps)
+            st is Map<String, Object?>
+                ? Step.fromJson(st)
+                : throw FormatException('GameAction: bad step', j),
+        ]);
       case 'undoStep':
         return const UndoStep();
       case 'commitPlay':
@@ -124,6 +136,34 @@ final class StepAction extends GameAction {
 
   @override
   String toString() => 'StepAction($step)';
+}
+
+/// The side to move plays a whole play at once: every step of [steps],
+/// then the commit (design §4.7: an online client composes its play
+/// locally and submits it once per turn). Only at the start of a moving
+/// phase (no step taken yet). All or nothing: an illegal step, or steps
+/// that are not a full play, reject the whole action; a game-ending step
+/// must be the last one.
+final class SubmitPlay extends GameAction {
+  /// Unmodifiable.
+  final List<Step> steps;
+  SubmitPlay(List<Step> steps) : steps = List.unmodifiable(steps);
+
+  @override
+  Map<String, Object?> toJson() => {
+        'type': 'submitPlay',
+        'steps': [for (final st in steps) st.toJson()],
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is SubmitPlay && listEq(other.steps, steps);
+
+  @override
+  int get hashCode => Object.hash('submitPlay', Object.hashAll(steps));
+
+  @override
+  String toString() => 'SubmitPlay($steps)';
 }
 
 /// Takes back the last step of the current play.

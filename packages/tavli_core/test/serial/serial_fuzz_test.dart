@@ -126,6 +126,12 @@ void main() {
           reduceMatch(parsed, GameMove(a));
         }
         reduceMatch(parsed, const NextGame());
+        for (final side in Side.values) {
+          final f = reduceMatch(parsed, ForfeitMatch(side));
+          if (f is MatchUpdate) {
+            expect(MatchState.fromJson(f.state.toJson()), f.state);
+          }
+        }
         // An accepted state serializes back to itself.
         expect(MatchState.fromJson(parsed.toJson()), parsed);
       }

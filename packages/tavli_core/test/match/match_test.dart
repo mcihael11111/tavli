@@ -103,7 +103,8 @@ void main() {
     m = step(m, const GameMove(RollDice(2, 5)));
     final u = reduceMatch(m, const GameMove(StepAction(Step(3, 1, 2))));
     m = (u as MatchUpdate).state;
-    expect(u.events.last, isA<GameEnded>());
+    expect(u.events.last, isA<InGame>());
+    expect((u.events.last as InGame).event, isA<GameEnded>());
     expect(m.history.single.kind, ResultKind.draw);
     expect(m.scores, {S.one: 0, S.two: 0});
     m = step(m, const NextGame());
@@ -153,7 +154,7 @@ void main() {
     expect(m.isOver, isFalse);
     m = step(m, const GameMove(Resign(S.one)));
     expect(m.isOver, isTrue);
-    expect(m.winner, isNull, reason: 'no target');
+    expect(m.winner, S.two, reason: 'the single game decides it');
     expect(m.history.single.winner, S.two);
     expect((reduceMatch(m, const NextGame()) as RuleViolation).code,
         ViolationCode.gameOver);

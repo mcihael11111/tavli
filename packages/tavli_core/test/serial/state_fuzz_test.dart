@@ -118,6 +118,9 @@ List<GameAction> _probes(GameState s, Random r) => [
       if (s.phase == GamePhase.moving)
         for (final st in s.node.nextSteps.take(3)) StepAction(st),
       _randomStep(r),
+      SubmitPlay([_randomStep(r).step]),
+      if (s.phase == GamePhase.moving)
+        SubmitPlay([...s.node.nextSteps.take(1)]),
       const UndoStep(),
       const CommitPlay(),
       const OfferDouble(),

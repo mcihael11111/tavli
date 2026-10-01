@@ -3,6 +3,7 @@
 library;
 
 import '../match/match.dart';
+import '../match/match_event.dart';
 import 'game_event.dart';
 import 'game_state.dart';
 
@@ -17,14 +18,15 @@ sealed class MatchReduceResult {
   const MatchReduceResult();
 }
 
-/// A match action was accepted: the new [state] and the game events it
-/// caused, in order (none for `NextGame`).
+/// A match action was accepted: the new [state] and what happened, in
+/// order: the game's events as [InGame], [GameStarted] for `NextGame`,
+/// and [MatchEnded] once the match is decided.
 final class MatchUpdate extends MatchReduceResult {
   final MatchState state;
 
   /// Unmodifiable.
-  final List<GameEvent> events;
-  MatchUpdate(this.state, List<GameEvent> events)
+  final List<MatchEvent> events;
+  MatchUpdate(this.state, List<MatchEvent> events)
       : events = List.unmodifiable(events);
 }
 

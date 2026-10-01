@@ -24,6 +24,7 @@ part 'reducer.dart';
 part 'reducer_cube.dart';
 part 'reducer_forfeit.dart';
 part 'reducer_remainder.dart';
+part 'reducer_submit.dart';
 
 /// Where a game is in its turn cycle.
 enum GamePhase { opening, awaitingRoll, cubeOffered, moving, gameOver }

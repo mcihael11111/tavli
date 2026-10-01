@@ -1,12 +1,14 @@
 /// Match actions (plan Task 14) and their JSON (Task 15).
 library;
 
+import '../board/side.dart';
 import '../game/game_action.dart';
 import '../serial/json_read.dart';
 
 /// An input to `reduceMatch`.
 ///
-/// JSON: `{"type": "gameMove", "action": {...}}` or `{"type": "nextGame"}`.
+/// JSON: `{"type": "gameMove", "action": {...}}`, `{"type": "nextGame"}`
+/// or `{"type": "forfeitMatch", "side": "one"|"two"}`.
 sealed class MatchAction {
   const MatchAction();
 
@@ -19,7 +21,8 @@ sealed class MatchAction {
     return switch (r.raw('type')) {
       'gameMove' => GameMove(GameAction.fromJson(r.raw('action'))),
       'nextGame' => const NextGame(),
-      _ => r.fail('type', 'gameMove or nextGame'),
+      'forfeitMatch' => ForfeitMatch(r.side('side')),
+      _ => r.fail('type', 'gameMove, nextGame or forfeitMatch'),
     };
   }
 }
@@ -58,4 +61,25 @@ final class NextGame extends MatchAction {
 
   @override
   String toString() => 'NextGame()';
+}
+
+/// [side] forfeits the whole match (e.g. leaves an online match): the
+/// current game, if not over, is resigned (A9 scoring), and the opponent
+/// wins the match whatever the scores.
+final class ForfeitMatch extends MatchAction {
+  final Side side;
+  const ForfeitMatch(this.side);
+
+  @override
+  Map<String, Object?> toJson() =>
+      {'type': 'forfeitMatch', 'side': side.toJson()};
+
+  @override
+  bool operator ==(Object other) => other is ForfeitMatch && other.side == side;
+
+  @override
+  int get hashCode => Object.hash('forfeitMatch', side);
+
+  @override
+  String toString() => 'ForfeitMatch(${side.name})';
 }

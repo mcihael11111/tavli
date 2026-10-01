@@ -3,8 +3,8 @@ part of 'game_state.dart';
 /// The side that must send [a] in [s], or null when either side (or the
 /// system) may: the opening roll, or an action that fits no phase.
 ///
-/// - `RollDice`, `StepAction`, `UndoStep`, `CommitPlay`, `OfferDouble`:
-///   the side to move;
+/// - `RollDice`, `StepAction`, `SubmitPlay`, `UndoStep`, `CommitPlay`,
+///   `OfferDouble`: the side to move;
 /// - `Take`, `Drop`: the side the double was offered to;
 /// - `Resign`, `ClockTimeout`: the action's own side.
 ///
@@ -12,7 +12,8 @@ part of 'game_state.dart';
 /// RNG and never accept dice from a client.
 Side? actorOf(GameState s, GameAction a) => switch (a) {
       RollOpening() => null,
-      RollDice() || StepAction() || UndoStep() || CommitPlay() => s.sideToMove,
+      RollDice() || StepAction() || SubmitPlay() => s.sideToMove,
+      UndoStep() || CommitPlay() => s.sideToMove,
       OfferDouble() => s.sideToMove,
       Take() || Drop() => s.cube.offeredBy?.opponent,
       Resign(:final side) || ClockTimeout(:final side) => side,
@@ -49,6 +50,7 @@ ReduceResult reduce(GameState s, GameAction a, {Side? by}) {
     RollOpening() when phase == GamePhase.opening => _opening(s, a),
     RollDice() when phase == GamePhase.awaitingRoll => _roll(s, a),
     StepAction() when phase == GamePhase.moving => _step(s, a.step),
+    SubmitPlay() when phase == GamePhase.moving => _submit(s, a.steps),
     UndoStep() when phase == GamePhase.moving => _undo(s),
     CommitPlay() when phase == GamePhase.moving => _commit(s),
     OfferDouble() when phase == GamePhase.awaitingRoll => _offer(s),

@@ -609,6 +609,7 @@ sealed class GameAction {
 final class RollOpening extends GameAction { final int dieOne, dieTwo; }
 final class RollDice extends GameAction { final int d1, d2; }
 final class StepAction extends GameAction { final Step step; }
+final class SubmitPlay extends GameAction { final List<Step> steps; } // added after Task 15: a whole play at once (program design §4.7)
 final class UndoStep extends GameAction {}
 final class CommitPlay extends GameAction {}
 final class OfferDouble extends GameAction {}
@@ -669,7 +670,7 @@ Prefer a small `sealed class ReduceResult` with two subclasses, `GameUpdate` and
 **Actor attribution** (added after the Task 10 review; the SP4 online server depends on it):
 - `Side? actorOf(GameState s, GameAction a)` returns who may send `a`:
   - `RollOpening` → null (system);
-  - `RollDice`, `StepAction`, `UndoStep`, `CommitPlay`, `OfferDouble` → `sideToMove`;
+  - `RollDice`, `StepAction`, `SubmitPlay`, `UndoStep`, `CommitPlay`, `OfferDouble` → `sideToMove`;
   - `Take`, `Drop` → the offerer's opponent;
   - `Resign`, `ClockTimeout` → the action's own side.
 - `reduce(s, a, {Side? by})` rejects with `ViolationCode.notYourAction` when `by` is given and differs from a non-null `actorOf`.
@@ -697,6 +698,7 @@ Prefer a small `sealed class ReduceResult` with two subclasses, `GameUpdate` and
 | `StepAction(step)` | Must be in `node.nextSteps`, else `illegalStep`. Apply it and emit `CheckerMoved`. Then run the game-end checks (Task 11); a game end goes to `gameOver` |
 | `UndoStep` | Fails with `nothingToUndo` if no steps were taken. Otherwise recompute the position from `turnStart` + `steps[..-1]` and emit `StepUndone` |
 | `CommitPlay` | Requires `node.isComplete`, else `incompletePlay`. Emit `PlayCommitted` and `turnsTaken[side]++` (see below) |
+| `SubmitPlay(steps)` | Only with no step taken yet (`state.steps.isEmpty`), else `wrongPhase`. Applies every step as `StepAction`, then `CommitPlay`, **atomically**: an illegal step (`illegalStep`) or a result that is not a full play (`incompletePlay`) rejects the whole action and leaves the state unchanged. A game-ending step ends the game there (no commit); any step after it is `illegalStep`. Events: the same `CheckerMoved`… (+ `GameEnded`) or … + `PlayCommitted` (+ `RemainderPassed`) sequence as step-by-step play |
 
 After `CommitPlay`:
 - **With a cascade remainder** (`tree.remainder.isNotEmpty`, `onFailure == opponentPlaysRemainder`, and not already `remainderTurn`): the opponent's phase becomes `moving` over `generateCascade` of the remainder with `remainderTurn: true`, and `RemainderPassed` is emitted. If the opponent has no play, they go straight to `awaitingRoll`.
@@ -834,6 +836,15 @@ class MatchConfig {
 sealed class MatchAction {}
 final class GameMove extends MatchAction { final GameAction action; }
 final class NextGame extends MatchAction {}
+final class ForfeitMatch extends MatchAction { final Side side; } // added after Task 15
+
+// Added after Task 15 (session and server needs):
+sealed class MatchEvent {}
+final class InGame extends MatchEvent { final GameEvent event; }
+final class GameStarted extends MatchEvent { final int index; final Variant variant; final Side? starter; final bool crawford; }
+final class MatchEnded extends MatchEvent { final Side? winner; final Map<Side, int> scores; }
+class MatchUpdate { final MatchState state; final List<MatchEvent> events; } // unmodifiable; events are values
+Side? matchActorOf(MatchState m, MatchAction a); // GameMove: actorOf; NextGame: null; ForfeitMatch: side
 
 class MatchState {
   final MatchConfig config;
@@ -842,7 +853,8 @@ class MatchState {
   final GameState game;
   final List<GameResult> history;
   final bool crawfordUsed;
-  final Side? winner;
+  final Side? winner;       // also set for a decided single game (draw => null)
+  final Side? forfeitedBy;  // the side that sent ForfeitMatch, if any
   bool get isOver;
 }
 
@@ -858,6 +870,9 @@ Object /* MatchUpdate | RuleViolation */ reduceMatch(MatchState m, MatchAction a
   - Variant = `cycle[(gameIndex + 1) % cycle.length]`.
   - Starter = the previous winner if that variant's rules say `previousWinner` and the last result had a winner; otherwise `opening`.
 - **Tawla 31:** target 31, and `checkersRemaining` points accumulate.
+- **Winner (added after Task 15):** a single game's winner is the match winner (a draw leaves it null); `isOver` is unchanged.
+- **Events (added after Task 15):** a `GameMove` emits its game events as `InGame`; `NextGame` emits `GameStarted(index, variant, starter, crawford)`; a game end that decides the match emits `MatchEnded(winner, scores)` after the `InGame(GameEnded)`.
+- **`ForfeitMatch(side)`** (actor = `side`; rejected with `gameOver` once the match is over): if the game is not over it is resigned by `side` (A9 `forfeitResult` scoring, emitting `InGame(GameEnded)`), then the match ends with `side.opponent` as winner whatever the scores (`forfeitedBy = side`), emitting `MatchEnded`.
 
 **Steps:**
 - [ ] Tests first:
