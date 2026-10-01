@@ -929,6 +929,10 @@ Games per variant = `int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? ''
 
 **Steps:**
 - [ ] Add `paths: [test, benchmark]` to `dart_test.yaml`.
+- [ ] **Failing-cascade budget.** A Gul Bara cascade that cannot reach the full queue must prove that by visiting every reachable state. Measured after Task 8: up to about 117k states and about 230 ms, asserts off. Target ≤ 50 ms p95 over cascades sampled from random games.
+  - Implement the incremental web-safe 30-bit XOR-Zobrist hash in `MutablePosition` (design spec §9) so the memo can key on the hash plus a verified freeze only on collision.
+  - Or add a sound pruning bound.
+  - Add the worst failing-cascade fixture to the benchmarks.
 - [ ] **Budget numbers must come from runs with asserts off.** `dart test` enables asserts, and `MutablePosition.freeze()` runs full invariant validation under assert.
   - Add `benchmark/run_benchmarks.dart`, a plain `main()` that reuses the same fixtures and prints `BenchStats`, and run it with `dart run --no-enable-asserts benchmark/run_benchmarks.dart`. Use those numbers for the SP1 report.
   - The `dart test` benchmark keeps the budget assertion with a documented 2× assert allowance (`budget × 2`), so CI still catches regressions.
