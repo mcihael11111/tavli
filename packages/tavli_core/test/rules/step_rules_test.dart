@@ -1,6 +1,7 @@
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../support/asserts.dart';
 import '../support/positions.dart';
 import '../support/steps.dart';
 
@@ -32,6 +33,14 @@ void main() {
       ]) {
         expect(() => Step.fromJson(j), throwsFormatException, reason: '$j');
       }
+    });
+
+    test('the constructor asserts to == max(0, from - die)', () {
+      if (!assertsOn) return;
+      int die() => 3; // non-const, so the assert runs at run time
+      expect(() => Step(8, 4, die()), throwsA(isA<AssertionError>()));
+      expect(() => Step(2, -1, die()), throwsA(isA<AssertionError>()));
+      expect(Step(2, 0, die()).to, 0);
     });
   });
 

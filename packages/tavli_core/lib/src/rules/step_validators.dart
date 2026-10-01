@@ -4,11 +4,13 @@ import '../play/step.dart';
 import '../variant/variant_rules.dart';
 import 'turn_context.dart';
 
-/// Turn-scoped step rules (plan Task 5): head (D18), sole runner
-/// (advancement), six-block trap (D19) and Tavla hit-and-run (D4).
+/// Turn-scoped step rules: head (D18), sole runner (advancement), six-block
+/// trap (D19) and Tavla hit-and-run (D4).
 ///
 /// The generator checks [allowsBefore] on each basic step, applies it, then
-/// checks [allowsAfter] and undoes the step when that returns false.
+/// checks [allowsAfter] (only when [checksAfter]) and undoes the step when
+/// that returns false. It advances the turn context with [next], the only
+/// entry point for doing so.
 final class StepValidators {
   StepValidators(this.rules)
       : _head = rules.head,
@@ -48,13 +50,23 @@ final class StepValidators {
   }
 
   /// Whether the position [p] after [a] is allowed for [s] (D19).
-  bool allowsAfter(BoardView p, Side s, AppliedStep a, TurnContext ctx) =>
-      !_noTrap || !_trapsAll(p, s);
+  bool allowsAfter(BoardView p, Side s, AppliedStep a, TurnContext ctx) {
+    if (!_noTrap) return true;
+    // Only a newly occupied point can complete a new run: leaving a point
+    // or stacking on a held one never adds a held point.
+    final to = a.step.to;
+    if (to == 0 || p.count(s, to) != 1) return true;
+    return !_trapsAll(p, s);
+  }
 
-  /// The context for the next step after [a]; counts a head departure only
-  /// under a head rule.
-  TurnContext next(TurnContext ctx, AppliedStep a) =>
-      ctx.afterStep(a, fromHead: _head != null && a.step.from == 24);
+  /// The only entry point for advancing [ctx] past [a]. Counts a head
+  /// departure only under a head rule (D18) and records a home hit only
+  /// under the D4 rule, so equal states keep equal contexts.
+  TurnContext next(TurnContext ctx, AppliedStep a) => ctx.afterStep(
+        a,
+        fromHead: _head != null && a.step.from == 24,
+        homeHit: _noHitAndRun && a.hit,
+      );
 
   static int _headLimit(HeadRule head, TurnContext ctx) {
     final exception = ctx.firstTurn &&

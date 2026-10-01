@@ -8,7 +8,9 @@ library;
 /// different dice stay distinct.
 final class Step {
   final int from, to, die;
-  const Step(this.from, this.to, this.die);
+  const Step(this.from, this.to, this.die)
+      : assert(
+            to == (from - die < 0 ? 0 : from - die), 'to = max(0, from - die)');
 
   /// `{"from": int, "to": int, "die": int}`.
   Map<String, Object?> toJson() => {'from': from, 'to': to, 'die': die};

@@ -160,22 +160,50 @@ void main() {
       two: {24: 15},
     );
 
-    AppliedStep completeSix(Position p) {
-      final m = p.toMutable();
-      expect(_lnSteps.basicSteps(m, S.one, 2), contains(const Step(8, 6, 2)));
-      final a = _lnSteps.apply(m, S.one, const Step(8, 6, 2));
-      return a;
-    }
-
+    /// Whether [v] allows 8->6 (die 2), asserting the step is generatable.
     bool afterSix(StepValidators v, Position p) {
       final m = p.toMutable();
+      expect(_lnSteps.basicSteps(m, S.one, 2), contains(const Step(8, 6, 2)));
       final a = _lnSteps.apply(m, S.one, const Step(8, 6, 2));
       return v.allowsAfter(m, S.one, a, const TurnContext());
     }
 
     test('D19 trap illegal mid-turn: all 15 behind, none off', () {
-      completeSix(before);
       expect(afterSix(_ln, before), isFalse);
+    });
+
+    test('D19 checksAfter only where a per-step trap rule exists', () {
+      expect(_ln.checksAfter, isTrue);
+      for (final v in Variant.values.where((v) => v != Variant.longNard)) {
+        expect(StepValidators(v.rules).checksAfter, isFalse, reason: '$v');
+      }
+    });
+
+    test('D19 my pips 10..15 do not wrap into a run (12/13 boundary)', () {
+      // My 10, 11, 12 = two's 22, 23, 24; my 13, 14, 15 = two's 1, 2, 3.
+      // Not consecutive along two's path, so never a six-block.
+      // two sits on its 21 (= my 9), behind its 22..24.
+      final p = posSame(
+        one: {24: 9, 16: 1, 14: 1, 13: 1, 12: 1, 11: 1, 10: 1},
+        two: {21: 15},
+      );
+      final m = p.toMutable();
+      const step = Step(16, 15, 1);
+      expect(_lnSteps.basicSteps(m, S.one, 1), contains(step));
+      final a = _lnSteps.apply(m, S.one, step);
+      expect(_ln.allowsAfter(m, S.one, a, const TurnContext()), isTrue);
+    });
+
+    test('D19 applies to side two (mirror of the mid-turn trap)', () {
+      final p = posSame(
+        one: {24: 15},
+        two: {24: 9, 11: 1, 10: 1, 9: 1, 8: 2, 7: 1},
+      );
+      final m = p.toMutable();
+      const step = Step(8, 6, 2);
+      expect(_lnSteps.basicSteps(m, S.two, 2), contains(step));
+      final a = _lnSteps.apply(m, S.two, step);
+      expect(_ln.allowsAfter(m, S.two, a, const TurnContext()), isFalse);
     });
 
     test('D19 a non-completing step is allowed', () {
@@ -223,19 +251,20 @@ void main() {
   });
 
   group('hit-and-run', () {
+    final tavlaSteps = StepRules(Variant.tavla.rules);
+    final tavla = StepValidators(Variant.tavla.rules);
     // two's 21 = my 4 (a blot in my home).
     final p = pos(one: {6: 2, 8: 1, 13: 12}, two: {21: 1, 1: 14});
     const hitStep = Step(6, 4, 2);
 
     test('D4 no hit-and-run: a hit point in home may not be left', () {
-      final tavla = StepValidators(Variant.tavla.rules);
       final m = p.toMutable();
-      final a = hitRules.apply(m, S.one, hitStep);
+      final a = tavlaSteps.apply(m, S.one, hitStep);
       expect(a.hit, isTrue);
       final ctx = tavla.next(const TurnContext(), a);
       expect(ctx.homeHitMask, 1 << 4);
+      expect(tavlaSteps.basicSteps(m, S.one, 1), contains(const Step(4, 3, 1)));
       expect(tavla.allowsBefore(m, S.one, const Step(4, 3, 1), ctx), isFalse);
-      expect(tavla.allowsBefore(m, S.one, const Step(4, 0, 4), ctx), isFalse);
       // Covering the hitter is allowed.
       expect(tavla.allowsBefore(m, S.one, const Step(6, 4, 2), ctx), isTrue);
       expect(tavla.allowsBefore(m, S.one, const Step(8, 4, 4), ctx), isTrue);
@@ -243,20 +272,45 @@ void main() {
       expect(tavla.allowsBefore(m, S.one, const Step(13, 9, 4), ctx), isTrue);
     });
 
-    test('D3 Portes allows hit-and-run', () {
+    test('A2 D4 all home: no bear-off from the hit point', () {
+      // All 15 of mine home; two's blot on its 21 (= my 4) entered my home.
+      final q = pos(one: {6: 4, 5: 4, 3: 4, 2: 3}, two: {21: 1, 1: 14});
+      final m = q.toMutable();
+      final a = tavlaSteps.apply(m, S.one, hitStep);
+      expect(a.hit, isTrue);
+      final ctx = tavla.next(const TurnContext(diceOfTurn: [2, 4]), a);
+      const off = Step(4, 0, 4);
+      expect(tavlaSteps.basicSteps(m, S.one, 4), contains(off));
+      expect(tavla.allowsBefore(m, S.one, off, ctx), isFalse);
+      expect(tavla.allowsBefore(m, S.one, const Step(6, 2, 4), ctx), isTrue);
+    });
+
+    test('D4 applies to side two', () {
+      // one's 21 = two's 4.
+      final q = pos(one: {21: 1, 1: 14}, two: {6: 2, 8: 1, 13: 12});
+      final m = q.toMutable();
+      final a = tavlaSteps.apply(m, S.two, hitStep);
+      expect(a.hit, isTrue);
+      final ctx = tavla.next(const TurnContext(), a);
+      expect(ctx.homeHitMask, 1 << 4);
+      expect(tavla.allowsBefore(m, S.two, const Step(4, 3, 1), ctx), isFalse);
+      expect(tavla.allowsBefore(m, S.two, const Step(8, 4, 4), ctx), isTrue);
+    });
+
+    test('D3 Portes allows hit-and-run and records no home hit', () {
       final portes = StepValidators(Variant.portes.rules);
       final m = p.toMutable();
       final a = hitRules.apply(m, S.one, hitStep);
       final ctx = portes.next(const TurnContext(), a);
+      expect(ctx, const TurnContext(), reason: 'no D4 rule, no split');
       expect(portes.allowsBefore(m, S.one, const Step(4, 3, 1), ctx), isTrue);
     });
 
     test('D4 a hit outside home does not restrict', () {
-      final tavla = StepValidators(Variant.tavla.rules);
       // two's 18 = my 7.
       final q = pos(one: {13: 1, 8: 14}, two: {18: 1, 1: 14});
       final m = q.toMutable();
-      final a = hitRules.apply(m, S.one, const Step(13, 7, 6));
+      final a = tavlaSteps.apply(m, S.one, const Step(13, 7, 6));
       expect(a.hit, isTrue);
       final ctx = tavla.next(const TurnContext(), a);
       expect(ctx.homeHitMask, 0);

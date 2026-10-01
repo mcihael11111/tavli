@@ -4,7 +4,7 @@ import '../board/side.dart';
 import '../play/step.dart';
 import '../variant/variant_rules.dart';
 
-/// Single-step legality, apply and undo (plan Task 4).
+/// Single-step legality, apply and undo.
 ///
 /// [basicSteps] checks only per-step rules: G2 (open landing point), G5/G6
 /// and D11 (bear-off), contact, pins and bar-first. Turn-scoped rules (head,
