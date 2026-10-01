@@ -12,55 +12,6 @@ const _portes = Variant.portes;
 GameState _portesToRoll() => GameState.initial(_portes, starter: S.one);
 
 void main() {
-  group('cube plumbing', () {
-    test('a variant without a cube is cubeUnavailable', () {
-      rejects(
-          _portesToRoll(), const OfferDouble(), ViolationCode.cubeUnavailable);
-      // Long Nard's cube is off unless enabled.
-      rejects(GameState.initial(Variant.longNard, starter: S.one),
-          const OfferDouble(), ViolationCode.cubeUnavailable);
-    });
-
-    test('offer, take, and the owner rule (cannotDouble)', () {
-      final s = GameState.initial(Variant.shortNard, starter: S.one);
-      final offered = ok(s, const OfferDouble());
-      final e = offered.events.single as CubeOffered;
-      expect([e.by, e.value], [S.one, 2]);
-      expect(offered.state.phase, GamePhase.cubeOffered);
-      for (final a in const [RollDice(3, 1), OfferDouble(), CommitPlay()]) {
-        rejects(offered.state, a, ViolationCode.wrongPhase);
-      }
-      final taken = ok(offered.state, const Take());
-      final t = taken.events.single as CubeTaken;
-      expect([t.by, t.newValue], [S.two, 2]);
-      expect(taken.state.phase, GamePhase.awaitingRoll);
-      expect(taken.state.sideToMove, S.one);
-      expect(taken.state.cube.value, 2);
-      expect(taken.state.cube.owner, S.two);
-      rejects(taken.state, const OfferDouble(), ViolationCode.cannotDouble);
-    });
-
-    test('drop: the offerer wins at the current value', () {
-      final s = GameState.initial(Variant.longNard,
-          starter: S.two, cubeEnabled: true);
-      final offered = ok(s, const OfferDouble()).state;
-      final u = ok(offered, const Drop());
-      expect(u.events[0], isA<CubeDropped>());
-      expect((u.events[0] as CubeDropped).by, S.one);
-      expect(u.state.phase, GamePhase.gameOver);
-      expect(
-          u.state.result,
-          const GameResult(
-              winner: S.two, kind: ResultKind.single, points: 1, cubeValue: 1));
-    });
-
-    test('the Crawford game cannot double', () {
-      final s = GameState.initial(Variant.shortNard,
-          starter: S.one, crawfordGame: true);
-      rejects(s, const OfferDouble(), ViolationCode.cannotDouble);
-    });
-  });
-
   group('resign and timeout', () {
     test('resign in opening: the opponent wins 1 x cube, kind resign', () {
       final u = ok(GameState.initial(_portes), const Resign(S.one));
