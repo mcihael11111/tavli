@@ -1,4 +1,7 @@
+import 'dart:collection';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
@@ -58,40 +61,193 @@ List<ImportViolation> findForbiddenImports(
   }
   final libPath = libRoot == null ? null : _normalize(libRoot.absolute.path);
   final violations = <ImportViolation>[];
-  final files = root
-      .listSync(recursive: true)
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.dart'));
-  for (final file in files) {
-    final unit = parseString(
-      content: file.readAsStringSync(),
-      throwIfDiagnostics: false,
-    ).unit;
-    for (final d in unit.directives.whereType<NamespaceDirective>()) {
-      final uris = <StringLiteral>[
-        d.uri,
-        for (final c in d.configurations) c.uri
-      ];
-      for (final node in uris) {
-        final uri = node.stringValue;
-        if (uri == null) continue;
-        final resolved = _resolve(uri, file, packageName, libPath);
-        final escapes = resolved == null;
-        final candidate = resolved ?? uri;
-        if (escapes ||
-            forbidden.any((p) => _matches(p, candidate) || _matches(p, uri))) {
-          violations.add(ImportViolation(
-            file: file.path,
-            line: unit.lineInfo.getLocation(node.offset).lineNumber,
-            uri: uri,
-            resolved: candidate,
-            reason: escapes ? 'escapes lib/' : null,
-          ));
-        }
+  for (final file in _dartFiles(root)) {
+    for (final r in _directiveUris(file, packageName, libPath)) {
+      final escapes = r.resolved == null;
+      final candidate = r.resolved ?? r.uri;
+      if (escapes ||
+          forbidden.any((p) => _matches(p, candidate) || _matches(p, r.uri))) {
+        violations.add(ImportViolation(
+          file: file.path,
+          line: r.line,
+          uri: r.uri,
+          resolved: candidate,
+          reason: escapes ? 'escapes lib/' : null,
+        ));
       }
     }
   }
   return violations;
+}
+
+/// A chain of package URIs from an entry file to a forbidden file.
+class ImportChainViolation {
+  /// Package URIs from the entry file to the forbidden file.
+  final List<String> chain;
+
+  const ImportChainViolation(this.chain);
+
+  @override
+  String toString() => chain.join(' -> ');
+}
+
+/// Follows `package:<packageName>/` imports (incl. normalized relative ones and
+/// conditional alternatives) from every .dart file under [root], within
+/// [libRoot], and reports every reachable file whose package URI matches
+/// [forbidden]. Files matching [boundary] are permitted and NOT traversed
+/// into (carve-outs). Other packages' URIs (`dart:`, `package:other/`) are
+/// matched against [forbidden] but never traversed. Reports the shortest
+/// chain per forbidden target.
+List<ImportChainViolation> findForbiddenReachable(
+  Directory root,
+  List<Pattern> forbidden, {
+  required String packageName,
+  required Directory libRoot,
+  List<Pattern> boundary = const [],
+  bool allowMissing = false,
+}) {
+  if (!root.existsSync()) {
+    if (allowMissing) return const [];
+    throw ArgumentError.value(root.path, 'root', 'does not exist');
+  }
+  final libPath = _normalize(libRoot.absolute.path);
+  final prefix = 'package:$packageName/';
+  String? uriOf(File f) {
+    final path = _normalize(f.absolute.path);
+    return path.startsWith('$libPath/')
+        ? '$prefix${path.substring(libPath.length + 1)}'
+        : null;
+  }
+
+  final parents = <String, String?>{};
+  final queue = Queue<String>();
+  for (final f in _dartFiles(root)) {
+    final u = uriOf(f);
+    if (u != null && parents.putIfAbsent(u, () => null) == null) {
+      queue.add(u);
+    }
+  }
+  final reported = <String>{};
+  final violations = <ImportChainViolation>[];
+  List<String> chainTo(String u) {
+    final chain = <String>[];
+    for (String? c = u; c != null; c = parents[c]) {
+      chain.add(c);
+    }
+    return chain.reversed.toList();
+  }
+
+  while (queue.isNotEmpty) {
+    final current = queue.removeFirst();
+    final file = File('$libPath/${current.substring(prefix.length)}');
+    if (!file.existsSync()) continue;
+    for (final r in _directiveUris(file, packageName, libPath)) {
+      final target = r.resolved;
+      if (target == null) continue;
+      if (boundary.any((p) => _matches(p, target))) continue;
+      if (forbidden.any((p) => _matches(p, target) || _matches(p, r.uri))) {
+        if (reported.add(target)) {
+          violations.add(ImportChainViolation([...chainTo(current), target]));
+        }
+        continue;
+      }
+      if (target.startsWith(prefix) && !parents.containsKey(target)) {
+        parents[target] = current;
+        queue.add(target);
+      }
+    }
+  }
+  return violations;
+}
+
+/// Resolves the lib directory of [packageName] via the current package config.
+///
+/// Independent of the working directory under `dart test`. Under
+/// `flutter test`, where `Isolate.resolvePackageUriSync` is unsupported, falls
+/// back to the nearest `.dart_tool/package_config.json` found walking up from
+/// the running script, then from the current directory. Throws [StateError]
+/// when the package cannot be resolved.
+Directory packageLibDir(String packageName) {
+  Uri? uri;
+  try {
+    uri = Isolate.resolvePackageUriSync(Uri.parse('package:$packageName/'));
+  } on UnsupportedError {
+    uri = _resolveFromPackageConfig(packageName);
+  }
+  if (uri == null) {
+    throw StateError('Cannot resolve package:$packageName/');
+  }
+  return Directory.fromUri(uri);
+}
+
+Uri? _resolveFromPackageConfig(String packageName) {
+  final starts = <Directory>[
+    if (Platform.script.scheme == 'file') File.fromUri(Platform.script).parent,
+    Directory.current,
+  ];
+  for (final start in starts) {
+    for (var dir = start.absolute;; dir = dir.parent) {
+      final config = File('${dir.path}/.dart_tool/package_config.json');
+      if (config.existsSync()) {
+        final json =
+            jsonDecode(config.readAsStringSync()) as Map<String, Object?>;
+        for (final entry in (json['packages']! as List<Object?>)
+            .cast<Map<String, Object?>>()) {
+          if (entry['name'] != packageName) continue;
+          final root = config.uri.resolve(entry['rootUri']! as String);
+          final lib = (entry['packageUri'] as String?) ?? '';
+          final resolved = root.resolve(lib);
+          return resolved.path.endsWith('/')
+              ? resolved
+              : resolved.replace(path: '${resolved.path}/');
+        }
+        break;
+      }
+      if (dir.parent.path == dir.path) break;
+    }
+  }
+  return null;
+}
+
+Iterable<File> _dartFiles(Directory root) => root
+    .listSync(recursive: true)
+    .whereType<File>()
+    .where((f) => f.path.endsWith('.dart'));
+
+class _DirectiveUri {
+  final String uri;
+  final int line;
+
+  /// Normalized URI; null when a relative URI escapes the lib directory.
+  final String? resolved;
+  const _DirectiveUri(this.uri, this.line, this.resolved);
+}
+
+/// Every import/export URI in [file] (including conditional alternatives),
+/// normalized.
+List<_DirectiveUri> _directiveUris(
+    File file, String? packageName, String? libPath) {
+  final unit = parseString(
+    content: file.readAsStringSync(),
+    throwIfDiagnostics: false,
+  ).unit;
+  final result = <_DirectiveUri>[];
+  for (final d in unit.directives.whereType<NamespaceDirective>()) {
+    final nodes = <StringLiteral>[
+      d.uri,
+      for (final c in d.configurations) c.uri
+    ];
+    for (final node in nodes) {
+      final uri = node.stringValue;
+      if (uri == null) continue;
+      result.add(_DirectiveUri(
+        uri,
+        unit.lineInfo.getLocation(node.offset).lineNumber,
+        _resolve(uri, file, packageName, libPath),
+      ));
+    }
+  }
+  return result;
 }
 
 /// Returns the normalized URI, the raw [uri] when no normalization applies,
@@ -117,7 +273,10 @@ String _normalizeSchemeUri(Uri parsed) {
 }
 
 String _normalize(String path) {
-  final normalized = Uri.file(path).normalizePath().toFilePath();
+  final normalized = Uri.file(path)
+      .normalizePath()
+      .toFilePath()
+      .replaceAll(RegExp('/{2,}'), '/');
   return normalized.length > 1 && normalized.endsWith(Platform.pathSeparator)
       ? normalized.substring(0, normalized.length - 1)
       : normalized;

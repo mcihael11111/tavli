@@ -148,6 +148,120 @@ void main() {
     expect(violations.single.resolved, 'package:tavli/flame_game/a.dart');
   });
 
+  test('relative imports with duplicate slashes and lib// are normalized', () {
+    write('lib/flame_game/a.dart', '');
+    write('lib/gameplay/x.dart', "import '..//flame_game/a.dart';\n");
+    final violations = findForbiddenImports(
+      dir('lib/gameplay'),
+      ['package:tavli/flame_game/'],
+      packageName: 'tavli',
+      libRoot: Directory('${tmp.path}/lib//'),
+    );
+    expect(violations.single.resolved, 'package:tavli/flame_game/a.dart');
+  });
+
+  test('packageLibDir resolves a workspace package lib directory', () {
+    final lib = packageLibDir('tavli_testkit');
+    expect(File('${lib.path}/src/bench.dart').existsSync(), isTrue);
+    expect(() => packageLibDir('no_such_package_xyz'), throwsStateError);
+  });
+
+  group('findForbiddenReachable', () {
+    final forbidden = ['package:tavli/legacy/'];
+
+    List<ImportChainViolation> run({
+      List<Pattern> boundary = const [],
+      String entry = 'gameplay',
+    }) =>
+        findForbiddenReachable(
+          dir('lib/$entry'),
+          forbidden,
+          packageName: 'tavli',
+          libRoot: dir('lib'),
+          boundary: boundary,
+        );
+
+    test('direct hit', () {
+      write('lib/gameplay/x.dart', "import 'package:tavli/legacy/a.dart';\n");
+      final v = run();
+      expect(v, hasLength(1));
+      expect(v.single.chain,
+          ['package:tavli/gameplay/x.dart', 'package:tavli/legacy/a.dart']);
+    });
+
+    test('2-hop hit via an unlisted file', () {
+      write('lib/gameplay/x.dart', "import '../shared/h.dart';\n");
+      write('lib/shared/h.dart', "import 'package:tavli/legacy/a.dart';\n");
+      final v = run();
+      expect(v.single.chain, [
+        'package:tavli/gameplay/x.dart',
+        'package:tavli/shared/h.dart',
+        'package:tavli/legacy/a.dart',
+      ]);
+      expect(v.single.toString(), contains(' -> '));
+    });
+
+    test('boundary file is permitted and not traversed', () {
+      write('lib/gameplay/x.dart', "import '../shared/ok.dart';\n");
+      write('lib/shared/ok.dart', "import 'package:tavli/legacy/a.dart';\n");
+      expect(run(boundary: ['package:tavli/shared/ok.dart']), isEmpty);
+    });
+
+    test('boundary wins over forbidden for the same file', () {
+      write('lib/gameplay/x.dart', "import 'package:tavli/legacy/ok.dart';\n");
+      expect(run(boundary: ['package:tavli/legacy/ok.dart']), isEmpty);
+    });
+
+    test('cycles terminate', () {
+      write('lib/gameplay/x.dart', "import '../shared/a.dart';\n");
+      write('lib/shared/a.dart', "import 'b.dart';\n");
+      write('lib/shared/b.dart',
+          "import 'a.dart';\nimport 'package:tavli/legacy/z.dart';\n");
+      final v = run();
+      expect(v, hasLength(1));
+      expect(v.single.chain.length, 4);
+    });
+
+    test('conditional alternatives are followed', () {
+      write(
+        'lib/gameplay/x.dart',
+        "import 'stub.dart' if (dart.library.io) '../shared/h.dart';\n",
+      );
+      write('lib/gameplay/stub.dart', '');
+      write('lib/shared/h.dart', "import 'package:tavli/legacy/a.dart';\n");
+      expect(run(), hasLength(1));
+    });
+
+    test('shortest chain is reported per target', () {
+      write('lib/gameplay/x.dart',
+          "import '../shared/a.dart';\nimport 'package:tavli/legacy/t.dart';\n");
+      write('lib/shared/a.dart', "import 'package:tavli/legacy/t.dart';\n");
+      final v = run();
+      expect(v, hasLength(1));
+      expect(v.single.chain, hasLength(2));
+    });
+
+    test('other packages and dart: URIs are not traversed', () {
+      write('lib/gameplay/x.dart',
+          "import 'dart:math';\nimport 'package:other/o.dart';\n");
+      expect(run(), isEmpty);
+    });
+
+    test('missing root throws unless allowMissing', () {
+      expect(() => run(entry: 'nope'), throwsArgumentError);
+      expect(
+        findForbiddenReachable(
+          dir('lib/nope'),
+          forbidden,
+          packageName: 'tavli',
+          libRoot: dir('lib'),
+          allowMissing: true,
+        ),
+        isEmpty,
+      );
+    });
+  });
+
   test('missing directory throws by default, empty with allowMissing', () {
     expect(
       () => findForbiddenImports(dir('nope'), ['dart:ui']),
