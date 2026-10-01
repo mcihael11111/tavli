@@ -646,12 +646,17 @@ import 'package:test/test.dart';
 void main() {
   test('tavli_core never imports Flutter, dart:ui, or other workspace packages',
       () {
-    final violations = findForbiddenImports(Directory('lib'), [
-      RegExp(r'^package:flutter'),
-      'dart:ui',
-      'package:tavli_bot/',
-      'package:tavli/',
-    ]);
+    final violations = findForbiddenImports(
+      Directory('lib'),
+      [
+        RegExp(r'^package:flutter'),
+        'dart:ui',
+        'package:tavli_bot/',
+        'package:tavli/',
+      ],
+      packageName: 'tavli_core',
+      libRoot: Directory('lib'),
+    );
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
@@ -757,11 +762,16 @@ import 'package:test/test.dart';
 
 void main() {
   test('tavli_bot never imports Flutter, dart:ui, or the app', () {
-    final violations = findForbiddenImports(Directory('lib'), [
-      RegExp(r'^package:flutter'),
-      'dart:ui',
-      'package:tavli/',
-    ]);
+    final violations = findForbiddenImports(
+      Directory('lib'),
+      [
+        RegExp(r'^package:flutter'),
+        'dart:ui',
+        'package:tavli/',
+      ],
+      packageName: 'tavli_bot',
+      libRoot: Directory('lib'),
+    );
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
@@ -840,20 +850,50 @@ const _legacy = <Pattern>[
   'package:tavli/features/multiplayer/presentation/online_game_provider.dart',
 ];
 
+List<ImportViolation> _scan(Directory gameplay, Directory lib) =>
+    findForbiddenImports(
+      gameplay,
+      _legacy,
+      packageName: 'tavli',
+      libRoot: lib,
+      // lib/gameplay is created in SP3; until then there is nothing to scan.
+      allowMissing: true,
+    );
+
 void main() {
   test('lib/gameplay does not import legacy gameplay code', () {
-    final violations =
-        findForbiddenImports(Directory('lib/gameplay'), _legacy);
+    final violations = _scan(Directory('lib/gameplay'), Directory('lib'));
     expect(violations, isEmpty, reason: violations.join('\n'));
   });
 
-  test('the scanner catches a legacy import (guards against a vacuous pass)',
-      () {
-    final tmp = Directory.systemTemp.createTempSync('boundary_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    File('${tmp.path}/x.dart').writeAsStringSync(
-        "import 'package:tavli/flame_game/tavli_game.dart';\n");
-    expect(findForbiddenImports(tmp, _legacy), hasLength(1));
+  group('positive controls (guard against a vacuous pass)', () {
+    late Directory lib;
+
+    setUp(() {
+      final tmp = Directory.systemTemp.createTempSync('boundary_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      lib = Directory('${tmp.path}/lib')..createSync();
+    });
+
+    void write(String content) => File('${lib.path}/gameplay/x.dart')
+      ..createSync(recursive: true)
+      ..writeAsStringSync(content);
+
+    test('package: import of legacy code is caught', () {
+      write("import 'package:tavli/flame_game/tavli_game.dart';\n");
+      expect(_scan(Directory('${lib.path}/gameplay'), lib), hasLength(1));
+    });
+
+    test('relative import of legacy code is caught', () {
+      write("import '../flame_game/tavli_game.dart';\n");
+      expect(_scan(Directory('${lib.path}/gameplay'), lib), hasLength(1));
+    });
+
+    test('conditional import of legacy code is caught', () {
+      write("import 'stub.dart' if (dart.library.io) "
+          "'package:tavli/features/ai/engine/ai_player.dart';\n");
+      expect(_scan(Directory('${lib.path}/gameplay'), lib), hasLength(1));
+    });
   });
 }
 ```
@@ -889,7 +929,11 @@ tags:
   legacy-bench:
     skip: "Slow baseline. Run: flutter test --run-skipped --tags legacy-bench test/bench"
     timeout: 10x
+  legacy-slow:
+    skip: "Legacy medium-vs-medium full game takes 30+ min (the 2-ply UI-thread search SP2 replaces). Run: flutter test --run-skipped --tags legacy-slow"
 ```
+
+Then tag the one legacy test that never finishes. In `test/integration/game_flow_test.dart`, find the test named `two AIs can play a complete game to conclusion` and add the named argument `tags: ['legacy-slow'],` to its `test(...)` call. Change nothing else in that file. SP2 deletes this test along with the legacy AI.
 
 - [ ] **Step 2: Write the benchmark**
 
@@ -941,22 +985,28 @@ void main() {
 
     var i = 0;
     final results = <BenchStats>[
+      // Bodies return their result so the bench sink keeps the work alive.
       measure(name: 'legacy.movegen.all_rolls', samples: 500, () {
         final p = positions[i % positions.length];
-        gen.generateAllLegalTurns(p, rolls[i++ % rolls.length]);
+        return gen.generateAllLegalTurns(p, rolls[i++ % rolls.length]);
       }),
       measure(name: 'legacy.movegen.doubles', samples: 300, () {
         final p = positions[i % positions.length];
-        gen.generateAllLegalTurns(p, doubles[i++ % doubles.length]);
+        return gen.generateAllLegalTurns(p, doubles[i++ % doubles.length]);
       }),
       measure(name: 'legacy.ai.easy.selectTurn', samples: 200, () {
         final p = positions[i % positions.length];
-        ai.selectTurn(p, rolls[i++ % rolls.length], DifficultyLevel.easy);
+        return ai.selectTurn(p, rolls[i++ % rolls.length], DifficultyLevel.easy);
       }),
       // Two samples only: each takes seconds to minutes (the core problem).
-      measure(name: 'legacy.ai.medium.selectTurn', warmup: 0, samples: 2, () {
+      measure(
+          name: 'legacy.ai.medium.selectTurn',
+          warmup: 0,
+          minWarmup: Duration.zero,
+          samples: 2, () {
         final p = positions[i++ % positions.length];
-        ai.selectTurn(p, const DiceRoll(die1: 3, die2: 1), DifficultyLevel.medium);
+        return ai.selectTurn(
+            p, const DiceRoll(die1: 3, die2: 1), DifficultyLevel.medium);
       }),
     ];
 
@@ -989,7 +1039,7 @@ Expected:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add dart_test.yaml test/bench
+git add dart_test.yaml test/bench test/integration/game_flow_test.dart
 git commit -m "Add legacy engine/AI baseline benchmark (tagged, opt-in)
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
