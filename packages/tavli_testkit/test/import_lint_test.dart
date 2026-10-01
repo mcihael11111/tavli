@@ -113,6 +113,39 @@ void main() {
     );
     expect(violations, hasLength(1));
     expect(violations.single.uri, '../tool/helper.dart');
+    expect(violations.single.reason, 'escapes lib/');
+    expect(violations.single.toString(), endsWith(' [escapes lib/]'));
+  });
+
+  test('package URIs with dot segments or duplicate slashes are normalized',
+      () {
+    write(
+      'lib/gameplay/x.dart',
+      "import 'package:tavli/gameplay/../flame_game/a.dart';\n"
+          "import 'package:tavli//flame_game/b.dart';\n",
+    );
+    final violations = findForbiddenImports(
+      dir('lib/gameplay'),
+      ['package:tavli/flame_game/'],
+    );
+    expect(violations, hasLength(2));
+    expect(violations.map((v) => v.resolved), [
+      'package:tavli/flame_game/a.dart',
+      'package:tavli/flame_game/b.dart',
+    ]);
+    expect(violations.every((v) => v.reason == null), isTrue);
+  });
+
+  test('libRoot with a trailing slash behaves like one without', () {
+    write('lib/flame_game/a.dart', '');
+    write('lib/gameplay/x.dart', "import '../flame_game/a.dart';\n");
+    final violations = findForbiddenImports(
+      dir('lib/gameplay/'),
+      ['package:tavli/flame_game/'],
+      packageName: 'tavli',
+      libRoot: dir('lib/'),
+    );
+    expect(violations.single.resolved, 'package:tavli/flame_game/a.dart');
   });
 
   test('missing directory throws by default, empty with allowMissing', () {

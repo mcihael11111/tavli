@@ -102,6 +102,11 @@ void main() {
     });
   });
 
+  test('benchSink retains the last body result', () {
+    measure(() => 'last', warmup: 1, minWarmup: Duration.zero, samples: 1);
+    expect(benchSink, 'last');
+  });
+
   test('toJson exposes microsecond fields', () {
     final json = BenchStats.fromMicros('gen', const [10, 20, 30]).toJson();
     expect(json['name'], 'gen');

@@ -1,8 +1,13 @@
 import 'dart:io' show Platform;
 
 /// Receives every benchmark body result so the work cannot be optimized away.
-// ignore: unused_element
 Object? _benchSink;
+
+/// The most recent benchmark body result.
+///
+/// Exists so AOT compilers cannot prove the stores to the sink are dead and
+/// drop the benchmarked work.
+Object? get benchSink => _benchSink;
 
 /// Summary statistics for a micro-benchmark (nanosecond precision).
 class BenchStats {

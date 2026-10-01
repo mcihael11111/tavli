@@ -14,16 +14,22 @@ class ImportViolation {
   /// The normalized URI that matched (equals [uri] when not normalized).
   final String resolved;
 
+  /// Why this was reported when it is not an ordinary pattern match
+  /// (e.g. `'escapes lib/'`); null otherwise.
+  final String? reason;
+
   const ImportViolation({
     required this.file,
     required this.line,
     required this.uri,
     required this.resolved,
+    this.reason,
   });
 
   @override
   String toString() => '$file:$line references $uri'
-      '${resolved != uri ? ' ($resolved)' : ''}';
+      '${resolved != uri ? ' ($resolved)' : ''}'
+      '${reason != null ? ' [$reason]' : ''}';
 }
 
 /// Scans every `.dart` file under [root] for import/export URIs (including
@@ -79,6 +85,7 @@ List<ImportViolation> findForbiddenImports(
             line: unit.lineInfo.getLocation(node.offset).lineNumber,
             uri: uri,
             resolved: candidate,
+            reason: escapes ? 'escapes lib/' : null,
           ));
         }
       }
@@ -90,9 +97,9 @@ List<ImportViolation> findForbiddenImports(
 /// Returns the normalized URI, the raw [uri] when no normalization applies,
 /// or null when a relative URI escapes the package's lib directory.
 String? _resolve(String uri, File file, String? packageName, String? libPath) {
-  if (Uri.parse(uri).hasScheme || packageName == null || libPath == null) {
-    return uri;
-  }
+  final parsed = Uri.tryParse(uri);
+  if (parsed != null && parsed.hasScheme) return _normalizeSchemeUri(parsed);
+  if (packageName == null || libPath == null) return uri;
   final target = _normalize(
     file.absolute.parent.uri.resolve(uri).toFilePath(),
   );
@@ -102,7 +109,19 @@ String? _resolve(String uri, File file, String? packageName, String? libPath) {
   return null;
 }
 
-String _normalize(String path) => Uri.file(path).normalizePath().toFilePath();
+/// Resolves `..`/`.` segments and collapses duplicate slashes so spellings
+/// like `package:a/b/../c.dart` and `package:a//c.dart` match `package:a/c.dart`.
+String _normalizeSchemeUri(Uri parsed) {
+  final path = parsed.path.replaceAll(RegExp('/{2,}'), '/');
+  return parsed.replace(path: path).normalizePath().toString();
+}
+
+String _normalize(String path) {
+  final normalized = Uri.file(path).normalizePath().toFilePath();
+  return normalized.length > 1 && normalized.endsWith(Platform.pathSeparator)
+      ? normalized.substring(0, normalized.length - 1)
+      : normalized;
+}
 
 bool _matches(Pattern pattern, String uri) => switch (pattern) {
       final RegExp r => r.hasMatch(uri),
