@@ -9,8 +9,13 @@ import 'json_read.dart';
 
 /// Everything needed to rebuild a match (design spec §7): its config, the
 /// starting state and every accepted action, in order.
+///
+/// Trusted input only when it has a [start]: like `MatchState.fromJson`,
+/// a starting state is not checked for how it could have been reached
+/// (e.g. its scores). A server never accepts a client-supplied log or
+/// state; untrusted peers send actions (`MatchAction.fromJson`), which
+/// the server applies to its own authoritative state.
 final class GameLog {
-  final int schemaVersion;
   final MatchConfig config;
 
   /// Where the match starts; null means `MatchState.initial(config)`. Set
@@ -23,8 +28,7 @@ final class GameLog {
 
   /// Throws [ArgumentError] if [start] has a different config.
   GameLog(this.config, List<MatchAction> actions, {this.start})
-      : schemaVersion = tavliCoreSchemaVersion,
-        actions = List.unmodifiable(actions) {
+      : actions = List.unmodifiable(actions) {
     if (start != null && start!.config != config) {
       throw ArgumentError.value(start, 'start', 'config differs from $config');
     }
@@ -39,7 +43,7 @@ final class GameLog {
   /// `{"schemaVersion": 1, "config": {...}, "start": {...}|null,
   /// "actions": [...]}`; `start` is omitted for the initial state.
   Map<String, Object?> toJson() => {
-        'schemaVersion': schemaVersion,
+        'schemaVersion': tavliCoreSchemaVersion,
         'config': config.toJson(),
         if (start != null) 'start': start!.toJson(),
         'actions': [for (final a in actions) a.toJson()],

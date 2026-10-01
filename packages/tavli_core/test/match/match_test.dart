@@ -21,7 +21,7 @@ MatchState resignGame(MatchState m, S loser) {
 
 void main() {
   group('MatchConfig', () {
-    test('single, to, and Tawla 31 forcing 31', () {
+    test('single, to, and Tawla 31 playing to 31', () {
       final single = MatchConfig.single(Variant.portes);
       expect(single.cycle, [Variant.portes]);
       expect(single.target, isNull);
@@ -33,7 +33,16 @@ void main() {
         isTrue,
       );
       expect(MatchConfig.to(5, MatchConfig.tavliMarathon).target, 5);
-      expect(MatchConfig.to(5, [Variant.tawla31]).target, 31);
+      expect(MatchConfig.to(31, [Variant.tawla31]).target, 31);
+      // Like fromJson: a fixed-target variant needs its own target.
+      for (final t in [5, 30, 32]) {
+        expect(() => MatchConfig.to(t, [Variant.tawla31]), throwsArgumentError,
+            reason: '$t');
+        expect(
+          () => MatchConfig.to(t, [Variant.portes, Variant.tawla31]),
+          throwsArgumentError,
+        );
+      }
       expect(MatchConfig.single(Variant.tawla31).target, 31);
       expect(() => MatchConfig.to(0, [Variant.portes]), throwsArgumentError);
       expect(() => MatchConfig.to(3, []), throwsArgumentError);

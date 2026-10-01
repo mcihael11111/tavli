@@ -155,7 +155,8 @@ void main() {
     final r = Random(5);
     var states = 0;
     for (final v in Variant.values) {
-      final config = MatchConfig.to(3, [v], cubeEnabled: true);
+      final target = v.rules.match.fixedTarget ?? 3;
+      final config = MatchConfig.to(target, [v], cubeEnabled: true);
       var m = MatchState.initial(config);
       var log = GameLog(config, const []);
       for (var i = 0; i < 400; i++) {

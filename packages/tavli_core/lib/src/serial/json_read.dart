@@ -21,7 +21,17 @@ final class JsonReader {
   Never fail(String key, String expected) => throw FormatException(
       '$what: "$key" must be $expected', _j.containsKey(key) ? _j[key] : null);
 
+  /// Fails on [key] with [expected] unless [ok].
+  void check(bool ok, String key, String expected) {
+    if (!ok) fail(key, expected);
+  }
+
   /// Throws unless `schemaVersion` equals [tavliCoreSchemaVersion].
+  ///
+  /// There is only version 1 so far. Bumping [tavliCoreSchemaVersion] must
+  /// come with a `migrate` step from each older version that is still
+  /// stored (saves, logs), run before this check; until then any other
+  /// version is rejected.
   void checkSchema() {
     final v = _j['schemaVersion'];
     if (v != tavliCoreSchemaVersion) {

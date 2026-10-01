@@ -828,7 +828,7 @@ class MatchConfig {
   final bool cubeEnabled;
   static const tavliMarathon = [Variant.portes, Variant.plakoto, Variant.fevga];
   factory MatchConfig.single(Variant v, {bool? cubeEnabled});
-  factory MatchConfig.to(int target, List<Variant> cycle, {bool? cubeEnabled}); // tawla31 forces 31
+  factory MatchConfig.to(int target, List<Variant> cycle, {bool? cubeEnabled}); // tawla31 needs target 31, else ArgumentError (as fromJson)
 }
 
 sealed class MatchAction {}
@@ -880,10 +880,12 @@ Object /* MatchUpdate | RuleViolation */ reduceMatch(MatchState m, MatchAction a
 - `GameState.toJson/fromJson` (the tree is rebuilt from `turnStart`, `dice`, `cascadeMode`, `context` and `steps`)
 - `MatchState.toJson/fromJson`
 - `MatchAction.toJson/fromJson`
-- `class GameLog { final int schemaVersion; final MatchConfig config; final List<MatchAction> actions; }`
+- `class GameLog { final MatchConfig config; final MatchState? start; final List<MatchAction> actions; }` (the JSON carries `schemaVersion`; no field, as nothing reads it). A log with `start` is trusted input only: servers never accept client-supplied logs or states; untrusted peers send actions.
 - `MatchState replay(GameLog log)`
 
-Readers throw `FormatException` on a `schemaVersion` mismatch.
+Readers throw `FormatException` on a `schemaVersion` mismatch. A future version bump needs a `migrate` step from older stored versions (not built until then).
+
+**State validation (added after the Task 15 review):** `GameState.fromJson` (`FormatException`) and `withPosition` (`ArgumentError`) reject a board the variant cannot produce: pinned checkers unless `contact == pin`, bar checkers unless `contact == hit`. `fromJson` also requires a `cubeOffered` state's cube to be one `OfferDouble` could make (value < 64, not the Crawford game, owner null or the offerer), and cascade dice to be a whole `cascadeQueue(d)` (any non-empty tail of one in a `remainderTurn`). `test/serial/state_fuzz_test.dart` mutates valid states' JSON structurally and checks every accepted state runs under `reduce` without throwing and round-trips.
 
 **Steps:**
 - [ ] Tests first:

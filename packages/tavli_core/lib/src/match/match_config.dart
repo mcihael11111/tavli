@@ -2,6 +2,7 @@
 library;
 
 import '../serial/json_read.dart';
+import '../util/list_eq.dart';
 import '../variant/variant.dart';
 
 /// What is played: the variant cycle, the target and the cube.
@@ -24,26 +25,29 @@ final class MatchConfig {
 
   /// One game of [v]. A variant with a fixed target (Tawla 31, D21) is
   /// always a match to that target.
-  factory MatchConfig.single(Variant v, {bool? cubeEnabled}) =>
-      MatchConfig._build(null, [v], cubeEnabled);
+  factory MatchConfig.single(Variant v, {bool? cubeEnabled}) => MatchConfig._(
+        [v],
+        v.rules.match.fixedTarget,
+        cubeEnabled ?? v.rules.cube.enabledByDefault,
+      );
 
-  /// A match to [target] over [cycle]. A cycle with a fixed-target variant
-  /// (Tawla 31) plays to that target instead. Throws [ArgumentError] for
-  /// an empty cycle or a target below 1.
+  /// A match to [target] over [cycle]. Throws [ArgumentError] for an empty
+  /// cycle, a target below 1, or a cycle with a fixed-target variant
+  /// (Tawla 31) and another target (as [fromJson] rejects it).
   factory MatchConfig.to(int target, List<Variant> cycle, {bool? cubeEnabled}) {
     if (target < 1) throw ArgumentError.value(target, 'target', 'below 1');
-    return MatchConfig._build(target, cycle, cubeEnabled);
-  }
-
-  factory MatchConfig._build(int? target, List<Variant> cycle, bool? cube) {
     if (cycle.isEmpty) throw ArgumentError.value(cycle, 'cycle', 'empty');
     for (final v in cycle) {
-      target = v.rules.match.fixedTarget ?? target;
+      final fixed = v.rules.match.fixedTarget;
+      if (fixed != null && fixed != target) {
+        throw ArgumentError.value(
+            target, 'target', '${v.name} plays to $fixed');
+      }
     }
     return MatchConfig._(
       cycle,
       target,
-      cube ?? cycle.any((v) => v.rules.cube.enabledByDefault),
+      cubeEnabled ?? cycle.any((v) => v.rules.cube.enabledByDefault),
     );
   }
 
@@ -80,7 +84,7 @@ final class MatchConfig {
       other is MatchConfig &&
       other.target == target &&
       other.cubeEnabled == cubeEnabled &&
-      _listEq(other.cycle, cycle);
+      listEq(other.cycle, cycle);
 
   @override
   int get hashCode => Object.hash(Object.hashAll(cycle), target, cubeEnabled);
@@ -89,12 +93,4 @@ final class MatchConfig {
   String toString() =>
       'MatchConfig(${cycle.map((v) => v.name).join(', ')}, to $target, '
       'cube $cubeEnabled)';
-}
-
-bool _listEq<T>(List<T> a, List<T> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }

@@ -8,6 +8,7 @@ import '../game/game_result.dart';
 import '../game/game_state.dart';
 import '../game/rule_violation.dart';
 import '../serial/json_read.dart';
+import '../util/list_eq.dart';
 import '../variant/variant_rules.dart';
 import 'match_action.dart';
 import 'match_config.dart';
@@ -89,7 +90,7 @@ final class MatchState {
       other.scores[Side.two] == scores[Side.two] &&
       other.gameIndex == gameIndex &&
       other.game == game &&
-      _listEq(other.history, history) &&
+      listEq(other.history, history) &&
       other.crawfordUsed == crawfordUsed &&
       other.winner == winner;
 
@@ -209,11 +210,3 @@ MatchState _with(
       crawfordUsed: crawfordUsed ?? m.crawfordUsed,
       winner: winner ?? m.winner,
     );
-
-bool _listEq<T>(List<T> a, List<T> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
-}

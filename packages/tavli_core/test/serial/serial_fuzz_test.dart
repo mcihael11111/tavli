@@ -96,7 +96,9 @@ void main() {
     final r = Random(99);
     final samples = <MatchState>[];
     for (final v in Variant.values) {
-      var m = MatchState.initial(MatchConfig.to(5, [v], cubeEnabled: true));
+      final target = v.rules.match.fixedTarget ?? 5;
+      var m =
+          MatchState.initial(MatchConfig.to(target, [v], cubeEnabled: true));
       for (var i = 0; i < 300 && !m.isOver; i++) {
         final g = randomLegalAction(m.game, r);
         final res = reduceMatch(m, g == null ? const NextGame() : GameMove(g));

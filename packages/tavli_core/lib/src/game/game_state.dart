@@ -10,6 +10,7 @@ import '../rules/step_rules.dart';
 import '../rules/step_validators.dart';
 import '../rules/turn_context.dart';
 import '../serial/json_read.dart';
+import '../util/list_eq.dart';
 import '../variant/variant.dart';
 import '../variant/variant_rules.dart';
 import 'cube.dart';
@@ -144,19 +145,22 @@ final class GameState {
   /// setting up scenarios (tests, puzzles, a resumed game).
   ///
   /// Throws [StateError] during a moving phase, and [ArgumentError] when
-  /// [position]'s direction is not the variant's or the position is
-  /// already finished (`endsGame` holds for either side: 15 borne off, a
-  /// pinned mother whose pinner has left its start, both mothers pinned).
+  /// [position] cannot occur in the variant (wrong direction; pinned
+  /// checkers outside a pinning game; checkers on the bar outside a
+  /// hitting game) or is already finished (`endsGame` holds for either
+  /// side: 15 borne off, a pinned mother whose pinner has left its start,
+  /// both mothers pinned).
   GameState withPosition(Position position) {
     if (phase == GamePhase.moving) {
       throw StateError('withPosition during a moving phase');
     }
     final rules = variant.rules;
-    if (position.direction != rules.direction) {
+    final misfit = _misfit(position, rules);
+    if (misfit != null) {
       throw ArgumentError.value(
-        position.direction,
+        position,
         'position',
-        '${variant.name} plays ${rules.direction.name}',
+        'must be a ${variant.name} board $misfit',
       );
     }
     for (final side in Side.values) {
@@ -179,7 +183,8 @@ final class GameState {
   /// Parses [toJson] output from untrusted input. Throws only
   /// [FormatException]: for a wrong `schemaVersion`, a malformed field, or
   /// a state `reduce` could not have produced (e.g. steps that are not a
-  /// legal prefix of a play, a finished board outside `gameOver`).
+  /// legal prefix of a play, a finished board outside `gameOver`, pins
+  /// or bar checkers the variant cannot have, an offer `reduce` refuses).
   static GameState fromJson(Object? json) => _gameStateFromJson(json);
 
   /// Every legal play of the current moving phase, generated on first use
@@ -251,15 +256,15 @@ final class GameState {
       other.phase == phase &&
       other.position == position &&
       other.turnStart == turnStart &&
-      _listEq(other.dice, dice) &&
+      listEq(other.dice, dice) &&
       other.cascadeMode == cascadeMode &&
-      _listEq(other.steps, steps) &&
+      listEq(other.steps, steps) &&
       other.context == context &&
       other.rollIndex == rollIndex &&
       other.turnsTaken[Side.one] == turnsTaken[Side.one] &&
       other.turnsTaken[Side.two] == turnsTaken[Side.two] &&
       other.cube == cube &&
-      _listEq(other.pendingRemainder, pendingRemainder) &&
+      listEq(other.pendingRemainder, pendingRemainder) &&
       other.remainderTurn == remainderTurn &&
       other.result == result &&
       other.crawfordGame == crawfordGame;
@@ -284,14 +289,6 @@ final class GameState {
   String toString() => 'GameState(${variant.name}, ${phase.name}, '
       'to move: ${sideToMove?.name}, dice: $dice, steps: $steps, '
       'roll $rollIndex, $position)';
-
-  static bool _listEq<T>(List<T> a, List<T> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
 }
 
 /// The context at the start of [side]'s moving phase with [dice]: its

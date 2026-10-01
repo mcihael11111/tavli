@@ -7,6 +7,7 @@ library;
 
 import '../board/side.dart';
 import '../play/step.dart';
+import '../util/list_eq.dart';
 import 'game_result.dart';
 
 sealed class GameEvent {
@@ -44,7 +45,7 @@ final class DiceRolled extends GameEvent {
 
   @override
   bool operator ==(Object other) =>
-      other is DiceRolled && other.side == side && _eq(other.dice, dice);
+      other is DiceRolled && other.side == side && listEq(other.dice, dice);
 
   @override
   int get hashCode => Object.hash('rolled', side, Object.hashAll(dice));
@@ -95,7 +96,9 @@ final class PlayCommitted extends GameEvent {
 
   @override
   bool operator ==(Object other) =>
-      other is PlayCommitted && other.side == side && _eq(other.steps, steps);
+      other is PlayCommitted &&
+      other.side == side &&
+      listEq(other.steps, steps);
 
   @override
   int get hashCode => Object.hash('committed', side, Object.hashAll(steps));
@@ -113,7 +116,7 @@ final class TurnPassed extends GameEvent {
 
   @override
   bool operator ==(Object other) =>
-      other is TurnPassed && other.side == side && _eq(other.dice, dice);
+      other is TurnPassed && other.side == side && listEq(other.dice, dice);
 
   @override
   int get hashCode => Object.hash('passed', side, Object.hashAll(dice));
@@ -132,7 +135,7 @@ final class RemainderPassed extends GameEvent {
 
   @override
   bool operator ==(Object other) =>
-      other is RemainderPassed && other.to == to && _eq(other.dice, dice);
+      other is RemainderPassed && other.to == to && listEq(other.dice, dice);
 
   @override
   int get hashCode => Object.hash('remainder', to, Object.hashAll(dice));
@@ -204,12 +207,4 @@ final class GameEnded extends GameEvent {
 
   @override
   String toString() => 'GameEnded($result)';
-}
-
-bool _eq<T>(List<T> a, List<T> b) {
-  if (a.length != b.length) return false;
-  for (var i = 0; i < a.length; i++) {
-    if (a[i] != b[i]) return false;
-  }
-  return true;
 }
