@@ -928,12 +928,11 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 tags:
   legacy-bench:
     skip: "Slow baseline. Run: flutter test --run-skipped --tags legacy-bench test/bench"
-    timeout: 10x
   legacy-slow:
-    skip: "Legacy medium-vs-medium full game takes 30+ min (the 2-ply UI-thread search SP2 replaces). Run: flutter test --run-skipped --tags legacy-slow"
+    skip: "Legacy full games at medium/hard difficulty take 30+ min (the UI-thread search SP2 replaces). Run: flutter test --run-skipped --tags legacy-slow"
 ```
 
-Then tag the one legacy test that never finishes. In `test/integration/game_flow_test.dart`, find the test named `two AIs can play a complete game to conclusion` and add the named argument `tags: ['legacy-slow'],` to its `test(...)` call. Change nothing else in that file. SP2 deletes this test along with the legacy AI.
+Then tag the one legacy test that never finishes. In `test/integration/game_flow_test.dart`, find the test named `two AIs can play a complete game to conclusion` and add the named argument `tags: ['legacy-slow'],` to its `test(...)` call. Also tag `AI at every difficulty can complete a game` (it plays full medium games too). Change nothing else in that file. SP2 deletes these tests along with the legacy AI.
 
 - [ ] **Step 2: Write the benchmark**
 
@@ -947,6 +946,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tavli/features/ai/difficulty/difficulty_level.dart';
 import 'package:tavli/features/ai/engine/ai_player.dart';
@@ -963,14 +963,19 @@ void main() {
   test('legacy engine + AI baseline', () {
     const gen = MoveGenerator();
     const eng = GameEngine();
-    final ai = AiPlayer();
-    final rng = Random(42);
+    // Seeded so the AI's tie-breaking/randomness is identical across runs.
+    final ai = AiPlayer(rng: Random(7));
+    final rng = Random(
+        42); // positions: seed 42 (dice) + AI seed 7 => identical every run
 
-    // Mid-game positions from a seeded easy-vs-easy self-play.
+    // Positions come from a seeded (dice Random(42), AI Random(7)) easy-vs-easy
+    // self-play: opening to early-middle plies, always with player 2 to move
+    // (every second ply is kept). Identical across runs.
     final positions = <BoardState>[];
     var board = BoardState.initial();
     for (var ply = 0; ply < 60 && positions.length < 12; ply++) {
-      final turn = ai.selectTurn(board, DiceRoll.random(rng), DifficultyLevel.easy);
+      final turn =
+          ai.selectTurn(board, DiceRoll.random(rng), DifficultyLevel.easy);
       if (turn != null) board = eng.applyMoves(board, turn.moves);
       if (eng.isGameOver(board)) break;
       board = eng.endTurn(board);
@@ -983,20 +988,25 @@ void main() {
     ];
     final doubles = rolls.where((r) => r.isDoubles).toList();
 
+    // Index rolls fastest and positions slowest so the samples sweep the full
+    // positions x rolls cross product (a shared stride would pin each roll to
+    // a subset of positions). `all_rolls` therefore weights the 21 distinct
+    // rolls equally (doubles count once, not 1/36).
     var i = 0;
     final results = <BenchStats>[
       // Bodies return their result so the bench sink keeps the work alive.
       measure(name: 'legacy.movegen.all_rolls', samples: 500, () {
-        final p = positions[i % positions.length];
+        final p = positions[(i ~/ rolls.length) % positions.length];
         return gen.generateAllLegalTurns(p, rolls[i++ % rolls.length]);
       }),
       measure(name: 'legacy.movegen.doubles', samples: 300, () {
-        final p = positions[i % positions.length];
+        final p = positions[(i ~/ doubles.length) % positions.length];
         return gen.generateAllLegalTurns(p, doubles[i++ % doubles.length]);
       }),
       measure(name: 'legacy.ai.easy.selectTurn', samples: 200, () {
         final p = positions[i % positions.length];
-        return ai.selectTurn(p, rolls[i++ % rolls.length], DifficultyLevel.easy);
+        return ai.selectTurn(
+            p, rolls[i++ % rolls.length], DifficultyLevel.easy);
       }),
       // Two samples only: each takes seconds to minutes (the core problem).
       measure(
@@ -1071,9 +1081,12 @@ Future<void> main() {
     responseDataCallback: (data) async {
       if (data == null) return;
       for (final entry in data.entries) {
-        final timeline = driver.Timeline.fromJson(
-          entry.value as Map<String, dynamic>,
-        );
+        final value = entry.value;
+        if (value is! Map<String, dynamic> ||
+            !value.containsKey('traceEvents')) {
+          continue;
+        }
+        final timeline = driver.Timeline.fromJson(value);
         final summary = driver.TimelineSummary.summarize(timeline);
         await summary.writeTimelineToFile(
           entry.key,
@@ -1093,10 +1106,12 @@ Future<void> main() {
 
 ```dart
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:tavli/app/theme.dart';
 import 'package:tavli/features/ai/difficulty/difficulty_level.dart';
 import 'package:tavli/features/game/data/models/game_state.dart';
 import 'package:tavli/features/game/domain/engine/variants/game_variant.dart';
@@ -1107,8 +1122,9 @@ import 'package:tavli/shared/services/settings_service.dart';
 
 /// Baseline frame timings for the LEGACY game screen (vs Easy bot, Portes).
 ///
-/// Player moves are applied through the provider (not Flame taps), so this
-/// measures render/rebuild/bot cost rather than hit-testing. Run on the
+/// Player moves are applied through the provider: they bypass the Flame tap
+/// path AND skip the player move animation (the board snaps), so this baseline
+/// measures rebuild/render/bot cost rather than hit-testing or animation. Run on the
 /// Galaxy S with: tool/device/profile_run.sh legacy_game_perf
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -1118,9 +1134,13 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await SettingsService.initialize();
 
-    await tester.pumpWidget(const ProviderScope(
+    await SystemChrome.setPreferredOrientations(
+        [DeviceOrientation.landscapeLeft]);
+
+    await tester.pumpWidget(ProviderScope(
       child: MaterialApp(
-        home: GameScreen(
+        theme: TavliTheme.light,
+        home: const GameScreen(
           difficulty: DifficultyLevel.easy,
           variant: GameVariant.portes,
         ),
@@ -1140,19 +1160,30 @@ void main() {
       }
     }
 
+    var playerTurns = 0;
     await binding.traceAction(() async {
-      // Opening roll.
-      await tester.tap(find.text(TavliCopy.rollButton));
+      // Opening roll: wait until the button is on screen.
+      final openingBtn = find.text(TavliCopy.rollButton);
+      final openingDeadline = DateTime.now().add(const Duration(seconds: 5));
+      while (openingBtn.evaluate().isEmpty &&
+          DateTime.now().isBefore(openingDeadline)) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+      expect(openingBtn, findsWidgets,
+          reason: 'Opening "${TavliCopy.rollButton}" button never appeared');
+      await tester.tap(openingBtn.first);
       await idle(1500);
 
-      var playerTurns = 0;
       final deadline = DateTime.now().add(const Duration(seconds: 90));
       while (playerTurns < 6 &&
           state().phase != GamePhase.gameOver &&
           DateTime.now().isBefore(deadline)) {
         final s = state();
-        if (s.isPlayerTurn && s.phase == GamePhase.playerTurnStart) {
-          await tester.tap(find.text(TavliCopy.roll));
+        final rollBtn = find.text(TavliCopy.roll);
+        if (s.isPlayerTurn &&
+            s.phase == GamePhase.playerTurnStart &&
+            rollBtn.evaluate().isNotEmpty) {
+          await tester.tap(rollBtn.first);
           await idle(600);
         } else if (s.isPlayerTurn &&
             s.phase == GamePhase.movingCheckers &&
@@ -1170,6 +1201,10 @@ void main() {
         }
       }
     }, reportKey: 'legacy_game_easy');
+
+    expect(playerTurns, 6,
+        reason: 'Script stalled (phase=${state().phase}); the timeline '
+            'would not represent a full 6-turn game.');
   });
 }
 ```
@@ -1180,12 +1215,30 @@ void main() {
 
 ```bash
 #!/usr/bin/env bash
-# Lists connected Android devices (id + model). Exits 1 when none are attached.
+# Lists connected Android devices (id + model). Exits 1 when none are usable.
 set -euo pipefail
-ADB="${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb"
+if command -v adb >/dev/null 2>&1; then
+  ADB="$(command -v adb)"
+else
+  ADB=""
+  for root in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Library/Android/sdk"; do
+    if [ -n "$root" ] && [ -x "$root/platform-tools/adb" ]; then
+      ADB="$root/platform-tools/adb"
+      break
+    fi
+  done
+fi
+if [ -z "$ADB" ]; then
+  echo "adb not found. Put it on PATH or set ANDROID_HOME / ANDROID_SDK_ROOT." >&2
+  exit 1
+fi
 devices=$("$ADB" devices | awk 'NR>1 && $2=="device" {print $1}')
 if [ -z "$devices" ]; then
-  echo "No Android device connected. Enable USB debugging and plug in the phone." >&2
+  if "$ADB" devices | awk 'NR>1 && $2=="unauthorized" {f=1} END{exit !f}'; then
+    echo "Device is unauthorized: authorize USB debugging on the phone." >&2
+  else
+    echo "No Android device connected. Enable USB debugging and plug in the phone." >&2
+  fi
   exit 1
 fi
 for d in $devices; do
@@ -1204,8 +1257,17 @@ done
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 scenario="${1:?usage: profile_run.sh <scenario> [device-id]}"
-device="${2:-$(tool/device/check_device.sh | head -n1 | cut -d' ' -f1)}"
-flutter drive --profile \
+if ! command -v flutter >/dev/null 2>&1; then
+  echo "flutter not found on PATH." >&2
+  exit 1
+fi
+devices_out=$(tool/device/check_device.sh)
+device="${2:-$(printf '%s\n' "$devices_out" | awk 'NR==1{print $1}')}"
+echo "Using device: $(printf '%s\n' "$devices_out" | awk -v d="$device" '$1==d{print}')"
+rm -rf build/perf
+# --no-dds: traceAction needs a direct VM-service connection (DDS blocks it).
+# --endless-trace-buffer: keep the start of a ~30 s trace.
+flutter drive --profile --no-dds --endless-trace-buffer \
   --driver=test_driver/perf_driver.dart \
   --target="integration_test/perf/${scenario}_test.dart" \
   -d "$device"

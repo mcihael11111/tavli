@@ -22,10 +22,14 @@ void main() {
   test('legacy engine + AI baseline', () {
     const gen = MoveGenerator();
     const eng = GameEngine();
-    final ai = AiPlayer();
-    final rng = Random(42);
+    // Seeded so the AI's tie-breaking/randomness is identical across runs.
+    final ai = AiPlayer(rng: Random(7));
+    final rng = Random(
+        42); // positions: seed 42 (dice) + AI seed 7 => identical every run
 
-    // Mid-game positions from a seeded easy-vs-easy self-play.
+    // Positions come from a seeded (dice Random(42), AI Random(7)) easy-vs-easy
+    // self-play: opening to early-middle plies, always with player 2 to move
+    // (every second ply is kept). Identical across runs.
     final positions = <BoardState>[];
     var board = BoardState.initial();
     for (var ply = 0; ply < 60 && positions.length < 12; ply++) {
@@ -43,15 +47,19 @@ void main() {
     ];
     final doubles = rolls.where((r) => r.isDoubles).toList();
 
+    // Index rolls fastest and positions slowest so the samples sweep the full
+    // positions x rolls cross product (a shared stride would pin each roll to
+    // a subset of positions). `all_rolls` therefore weights the 21 distinct
+    // rolls equally (doubles count once, not 1/36).
     var i = 0;
     final results = <BenchStats>[
       // Bodies return their result so the bench sink keeps the work alive.
       measure(name: 'legacy.movegen.all_rolls', samples: 500, () {
-        final p = positions[i % positions.length];
+        final p = positions[(i ~/ rolls.length) % positions.length];
         return gen.generateAllLegalTurns(p, rolls[i++ % rolls.length]);
       }),
       measure(name: 'legacy.movegen.doubles', samples: 300, () {
-        final p = positions[i % positions.length];
+        final p = positions[(i ~/ doubles.length) % positions.length];
         return gen.generateAllLegalTurns(p, doubles[i++ % doubles.length]);
       }),
       measure(name: 'legacy.ai.easy.selectTurn', samples: 200, () {

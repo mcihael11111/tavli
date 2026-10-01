@@ -9,9 +9,12 @@ Future<void> main() {
     responseDataCallback: (data) async {
       if (data == null) return;
       for (final entry in data.entries) {
-        final timeline = driver.Timeline.fromJson(
-          entry.value as Map<String, dynamic>,
-        );
+        final value = entry.value;
+        if (value is! Map<String, dynamic> ||
+            !value.containsKey('traceEvents')) {
+          continue;
+        }
+        final timeline = driver.Timeline.fromJson(value);
         final summary = driver.TimelineSummary.summarize(timeline);
         await summary.writeTimelineToFile(
           entry.key,

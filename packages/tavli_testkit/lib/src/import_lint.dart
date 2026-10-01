@@ -221,12 +221,13 @@ Directory packageLibDirFromStarts(
     try {
       return packageLibDirFromConfig(packageName, start);
     } on StateError catch (e) {
-      reasons.add(e.message);
+      if (!reasons.contains(e.message)) reasons.add(e.message);
     }
   }
   throw StateError(
-    'Cannot resolve package:$packageName/'
-    '${reasons.isEmpty ? '' : ': ${reasons.join('; ')}'}',
+    reasons.isEmpty
+        ? 'Cannot resolve package:$packageName/'
+        : 'Cannot resolve package:$packageName/ (${reasons.join('; ')})',
   );
 }
 
