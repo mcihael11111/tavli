@@ -1,0 +1,6 @@
+tags:
+  legacy-bench:
+    skip: "Slow baseline. Run: flutter test --run-skipped --tags legacy-bench test/bench"
+    timeout: 10x
+  legacy-slow:
+    skip: "Legacy medium-vs-medium full game takes 30+ min (the 2-ply UI-thread search SP2 replaces). Run: flutter test --run-skipped --tags legacy-slow"

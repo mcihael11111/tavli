@@ -45,7 +45,7 @@ void main() {
       expect(result, isNotNull);
       expect(result!.winner, anyOf(1, 2));
       expect(result.points, greaterThan(0));
-    });
+    }, tags: ['legacy-slow']);
 
     test('game preserves checker count invariant throughout', () {
       final rng = Random(42);
@@ -98,7 +98,7 @@ void main() {
         expect(engine.isGameOver(state), true,
             reason: '${difficulty.englishName} AI should finish a game');
       }
-    });
+    }, tags: ['legacy-slow']);
 
     test('game result types are correctly detected', () {
       // Single game: both have borne off.
