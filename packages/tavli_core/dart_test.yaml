@@ -1,5 +1,12 @@
+# benchmark/ holds the bench-tagged budget tests (plan Task 17).
+paths: [test, benchmark]
+
 tags:
   fuzz:
     timeout: 20x
   bench:
     timeout: 5x
+    # Timing tests share the machine with other suites in a plain
+    # `dart test`; a retry absorbs a noisy run (a real regression fails
+    # every time). CI runs them alone (tool/ci/check.sh).
+    retry: 2
