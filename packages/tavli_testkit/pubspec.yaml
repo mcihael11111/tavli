@@ -1,0 +1,12 @@
+name: tavli_testkit
+description: Dev-only test helpers (benchmarks, import lint) shared across the Tavli workspace.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: '>=3.6.0 <4.0.0'
+
+dev_dependencies:
+  lints: '>=3.0.0 <7.0.0'
+  test: ^1.25.0
