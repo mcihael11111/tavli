@@ -1,41 +1,54 @@
 import 'dart:io' show Platform;
 
-/// Summary statistics for a micro-benchmark.
+/// Receives every benchmark body result so the work cannot be optimized away.
+// ignore: unused_element
+Object? _benchSink;
+
+/// Summary statistics for a micro-benchmark (nanosecond precision).
 class BenchStats {
   final String name;
   final int samples;
-  final Duration p50;
-  final Duration p95;
-  final Duration max;
-  final Duration mean;
+  final int p50Ns;
+  final int p95Ns;
+  final int maxNs;
+  final int meanNs;
 
   const BenchStats({
     required this.name,
     required this.samples,
-    required this.p50,
-    required this.p95,
-    required this.max,
-    required this.mean,
+    required this.p50Ns,
+    required this.p95Ns,
+    required this.maxNs,
+    required this.meanNs,
   });
 
-  /// Builds stats from raw microsecond samples using nearest-rank percentiles.
-  factory BenchStats.fromMicros(String name, List<int> micros) {
-    if (micros.isEmpty) {
-      throw ArgumentError.value(micros, 'micros', 'must not be empty');
+  /// Builds stats from raw nanosecond samples using nearest-rank percentiles.
+  factory BenchStats.fromNanos(String name, List<int> nanos) {
+    if (nanos.isEmpty) {
+      throw ArgumentError.value(nanos, 'nanos', 'must not be empty');
     }
-    final sorted = List<int>.of(micros)..sort();
+    final sorted = List<int>.of(nanos)..sort();
     int rank(double p) =>
         sorted[((p * sorted.length).ceil() - 1).clamp(0, sorted.length - 1)];
     final total = sorted.fold<int>(0, (a, b) => a + b);
     return BenchStats(
       name: name,
       samples: sorted.length,
-      p50: Duration(microseconds: rank(0.50)),
-      p95: Duration(microseconds: rank(0.95)),
-      max: Duration(microseconds: sorted.last),
-      mean: Duration(microseconds: total ~/ sorted.length),
+      p50Ns: rank(0.50),
+      p95Ns: rank(0.95),
+      maxNs: sorted.last,
+      meanNs: total ~/ sorted.length,
     );
   }
+
+  /// Convenience for microsecond samples.
+  factory BenchStats.fromMicros(String name, List<int> micros) =>
+      BenchStats.fromNanos(name, [for (final m in micros) m * 1000]);
+
+  Duration get p50 => Duration(microseconds: p50Ns ~/ 1000);
+  Duration get p95 => Duration(microseconds: p95Ns ~/ 1000);
+  Duration get max => Duration(microseconds: maxNs ~/ 1000);
+  Duration get mean => Duration(microseconds: meanNs ~/ 1000);
 
   /// True when p95 is within [budget] multiplied by [scale].
   ///
@@ -43,49 +56,66 @@ class BenchStats {
   /// via the `TAVLI_BENCH_SCALE` environment variable without code changes.
   bool withinBudget(Duration budget, {double? scale}) {
     final s = scale ?? benchScale();
-    return p95.inMicroseconds <= budget.inMicroseconds * s;
+    return p95Ns <= budget.inMicroseconds * 1000 * s;
   }
 
   Map<String, Object> toJson() => {
         'name': name,
         'samples': samples,
-        'p50_us': p50.inMicroseconds,
-        'p95_us': p95.inMicroseconds,
-        'max_us': max.inMicroseconds,
-        'mean_us': mean.inMicroseconds,
+        'p50_us': p50Ns ~/ 1000,
+        'p95_us': p95Ns ~/ 1000,
+        'max_us': maxNs ~/ 1000,
+        'mean_us': meanNs ~/ 1000,
+        'p50_ns': p50Ns,
+        'p95_ns': p95Ns,
+        'max_ns': maxNs,
+        'mean_ns': meanNs,
       };
 
+  static String _us(int ns) => (ns / 1000).toStringAsFixed(1);
+
   @override
-  String toString() => '$name: n=$samples p50=${p50.inMicroseconds}us '
-      'p95=${p95.inMicroseconds}us max=${max.inMicroseconds}us';
+  String toString() => '$name: n=$samples p50=${_us(p50Ns)}us '
+      'p95=${_us(p95Ns)}us max=${_us(maxNs)}us';
 }
 
-/// Runs [body] [warmup] times untimed, then [samples] times timed.
+/// Runs [body] untimed until both [warmup] calls have completed and
+/// [minWarmup] has elapsed, then [samples] times timed.
+///
+/// Slow bodies can pass `warmup: 0, minWarmup: Duration.zero`.
 BenchStats measure(
-  void Function() body, {
+  Object? Function() body, {
   String name = 'bench',
   int warmup = 20,
+  Duration minWarmup = const Duration(milliseconds: 300),
   int samples = 200,
 }) {
-  for (var i = 0; i < warmup; i++) {
-    body();
+  if (samples <= 0) {
+    throw ArgumentError.value(samples, 'samples', 'must be > 0');
   }
-  final micros = <int>[];
+  final warm = Stopwatch()..start();
+  var done = 0;
+  while (done < warmup || warm.elapsed < minWarmup) {
+    _benchSink = body();
+    done++;
+  }
+  final nanosPerTick = 1000000000 / Stopwatch().frequency;
+  final nanos = <int>[];
   final sw = Stopwatch();
   for (var i = 0; i < samples; i++) {
     sw
       ..reset()
       ..start();
-    body();
+    _benchSink = body();
     sw.stop();
-    micros.add(sw.elapsedMicroseconds);
+    nanos.add((sw.elapsedTicks * nanosPerTick).round());
   }
-  return BenchStats.fromMicros(name, micros);
+  return BenchStats.fromNanos(name, nanos);
 }
 
 /// Budget multiplier from `TAVLI_BENCH_SCALE` (default 1.0).
 double benchScale([Map<String, String>? env]) {
   final raw = (env ?? Platform.environment)['TAVLI_BENCH_SCALE'];
   final parsed = raw == null ? null : double.tryParse(raw);
-  return (parsed == null || parsed <= 0) ? 1.0 : parsed;
+  return (parsed == null || !parsed.isFinite || parsed <= 0) ? 1.0 : parsed;
 }

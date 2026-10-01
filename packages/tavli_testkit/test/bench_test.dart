@@ -5,7 +5,12 @@ void main() {
   group('measure', () {
     test('collects the requested number of samples', () {
       var calls = 0;
-      final stats = measure(() => calls++, warmup: 5, samples: 50);
+      final stats = measure(
+        () => calls++,
+        warmup: 5,
+        minWarmup: Duration.zero,
+        samples: 50,
+      );
       expect(stats.samples, 50);
       expect(calls, 55);
     });
@@ -17,10 +22,39 @@ void main() {
           x += i;
         }
         if (x < 0) throw StateError('unreachable');
+        return x;
       }, samples: 100);
       expect(stats.p50 <= stats.p95, isTrue);
       expect(stats.p95 <= stats.max, isTrue);
     });
+  });
+
+  test('minWarmup extends warm-up beyond the warmup call count', () {
+    var calls = 0;
+    measure(() {
+      calls++;
+      final sw = Stopwatch()..start();
+      while (sw.elapsedMicroseconds < 1000) {}
+      return calls;
+    }, warmup: 1, minWarmup: const Duration(milliseconds: 20), samples: 5);
+    expect(calls, greaterThan(1 + 5));
+  });
+
+  test('samples must be positive', () {
+    expect(() => measure(() => null, samples: 0), throwsArgumentError);
+  });
+
+  test('body result is accepted (Object?)', () {
+    final stats = measure(() => 42, samples: 3, minWarmup: Duration.zero);
+    expect(stats.samples, 3);
+  });
+
+  test('fromNanos keeps sub-microsecond precision', () {
+    final stats = BenchStats.fromNanos('n', const [400, 500, 600]);
+    expect(stats.p50Ns, 500);
+    expect(stats.toJson()['p50_ns'], 500);
+    expect(stats.toJson()['p50_us'], 0);
+    expect(stats.toString(), contains('0.5us'));
   });
 
   group('BenchStats.fromMicros', () {
@@ -62,6 +96,9 @@ void main() {
       expect(benchScale(const {}), 1.0);
       expect(benchScale(const {'TAVLI_BENCH_SCALE': 'abc'}), 1.0);
       expect(benchScale(const {'TAVLI_BENCH_SCALE': '2.5'}), 2.5);
+      for (final bad in ['NaN', 'Infinity', '0', '-1']) {
+        expect(benchScale({'TAVLI_BENCH_SCALE': bad}), 1.0, reason: bad);
+      }
     });
   });
 
