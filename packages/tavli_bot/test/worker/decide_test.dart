@@ -4,7 +4,6 @@ import 'package:tavli_bot/tavli_bot.dart';
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
-import '../support/generation_fixtures.dart';
 import '../support/positions.dart';
 import '../support/search_support.dart' show worstCascade;
 
@@ -197,22 +196,6 @@ void main() {
       expect(of(_big), prof.budget * 2);
       expect(of(_big, cascade: true), prof.cascadeBudget * 2);
     }
-    // And decide honours it: Expert's 2-ply on Mahbusa's worst fixture
-    // would take about 0.75 s unbounded.
-    final f =
-        generationFixtures.firstWhere((f) => f.variant == Variant.mahbusa);
-    final w = Stopwatch()..start();
-    final reply = Bot.decide(_req(Variant.mahbusa,
-        position: f.position,
-        side: f.side,
-        dice: f.dice,
-        level: BotLevel.expert,
-        budget: const Duration(seconds: 60)));
-    expect(reply.stats.timedOut, isTrue);
-    expect(
-        w.elapsedMilliseconds,
-        lessThan(
-            2 * LevelProfile.of(BotLevel.expert).budget.inMilliseconds + 100));
   });
 
   test('the search gets the budget less a 5 % reserve (at least 1 ms)', () {

@@ -144,10 +144,12 @@ abstract final class Bot {
   static const maxBudgetFactor = 2;
 
   /// What the search may spend of a request's [budget]: all but a
-  /// reserve of 5 % (at least 1 ms, at most all of it). A search polls
-  /// its clock between units of work, so it overruns its deadline by the
-  /// last unit (up to about 1 ms on the worst fixtures, asserts off, plan
-  /// Task 9); the reserve keeps the whole call within [budget].
+  /// reserve of 5 % (at least 1 ms, at most all of it). The search's
+  /// predictive stop (`SearchClock.wouldExpire`) keeps it from starting
+  /// work that would end past its deadline; the reserve is the floor for
+  /// what that does not cover: the non-interruptible tree build, a unit
+  /// costlier than its average, and the call's own overhead (plan Task
+  /// 9).
   static Duration searchBudget(Duration budget) {
     final reserveUs = max(1000, budget.inMicroseconds ~/ 20);
     return Duration(microseconds: max(0, budget.inMicroseconds - reserveUs));

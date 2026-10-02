@@ -12,8 +12,8 @@ void main() {
     expect(p.noise, 0.12);
     expect(p.topFraction, 0.5);
     expect(p.cascadeSamples, 8);
-    expect(p.budget, ms * 7);
-    expect(p.cascadeBudget, ms * 14);
+    expect(p.budget, ms * 20);
+    expect(p.cascadeBudget, ms * 40);
   });
 
   test('medium: 1-ply, K 3 -> 6', () {
@@ -24,8 +24,8 @@ void main() {
     expect(p.noise, 0.04);
     expect(p.topFraction, 0.2);
     expect(p.cascadeSamples, 24);
-    expect(p.budget, ms * 27);
-    expect(p.cascadeBudget, ms * 54);
+    expect(p.budget, ms * 80);
+    expect(p.cascadeBudget, ms * 160);
   });
 
   test('hard: 1-ply, K 6 -> 16', () {
@@ -36,8 +36,8 @@ void main() {
     expect(p.noise, 0.01);
     expect(p.topFraction, 0.05);
     expect(p.cascadeSamples, 64);
-    expect(p.budget, ms * 100);
-    expect(p.cascadeBudget, ms * 200);
+    expect(p.budget, ms * 300);
+    expect(p.cascadeBudget, ms * 600);
   });
 
   test('expert: 1-ply + 2-ply top-2, K 8 -> 32, no noise, best only', () {
@@ -48,8 +48,8 @@ void main() {
     expect(p.noise, 0);
     expect(p.topFraction, 0);
     expect(p.cascadeSamples, 128);
-    expect(p.budget, ms * 270);
-    expect(p.cascadeBudget, ms * 540);
+    expect(p.budget, ms * 800);
+    expect(p.cascadeBudget, ms * 1600);
   });
 
   test('every level: cascade budget is 2x, K <= kMax, levels get stronger', () {

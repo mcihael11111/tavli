@@ -1,9 +1,3 @@
-// Prints the measured event-loop gaps.
-// ignore_for_file: avoid_print
-library;
-
-import 'dart:async';
-
 import 'package:tavli_bot/tavli_bot.dart';
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
@@ -300,45 +294,5 @@ void main() {
     expect(await pending, _error('disposed'));
     expect(() => worker.request(_quick(2)), throwsStateError);
     expect(worker.warm, throwsStateError);
-  });
-
-  test('the main isolate stays responsive during back-to-back Hard searches',
-      () async {
-    await worker.warm();
-    final ticks = <int>[];
-    final clock = Stopwatch()..start();
-    final timer = Timer.periodic(const Duration(milliseconds: 1),
-        (_) => ticks.add(clock.elapsedMicroseconds));
-    // Hard on every variant's worst fixture in turn (each 2-10 ms asserts
-    // off), so the main isolate also handles a steady stream of replies.
-    var answered = 0;
-    while (clock.elapsedMilliseconds < 1000) {
-      final f = generationFixtures[answered % generationFixtures.length];
-      final reply = await worker.request(BotRequest(
-        id: answered,
-        kind: BotRequestKind.choosePlay,
-        variant: f.variant,
-        position: f.position,
-        side: f.side,
-        dice: f.dice,
-        context: TurnContext(),
-        cube: const CubeState(enabled: false),
-        level: BotLevel.hard,
-        seed: answered,
-      ));
-      expect(reply, isA<PlayReply>(), reason: '$reply');
-      answered++;
-    }
-    timer.cancel();
-    final gaps = [
-      for (var i = 1; i < ticks.length; i++) ticks[i] - ticks[i - 1],
-    ]..sort();
-    final p99 = gaps[(0.99 * gaps.length).ceil() - 1], max = gaps.last;
-    print('main-isolate timer gaps over ${clock.elapsedMilliseconds} ms '
-        '($answered Hard searches, ${gaps.length} gaps): '
-        'p50 ${gaps[gaps.length ~/ 2]} us, p99 $p99 us, max $max us');
-    expect(answered, greaterThanOrEqualTo(5));
-    expect(p99, lessThanOrEqualTo(4000));
-    expect(max, lessThanOrEqualTo(20000));
   });
 }

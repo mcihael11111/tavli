@@ -1,3 +1,7 @@
+// Prints the measured overruns.
+// ignore_for_file: avoid_print
+library;
+
 import 'dart:math';
 
 import 'package:tavli_bot/src/search/budget.dart';
@@ -117,6 +121,74 @@ void main() {
         expect(r.stats.elapsedUs, lessThan(40000));
         expect(wallUs, lessThan(400000));
       }
+    });
+
+    group('predictive stop', () {
+      void busy(int us) {
+        final w = Stopwatch()..start();
+        while (w.elapsedMicroseconds < us) {}
+      }
+
+      test('a clock stops before a unit that would end past the deadline', () {
+        // 3 ms units, 20 ms budget: polling only, the 7th unit starts at
+        // 18 ms and ends at 21; predicting, it is skipped and the clock
+        // stops at about 18 ms.
+        const unitUs = 3000, budgetUs = 20000;
+        for (var rep = 0; rep < 3; rep++) {
+          final naive = SearchClock(const Duration(microseconds: budgetUs));
+          var naiveUnits = 0;
+          while (!naive.expired) {
+            busy(unitUs);
+            naiveUnits++;
+          }
+          final naiveOverrunUs = naive.elapsedUs - budgetUs;
+          final clock = SearchClock(const Duration(microseconds: budgetUs));
+          var units = 0;
+          while (!clock.wouldExpire(WorkUnit.zeroPly)) {
+            clock.measure(WorkUnit.zeroPly, () => busy(unitUs));
+            units++;
+          }
+          final overrunUs = clock.elapsedUs - budgetUs;
+          print('predictive: $units units, overrun ${overrunUs / 1000} ms; '
+              'polling: $naiveUnits units, overrun '
+              '${naiveOverrunUs / 1000} ms');
+          expect(clock.timedOut, isTrue);
+          expect(units, lessThanOrEqualTo(6));
+          expect(naiveUnits, greaterThanOrEqualTo(7));
+          expect(overrunUs, lessThanOrEqualTo(unitUs), reason: 'one unit');
+          expect(
+              clock.averageUs(WorkUnit.zeroPly), greaterThanOrEqualTo(unitUs));
+        }
+      });
+
+      test('choosePlay with 2 ms evaluations overruns by at most one', () {
+        const evalUs = 2000, budgetUs = 21000;
+        for (var rep = 0; rep < 2; rep++) {
+          final slow = SlowEvaluator(
+              evaluatorFor(_portes), const Duration(microseconds: evalUs));
+          final r = _choose(_start, [2, 2, 2, 2], zeroPly,
+              evaluator: slow, budget: const Duration(microseconds: budgetUs));
+          final overrunUs = r.stats.elapsedUs - budgetUs;
+          print('0-ply, 2 ms evaluations: ${slow.calls} evaluated, '
+              'overrun ${overrunUs / 1000} ms');
+          expect(r.stats.timedOut, isTrue);
+          expect(slow.calls, lessThanOrEqualTo(budgetUs ~/ evalUs));
+          expect(overrunUs, lessThanOrEqualTo(evalUs));
+        }
+      });
+
+      test('1-ply rolls: overrun at most one roll', () {
+        final slow = SlowEvaluator(
+            evaluatorFor(_portes), const Duration(microseconds: 100));
+        const budgetUs = 40000;
+        final r = _choose(_start, [6, 4], onePly,
+            evaluator: slow, budget: const Duration(microseconds: budgetUs));
+        // A roll here scores at most ~30 replies: about 3 ms.
+        final overrunUs = r.stats.elapsedUs - budgetUs;
+        print('1-ply, 0.1 ms evaluations: overrun ${overrunUs / 1000} ms');
+        expect(r.stats.timedOut, isTrue);
+        expect(overrunUs, lessThanOrEqualTo(3000));
+      });
     });
 
     test('a timeout during 1-ply falls back to the 0-ply answer', () {

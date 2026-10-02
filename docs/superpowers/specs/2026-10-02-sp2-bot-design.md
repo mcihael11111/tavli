@@ -33,7 +33,8 @@ The SP2 scope ends at a tested worker API. The app starts calling it in SP3.
 
    - The desktop gate is the device target ÷ 3, the assumed desktop→phone slowdown.
    - The Galaxy S AOT run joins carried gate (c) and must pass before SP3.
-   - Gul Bara **cascade** turns have their own budget: ≤ 2× the level's budget. They are measured separately, because one cascade root can take up to about 0.4 s in the worst case (SP1 report).
+   - Gul Bara **cascade** turns have their own budget: ≤ 2× the level's budget, gated on the p95 of cascades sampled from random games. The single worst cascades are only capped: their non-interruptible core tree build and walks take about 0.3–0.6 s for the SP1 worst fixtures and about 1.1–1.3 s for the worst real-game full 1-1 cascade found (desktop, asserts off; plan Task 9).
+   - `LevelProfile` budgets are the **device** targets (the left column); the app runs with them. The benchmarks pass the desktop gates as explicit request budgets and gate against them (plan Task 9, decided at the Task 8–9 review).
 3. **Plays legally and correctly in every variant.** It uses the core play tree for every variant's rules, which fixes the legacy bot playing Plakoto and Fevga with Portes rules.
 4. **Strength ordering is verified by headless tournaments.** Fixed seeds, 400 games per pairing per family (hitting = Portes, pinning = Plakoto, running = Fevga). The gates:
    - Medium beats Easy ≥ 60 %.
@@ -139,6 +140,8 @@ test/...  benchmark/...  tool/tournament.dart (headless tournaments)
    - pick deterministically from the seeded rng.
 
 **Budget enforcement:** checked between candidates and rolls. The best answer so far is always available. The budget clock is a `Stopwatch` inside the worker.
+- *Added at the Task 8–9 review:* a **predictive stop**. The clock keeps a moving average of the cost of each unit of work (a 0-ply candidate, a 1-ply roll, a 2-ply candidate) and does not start a unit that would end past the deadline, so the search stops early rather than late.
+- `Bot.decide` gives the search 95 % of the request's budget (at least 1 ms held back) as a floor for the work the units do not cover (tree build, call overhead). A request budget is capped at 2× the level's.
 
 **Cascade turns:**
 - `sampleCompletions(n)` with *n* from the profile (Easy 8, Medium 24, Hard 64, Expert 128), scored at 0-ply, plus one `greedyCompletion`.
@@ -207,7 +210,7 @@ Tested by labelled positions: clear double, clear no-double, too good, clear tak
 
 **Protocol:**
 - **`BotRequest`** is plain sendable data (no `GameState`, no trees). Fields:
-  - `id`, `kind`, `variant`, `position`, `side`, `dice`, `cascade`, `context`, `cube`, `level`, `seed`, `budgetMs`, `steps` (teaching)
+  - `id`, `kind`, `variant`, `position`, `side`, `dice`, `cascade`, `context`, `cube`, `crawfordGame`, `level`, `seed`, `budget` (a `Duration`, optional: the level's by default, capped at 2× it), `steps` (teaching), `supersedes`
   - `kind` is one of `choosePlay`, `offerDouble`, `takeDouble`, `analyze`
 - **`BotReply`** holds:
   - `id`
@@ -217,9 +220,16 @@ Tested by labelled positions: clear double, clear no-double, too good, clear tak
 **`BotWorker`:**
 - `spawn()` once, then a `warm()` request (JIT/AOT warm-up of the evaluator on a dummy position).
 - `request(BotRequest) → Future<BotReply>`.
-- **Supersede:** `cancel(id)`, or a newer request with `supersedes: id`, drops a stale request. The worker checks a cancel flag between candidates.
-- `dispose()`.
-- **Fault handling:** errors come back as `BotError` replies and never kill the isolate. If the isolate does die, the client respawns it once and fails the pending requests.
+- **Sequence envelope:** the client wraps each request in its own increasing sequence number and matches replies by it, so a caller may reuse an `id` (e.g. after a cancel) without receiving a stale reply.
+- **Supersede / cancel (as built, plan Task 8):** `cancel(id)`, or a newer request with `supersedes: id`, completes the old future at once with `ErrorReply('cancelled')` on the client.
+  - The worker runs requests one at a time, each in its own event-loop turn, and applies every cancel received before starting the next. A cancelled request that has not started is dropped unanswered.
+  - A synchronous search cannot read messages, so a running request runs to its budget (a cascade's core tree build cannot be interrupted at all) and its late reply is dropped.
+  - The search's `cancelled` callback is not used by the worker.
+- `dispose()` fails pending requests with `ErrorReply('disposed')` and kills the isolate.
+- **Fault handling:** `Bot.decide` validates the request (it may come from an untrusted client on the server) and turns every error into an `ErrorReply`, so a bad request never kills the isolate. If the isolate dies anyway, the pending requests fail with an `ErrorReply` naming the cause, and the next request respawns it:
+  - after a backoff (50 ms, doubling per death without a reply in between, up to 2 s);
+  - with a 10 s handshake timeout;
+  - re-warmed if `warm()` was ever called.
 
 **Direct use:** the same `Bot.decide(BotRequest) → BotReply` pure function runs in-process for tests, tournaments and the SP4 server. The worker is just a host for it.
 
@@ -234,7 +244,7 @@ Tested by labelled positions: clear double, clear no-double, too good, clear tak
 | Search | Single-play shortcut; budget respected (a stub evaluator with sleeps gives `timedOut` and a returned answer); determinism with a fixed seed; Expert picks the known-best play in a set of labelled tactical positions per family (hits, primes, pins, safe bear-off) |
 | Cube | Labelled positions per decision type |
 | Teaching | Qualities ordered; best step has a best-quality child |
-| Worker | Spawn/warm/request/reply; cancellation; supersede; error reply; respawn after crash; no UI-isolate work (the request returns while the main isolate stays responsive: measure event-loop latency ≤ 4 ms during a Hard search) |
+| Worker | Spawn/warm/request/reply; cancellation; supersede; id reuse after cancel; error reply; respawn after crash, with backoff and handshake timeout; no UI-isolate work (bench-tagged, run alone: main-isolate timer gaps during back-to-back Hard searches p99 ≤ 4 ms and max ≤ 20 ms, × `TAVLI_BENCH_SCALE`) |
 | Purity | Allowlist |
 | Benchmarks | Per level × family p95 within the desktop gate (asserts off runner, plus a `dart test` allowance as in SP1); cascade budget |
 | Tournaments | `tool/tournament.dart` headless runner (seeded, parallel isolates). Gate results recorded in the SP2 report. CI runs a 40-game smoke (no gate); the full run is the SP2 exit |
@@ -249,4 +259,6 @@ Tested by labelled positions: clear double, clear no-double, too good, clear tak
 | Hand-tuned evaluator too weak to separate the levels | Levels also differ by depth/K/noise, so separation comes mostly from search. If a gate fails, tune the constants against the tournament tool. Gates allow CI-based acceptance for Expert vs Hard |
 | 1-ply cost on a phone | Iterative widening guarantees an answer at the deadline. Desktop gates are ÷ 3 of the device budget. The device run is gate (c) |
 | Cascade cost | Separate budget; sampled, never enumerated. The worst-case root build is already bounded by core caps |
+| Worst cascades run for seconds on a phone | The core's cascade tree build and walks cannot be interrupted: the worst real-game full 1-1 cascade takes about 1.1–1.3 s on desktop, so a Gul Bara bot turn may take several seconds on a phone, and it delays every request queued behind it (a cancel frees the caller, not the worker). SP3 must plan for it (pacing, "thinking" UI, no request that must answer quickly queued behind a cascade). The lever is a core-side pruning bound for cascades (carried gate (d)) |
+| The worker shares the app's isolate group heap | GC pauses of the worker's allocations stop the UI isolate too. Measured (desktop, asserts off, plan Task 9 probe): during back-to-back Hard searches the main isolate's 1 ms timer gaps are p99 about 1.8 ms, max 2–6 ms; while the worker decides the worst real-game cascade they are p99 about 6–7.5 ms, max 11–15 ms, with about 1.5 % of gaps over 4 ms. Re-measure on the device (gate (c)); if it matters, run cascades with less allocation in the core or in a separate isolate group where the platform allows |
 | Isolate message cost | Lean `BotRequest` (about 100 bytes), never `GameState` |

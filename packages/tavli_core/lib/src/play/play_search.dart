@@ -51,6 +51,9 @@ final class _Key {
 final class _Memo<V extends Object> {
   final _table = HashMap<int, _MemoEntry<V>>();
 
+  /// Entries added.
+  int length = 0;
+
   static int _slot(int zobrist, TurnContext ctx, int progress) =>
       (zobrist ^ ctx.hashCode ^ (progress * 0x01000193)) & 0x3fffffff;
 
@@ -71,6 +74,7 @@ final class _Memo<V extends Object> {
       V value) {
     final slot = _slot(m.zobristHash, ctx, progress);
     _table[slot] = _MemoEntry(board, ctx, progress, value, _table[slot]);
+    length++;
   }
 }
 

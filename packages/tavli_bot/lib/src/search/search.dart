@@ -23,9 +23,12 @@ export 'selection.dart' show SearchResult;
 /// - [evaluator]: defaults to [evaluatorFor] of [rules].
 /// - [budget]: defaults to the profile's budget (its cascade budget for a
 ///   cascade). The clock and [cancelled] are polled between candidates,
-///   rolls and reply evaluations; on expiry the answer is the best
-///   candidate of the deepest level completed, and `stats.timedOut` is
-///   set (a cancel stops the same way without setting it).
+///   rolls and reply evaluations, and a candidate (0-ply, 2-ply) or roll
+///   (1-ply) is not started when its average cost so far would end it
+///   past the deadline ([SearchClock.wouldExpire]); on expiry the answer
+///   is the best candidate of the deepest level completed, and
+///   `stats.timedOut` is set (a cancel stops the same way without
+///   setting it).
 ///
 /// Levels:
 /// 0. every play by its 0-ply value ([PlyScorer.value]). The first play
@@ -68,8 +71,9 @@ SearchResult choosePlay({
   // Level 0.
   final zero = <double>[];
   for (var i = 0; i < plays.length; i++) {
-    if (i > 0 && clock.expired) break;
-    zero.add(scorer.value(plays[i].finalPosition, side));
+    if (i > 0 && clock.wouldExpire(WorkUnit.zeroPly)) break;
+    zero.add(clock.measure(
+        WorkUnit.zeroPly, () => scorer.value(plays[i].finalPosition, side)));
   }
   var pool = [for (var i = 0; i < zero.length; i++) (i, zero[i])];
   var depth = 0;
@@ -129,8 +133,10 @@ List<Candidate>? _twoPlyLevel(
     });
   final out = <Candidate>[];
   for (final (i, _) in top.take(2)) {
-    if (scorer.clock.expired) return null;
-    final v = scorer.twoPly(plays[i].finalPosition, side);
+    // A 2-ply value is all or nothing: skip one that would not finish.
+    if (scorer.clock.wouldExpire(WorkUnit.twoPly)) return null;
+    final v = scorer.clock.measure(
+        WorkUnit.twoPly, () => scorer.twoPly(plays[i].finalPosition, side));
     if (v == null) return null;
     out.add((i, v));
   }

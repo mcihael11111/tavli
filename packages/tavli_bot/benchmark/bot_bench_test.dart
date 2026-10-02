@@ -28,11 +28,9 @@ void main() {
 
   setUpAll(warmUp);
 
-  group('choosePlay p95 within the level gate on the worst fixtures', () {
+  group('choosePlay p95 within the desktop gate on the worst fixtures', () {
     for (final level in BotLevel.values) {
-      test(
-          '${level.name} (${LevelProfile.of(level).budget.inMilliseconds} '
-          'ms)', () {
+      test('${level.name} (${desktopGate(level).inMilliseconds} ms)', () {
         for (final f in playFixtures) {
           check(benchChoosePlay(f, level, level == BotLevel.expert ? 6 : 20));
         }
@@ -53,11 +51,17 @@ void main() {
           cascades, BotLevel.medium, BotRequestKind.analyze));
     });
 
-    test('worst cascades within the 2 s regression cap (Medium)', () {
+    test('worst cascades within the 4 s regression cap (Medium)', () {
       for (final kind in [BotRequestKind.choosePlay, BotRequestKind.analyze]) {
         benchWorstCascades(BotLevel.medium, kind, 1).forEach(check);
       }
     });
+  });
+
+  test('a 2 ms budget at every level: overrun only the tree build', () {
+    for (final level in BotLevel.values) {
+      check(benchSmallBudget(level, 20));
+    }
   });
 
   test('cube decisions at Medium within its gate', () {

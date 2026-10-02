@@ -119,8 +119,9 @@ final class PlyScorer {
     final opp = me.opponent;
     var sum = 0.0;
     for (final r in allRolls) {
-      if (clock.expired) return null;
-      final b = bestReply(f, opp, r.dice);
+      if (clock.wouldExpire(WorkUnit.onePlyRoll)) return null;
+      final b =
+          clock.measure(WorkUnit.onePlyRoll, () => bestReply(f, opp, r.dice));
       if (b == null) return null;
       sum -= r.weight * b;
     }

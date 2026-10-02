@@ -41,7 +41,8 @@ final class BotRequest {
   /// Seeds the request's `Random`: equal requests give equal replies.
   final int seed;
 
-  /// Overrides the level's budget when set.
+  /// Overrides the level's budget when set, up to 2x it
+  /// (`Bot.requestBudget`).
   final Duration? budget;
 
   /// [BotRequestKind.analyze]: the steps already taken this turn.

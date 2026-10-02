@@ -90,6 +90,29 @@ Set<Position> walkAll(PlayTree t, Side s, VariantRules rules) {
 }
 
 void main() {
+  test('searchedStates counts the cascade search; 0 for eager trees', () {
+    final rules = Variant.gulBara.rules;
+    final p = posSame(
+      one: {24: 1, 13: 2, 1: 12},
+      two: {24: 12, 9: 1, 8: 1, 7: 1},
+    );
+    final eager = generatePlays(p, Side.one, [6, 5], rules, TurnContext());
+    expect(eager.searchedStates, 0);
+    final t =
+        generateCascade(p, Side.one, cascadeQueue(4), rules, TurnContext());
+    final built = t.searchedStates;
+    expect(built, greaterThan(0));
+    var n = t.root;
+    while (!n.isComplete) {
+      n = n.child(n.nextSteps.first)!;
+    }
+    expect(t.searchedStates, greaterThanOrEqualTo(built));
+    // Deterministic: a fresh tree walked the same way counts the same.
+    final again =
+        generateCascade(p, Side.one, cascadeQueue(4), rules, TurnContext());
+    expect(again.searchedStates, built);
+  });
+
   group('lazy cascade tree', () {
     final cases = <String, (Position, List<int>)>{
       // Stuck checker on 24 (my 21, 20, 19 closed), 2 movers on 13; the

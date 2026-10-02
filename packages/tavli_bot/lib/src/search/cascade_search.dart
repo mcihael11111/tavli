@@ -7,6 +7,7 @@ import 'dart:math';
 import 'package:tavli_core/tavli_core.dart';
 
 import '../level/bot_level.dart';
+import 'budget.dart';
 import 'ply.dart';
 import 'selection.dart';
 
@@ -50,9 +51,13 @@ SearchResult searchCascade(
   }
   final pool = <Candidate>[];
   for (var i = 0; i < plays.length; i++) {
-    if (i > 0 && clock.expired) break;
+    if (i > 0 && clock.wouldExpire(WorkUnit.zeroPly)) break;
     final f = plays[i].finalPosition;
-    pool.add((i, (i == 0 ? scored[f] : null) ?? scorer.value(f, side)));
+    pool.add((
+      i,
+      (i == 0 ? scored[f] : null) ??
+          clock.measure(WorkUnit.zeroPly, () => scorer.value(f, side))
+    ));
   }
   final (i, v) = pickCandidate(pool, profile, rng);
   return SearchResult(plays[i], v, statsOf(scorer, 0));

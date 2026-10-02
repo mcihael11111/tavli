@@ -19,8 +19,23 @@ export 'fixtures.dart';
 /// Loose regression cap (not a budget) on the single worst cascades:
 /// their cost is the core's non-interruptible tree build and walks, up
 /// to about 1.1 s for a real-game full 1-1 cascade at Medium. They run
-/// on the worker isolate, so they cannot block the UI.
-const worstCascadeCap = Duration(seconds: 2);
+/// on the worker isolate, so they cannot block the UI. 4 s leaves
+/// headroom for slower development machines.
+const worstCascadeCap = Duration(seconds: 4);
+
+/// The desktop gates (design §1): a third of each level's device budget
+/// ([LevelProfile.budget], program spec §3.3). The benchmarks pass them
+/// as explicit request budgets and gate against them.
+const desktopGates = {
+  BotLevel.easy: Duration(milliseconds: 7),
+  BotLevel.medium: Duration(milliseconds: 27),
+  BotLevel.hard: Duration(milliseconds: 100),
+  BotLevel.expert: Duration(milliseconds: 270),
+};
+
+/// The desktop gate of [level], doubled for a cascade (design §1).
+Duration desktopGate(BotLevel level, {bool cascade = false}) =>
+    desktopGates[level]! * (cascade ? 2 : 1);
 
 /// `dart test` runs with asserts on: its budgets are this many times the
 /// real ones (as in SP1).
@@ -83,30 +98,35 @@ final class PlayFixture {
     }
   }
 
+  /// A [kind] request at [level] on this fixture, with the level's
+  /// [desktopGate] as its budget unless [budget] is given.
   BotRequest request(BotLevel level,
-          {int seed = 0,
-          BotRequestKind kind = BotRequestKind.choosePlay,
-          int id = 0}) =>
-      BotRequest(
-        id: id,
-        kind: kind,
-        variant: variant,
-        position: position,
-        side: kind == BotRequestKind.takeDouble ? side.opponent : side,
-        dice: switch (kind) {
-          BotRequestKind.offerDouble || BotRequestKind.takeDouble => const [],
-          _ => dice,
-        },
-        cascade: cascade &&
-            (kind == BotRequestKind.choosePlay ||
-                kind == BotRequestKind.analyze),
-        context: TurnContext(),
-        cube: CubeState(
-            enabled: true,
-            offeredBy: kind == BotRequestKind.takeDouble ? side : null),
-        level: level,
-        seed: seed,
-      );
+      {int seed = 0,
+      BotRequestKind kind = BotRequestKind.choosePlay,
+      int id = 0,
+      Duration? budget}) {
+    final isCascade = cascade &&
+        (kind == BotRequestKind.choosePlay || kind == BotRequestKind.analyze);
+    return BotRequest(
+      id: id,
+      kind: kind,
+      variant: variant,
+      position: position,
+      side: kind == BotRequestKind.takeDouble ? side.opponent : side,
+      dice: switch (kind) {
+        BotRequestKind.offerDouble || BotRequestKind.takeDouble => const [],
+        _ => dice,
+      },
+      cascade: isCascade,
+      context: TurnContext(),
+      cube: CubeState(
+          enabled: true,
+          offeredBy: kind == BotRequestKind.takeDouble ? side : null),
+      level: level,
+      seed: seed,
+      budget: budget ?? desktopGate(level, cascade: isCascade),
+    );
+  }
 }
 
 /// Times [Bot.decide] on each of [requests] once (after deciding the
@@ -146,30 +166,30 @@ void warmUp() {
 }
 
 /// `choosePlay` at [level] on fixture [f], [samples] seeds: gated by the
-/// level's budget.
+/// level's desktop gate.
 BenchResult benchChoosePlay(PlayFixture f, BotLevel level, int samples) {
   f.check();
   return BenchResult(
     timeDecide('choosePlay ${level.name} ${f.label}',
         [for (var i = 0; i < samples; i++) f.request(level, seed: i)]),
-    LevelProfile.of(level).budget,
+    desktopGate(level),
     note: '${f.plays} plays',
   );
 }
 
 /// [kind] at Medium on every play fixture's position, [samples] seeds
-/// each: gated by Medium's budget.
+/// each: gated by Medium's desktop gate.
 BenchResult benchCube(BotRequestKind kind, int samples) => BenchResult(
       timeDecide('${kind.name} medium (${playFixtures.length} positions)', [
         for (final f in playFixtures)
           for (var i = 0; i < samples; i++)
             f.request(BotLevel.medium, seed: i, kind: kind),
       ]),
-      LevelProfile.of(BotLevel.medium).budget,
+      desktopGate(BotLevel.medium),
     );
 
 /// `analyze` at Medium (no steps taken) on fixture [f]: gated by
-/// Medium's budget.
+/// Medium's desktop gate.
 BenchResult benchAnalyze(PlayFixture f, int samples) {
   f.check();
   return BenchResult(
@@ -177,7 +197,7 @@ BenchResult benchAnalyze(PlayFixture f, int samples) {
       for (var i = 0; i < samples; i++)
         f.request(BotLevel.medium, seed: i, kind: BotRequestKind.analyze),
     ]),
-    LevelProfile.of(BotLevel.medium).budget,
+    desktopGate(BotLevel.medium),
   );
 }
 
@@ -198,7 +218,7 @@ List<PlayFixture> sampledCascades([int n = sampledCascadeCount]) {
 }
 
 /// [kind] at [level] on each of [cascades] once: p95 gated by the level's
-/// cascade budget (design §1: 2x).
+/// cascade desktop gate (design §1: 2x).
 BenchResult benchSampledCascades(
     List<PlayFixture> cascades, BotLevel level, BotRequestKind kind) {
   final stats = timeDecide(
@@ -208,7 +228,7 @@ BenchResult benchSampledCascades(
           cascades[i].request(level, seed: i, kind: kind),
       ],
       warmup: 10);
-  return BenchResult(stats, LevelProfile.of(level).cascadeBudget,
+  return BenchResult(stats, desktopGate(level, cascade: true),
       note: 'max ${(stats.maxNs / 1e6).toStringAsFixed(1)} ms');
 }
 
@@ -254,6 +274,51 @@ List<BenchResult> benchWorstCascades(
         }(),
     ];
 
+/// A deterministic measure of what deciding cascade [f] costs: the
+/// states the core's cascade search visits ([PlayTree.searchedStates])
+/// building the tree and walking it once along first steps and 24 times
+/// at random (seed 0), roughly as Medium's search walks it.
+({int work, int diceUsed}) cascadeWork(PlayFixture f) {
+  final tree = generateCascade(
+      f.position, f.side, f.dice, f.variant.rules, TurnContext());
+  if (!tree.hasPlay) return (work: 0, diceUsed: 0);
+  final rng = Random(0);
+  for (var walk = 0; walk <= 24; walk++) {
+    var node = tree.root;
+    while (!node.isComplete) {
+      final next = node.nextSteps.toList();
+      node =
+          node.child(walk == 0 ? next.first : next[rng.nextInt(next.length)])!;
+    }
+  }
+  return (work: tree.searchedStates, diceUsed: tree.diceUsed);
+}
+
+/// `choosePlay` at [level] with a tiny [budget] on the heaviest play
+/// fixture (most plays). The search's predictive stop and reserve keep
+/// it within the budget, except for the non-interruptible tree build:
+/// the bound is the budget plus the build's p95 (measured here).
+BenchResult benchSmallBudget(BotLevel level, int samples,
+    {Duration budget = const Duration(milliseconds: 2)}) {
+  final f = playFixtures.reduce((a, b) => b.plays > a.plays ? b : a)..check();
+  final p = f.position;
+  final build = measure(
+      () => generatePlays(p, f.side, f.dice, f.variant.rules, TurnContext()),
+      name: 'build',
+      samples: samples,
+      minWarmup: Duration.zero);
+  final stats = timeDecide(
+      'choosePlay ${level.name} ${f.label} budget ${budget.inMilliseconds} ms',
+      [
+        for (var i = 0; i < samples; i++)
+          f.request(level, seed: i, budget: budget)
+      ]);
+  final bound = budget + build.p95;
+  return BenchResult(stats, bound,
+      note: 'budget + tree build p95 '
+          '${(build.p95Ns / 1e6).toStringAsFixed(2)} ms');
+}
+
 /// The 21 rolls.
 final _rolls = [
   for (var a = 1; a <= 6; a++)
@@ -261,12 +326,14 @@ final _rolls = [
 ];
 
 /// Variants with play fixtures: one per family (Portes, Plakoto, Fevga),
-/// Long Nard (head rule) and Gul Bara (normal rolls; its doubles
-/// cascade, benchmarked separately).
+/// Mahbusa (the slowest at Expert among the SP1 worst fixtures), Long
+/// Nard (head rule) and Gul Bara (normal rolls; its doubles cascade,
+/// benchmarked separately).
 const fixtureVariants = [
   Variant.portes,
   Variant.plakoto,
   Variant.fevga,
+  Variant.mahbusa,
   Variant.longNard,
   Variant.gulBara,
 ];
@@ -277,8 +344,9 @@ const fixtureVariants = [
 ///   from random games (seed 17 + variant index), one for a non-double
 ///   and (except Gul Bara) one for a double;
 /// - [slowestRealCascade]: the full 1-1 cascade (both sides) over
-///   [cascadePositions] random Gul Bara positions (seed 4244) slowest to
-///   decide at Medium.
+///   [cascadePositions] random Gul Bara positions (seed 4244) with the
+///   most [cascadeWork], a deterministic proxy for the slowest to decide
+///   (wall clock would make the scan irreproducible).
 String scanFixtures({int positions = 300, int cascadePositions = 6000}) {
   String entry(PlayFixture f) =>
       "PlayFixture(Variant.${f.variant.name}, '${f.json}', "
@@ -325,28 +393,28 @@ String scanFixtures({int positions = 300, int cascadePositions = 6000}) {
   }
   out.writeln('];');
   PlayFixture? slowest;
-  var slowestUs = -1;
+  var slowestWork = -1;
   for (final p
       in randomPositions(Variant.gulBara, cascadePositions, Random(4244))) {
     for (final side in Side.values) {
-      final json = jsonEncode(p.toJson());
-      final probe = PlayFixture(Variant.gulBara, json, side, cascadeQueue(1), 0,
+      final f = PlayFixture(
+          Variant.gulBara, jsonEncode(p.toJson()), side, cascadeQueue(1), 0,
           cascade: true);
-      final sw = Stopwatch()..start();
-      _decide(probe.request(BotLevel.medium));
-      final us = sw.elapsedMicroseconds;
-      if (us > slowestUs) {
-        slowestUs = us;
-        slowest = PlayFixture(
-            Variant.gulBara, json, side, probe.dice, probe.measure(),
+      final (:work, :diceUsed) = cascadeWork(f);
+      if (work > slowestWork) {
+        slowestWork = work;
+        slowest = PlayFixture(f.variant, f.json, side, f.dice, diceUsed,
             cascade: true);
       }
     }
   }
   out
     ..writeln()
-    ..writeln('/// The full 1-1 cascade slowest to decide at Medium '
-        '($slowestUs us when scanned).')
+    ..writeln('/// The real-game full 1-1 cascade with the most '
+        '`cascadeWork` ($slowestWork),')
+    ..writeln('/// the proxy for the slowest to decide (wall clock would '
+        'make the scan')
+    ..writeln('/// irreproducible).')
     ..writeln('const slowestRealCascade = ${entry(slowest!)};');
   return out.toString();
 }

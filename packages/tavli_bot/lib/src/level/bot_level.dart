@@ -29,8 +29,11 @@ final class LevelProfile {
   /// Sampled completions per cascade decision.
   final int cascadeSamples;
 
-  /// Per-decision time budget (desktop gate, design §1), and the separate
-  /// budget for a cascade turn (2x).
+  /// Per-decision time budget, and the separate budget for a cascade turn
+  /// (2x). These are the device targets (Galaxy S, program spec §3.3,
+  /// design §1), the budgets the app runs with. The desktop gates are a
+  /// third of them (7/27/100/270 ms): the benchmarks pass those as
+  /// explicit request budgets and gate against them.
   final Duration budget, cascadeBudget;
 
   const LevelProfile({
@@ -53,8 +56,8 @@ final class LevelProfile {
     noise: 0.12,
     topFraction: 0.5,
     cascadeSamples: 8,
-    budget: Duration(milliseconds: 7),
-    cascadeBudget: Duration(milliseconds: 14),
+    budget: Duration(milliseconds: 20),
+    cascadeBudget: Duration(milliseconds: 40),
   );
 
   static const _medium = LevelProfile(
@@ -65,8 +68,8 @@ final class LevelProfile {
     noise: 0.04,
     topFraction: 0.2,
     cascadeSamples: 24,
-    budget: Duration(milliseconds: 27),
-    cascadeBudget: Duration(milliseconds: 54),
+    budget: Duration(milliseconds: 80),
+    cascadeBudget: Duration(milliseconds: 160),
   );
 
   static const _hard = LevelProfile(
@@ -77,8 +80,8 @@ final class LevelProfile {
     noise: 0.01,
     topFraction: 0.05,
     cascadeSamples: 64,
-    budget: Duration(milliseconds: 100),
-    cascadeBudget: Duration(milliseconds: 200),
+    budget: Duration(milliseconds: 300),
+    cascadeBudget: Duration(milliseconds: 600),
   );
 
   static const _expert = LevelProfile(
@@ -89,8 +92,8 @@ final class LevelProfile {
     noise: 0,
     topFraction: 0,
     cascadeSamples: 128,
-    budget: Duration(milliseconds: 270),
-    cascadeBudget: Duration(milliseconds: 540),
+    budget: Duration(milliseconds: 800),
+    cascadeBudget: Duration(milliseconds: 1600),
   );
 
   /// The profile of [l].

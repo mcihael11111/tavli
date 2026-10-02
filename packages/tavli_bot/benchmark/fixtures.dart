@@ -46,6 +46,18 @@ const playFixtures = [
       [1, 1, 1, 1],
       377),
   PlayFixture(
+      Variant.mahbusa,
+      '{"direction":"opposing","one":[0,0,3,1,3,4,0,0,1,0,0,0,0,0,0,1,0,0,0,1,0,0,1,0,0,0],"two":[0,1,2,1,0,2,0,1,1,1,0,0,1,0,2,0,0,0,1,1,0,0,0,0,1,0],"pinnedOne":[22],"pinnedTwo":[]}',
+      Side.two,
+      [1, 2],
+      94),
+  PlayFixture(
+      Variant.mahbusa,
+      '{"direction":"opposing","one":[0,0,1,0,1,0,0,1,0,1,0,1,1,0,1,0,0,0,1,0,1,0,0,0,6,0],"two":[0,0,0,1,0,2,0,0,1,0,0,0,2,0,1,0,0,1,0,0,3,1,0,1,2,0],"pinnedOne":[2,4,11,20],"pinnedTwo":[]}',
+      Side.two,
+      [1, 1, 1, 1],
+      749),
+  PlayFixture(
       Variant.longNard,
       '{"direction":"same","one":[0,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,5,0,0,0,0,0,0],"two":[0,5,1,1,0,0,1,0,1,1,0,1,0,0,0,0,0,0,1,0,1,0,0,1,1,0],"pinnedOne":[],"pinnedTwo":[]}',
       Side.two,
@@ -65,7 +77,9 @@ const playFixtures = [
       84),
 ];
 
-/// The full 1-1 cascade slowest to decide at Medium (1097206 us when scanned).
+/// The real-game full 1-1 cascade with the most `cascadeWork` (535429),
+/// the proxy for the slowest to decide (wall clock would make the scan
+/// irreproducible).
 const slowestRealCascade = PlayFixture(
     Variant.gulBara,
     '{"direction":"same","one":[0,0,0,1,2,0,0,2,1,0,1,0,0,0,0,0,0,0,1,1,1,0,0,2,3,0],"two":[0,1,1,1,1,3,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,5,0],"pinnedOne":[],"pinnedTwo":[]}',

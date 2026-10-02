@@ -107,6 +107,13 @@ final class PlayTree {
   /// Whether there is a legal play of at least one step (G9 otherwise).
   bool get hasPlay => diceUsed > 0;
 
+  /// Diagnostics, lazy trees only (0 otherwise): the states the cascade's
+  /// reachability search has visited so far, building the root and
+  /// expanding the nodes walked since. It grows as the tree is walked and
+  /// is a deterministic measure of the work done (benchmarks use it to
+  /// pick their costliest cascades).
+  int get searchedStates => _cascade?._max.length ?? 0;
+
   /// Whether exactly one final position is legal. On a lazy tree this
   /// walks the tree until a second final turns up.
   bool get isForced => _forced ??= _finalsUpTo(1).length == 1;
