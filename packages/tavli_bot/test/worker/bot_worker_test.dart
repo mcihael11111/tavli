@@ -131,7 +131,11 @@ void main() {
           reason: 'completed before the search ended');
       // The worker finishes the search, then answers the next request.
       expect(await worker.request(_quick(2)), isA<PlayReply>());
-      expect(watch.elapsedMilliseconds, greaterThanOrEqualTo(400));
+      expect(
+          watch.elapsedMilliseconds,
+          greaterThanOrEqualTo(
+              Bot.searchBudget(const Duration(milliseconds: 400))
+                  .inMilliseconds));
       expect(await worker.decidedIds(), [1, 2]);
     });
 

@@ -162,6 +162,14 @@ void main() {
     }
   });
 
+  test('the search gets the budget less a 5 % reserve (at least 1 ms)', () {
+    Duration ms(num v) => Duration(microseconds: (v * 1000).round());
+    expect(Bot.searchBudget(ms(270)), ms(256.5));
+    expect(Bot.searchBudget(ms(100)), ms(95));
+    expect(Bot.searchBudget(ms(7)), ms(6));
+    expect(Bot.searchBudget(ms(0.5)), Duration.zero);
+  });
+
   group('invalid requests are ErrorReplies', () {
     const cube = CubeState(enabled: true);
     final bad = <String, BotRequest>{

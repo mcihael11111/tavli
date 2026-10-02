@@ -30,8 +30,10 @@ abstract final class Bot {
   /// - `analyze` → [AnalysisReply] from [analyzeTurn] at the request's
   ///   level.
   ///
-  /// The request's `Random` is `Random(seed)`; its budget, when set,
-  /// overrides the level's. `stats.elapsedUs` covers the whole call.
+  /// The request's `Random` is `Random(seed)`. Its budget (the request's
+  /// if set, else the level's, the cascade budget for a cascade) bounds
+  /// the whole call: the search gets [searchBudget] of it.
+  /// `stats.elapsedUs` covers the whole call.
   /// See [validate] for what a request must satisfy.
   static BotReply decide(BotRequest request) {
     final watch = Stopwatch()..start();
@@ -105,10 +107,23 @@ abstract final class Bot {
     return null;
   }
 
+  /// What the search may spend of a request's [budget]: all but a
+  /// reserve of 5 % (at least 1 ms, at most all of it). A search polls
+  /// its clock between units of work, so it overruns its deadline by the
+  /// last unit (up to about 1 ms on the worst fixtures, asserts off, plan
+  /// Task 9); the reserve keeps the whole call within [budget].
+  static Duration searchBudget(Duration budget) {
+    final reserveUs = max(1000, budget.inMicroseconds ~/ 20);
+    return Duration(microseconds: max(0, budget.inMicroseconds - reserveUs));
+  }
+
   static BotReply _answer(BotRequest r, Stopwatch watch) {
     final rules = r.variant.rules;
     final rng = Random(r.seed);
     final eval = _CountingEvaluator(evaluatorFor(rules));
+    final profile = LevelProfile.of(r.level);
+    final budget = searchBudget(
+        r.budget ?? (r.cascade ? profile.cascadeBudget : profile.budget));
     switch (r.kind) {
       case BotRequestKind.choosePlay:
         final res = choosePlay(
@@ -118,10 +133,10 @@ abstract final class Bot {
           cascade: r.cascade,
           context: r.context,
           rules: rules,
-          profile: LevelProfile.of(r.level),
+          profile: profile,
           rng: rng,
           evaluator: eval,
-          budget: r.budget,
+          budget: budget,
         );
         return PlayReply(
             id: r.id,
@@ -139,7 +154,7 @@ abstract final class Bot {
                 cube: r.cube,
                 level: r.level,
                 rng: rng,
-                budget: r.budget,
+                budget: budget,
                 evaluator: eval,
                 crawfordGame: r.crawfordGame)
             : shouldTake(
@@ -149,14 +164,11 @@ abstract final class Bot {
                 cube: r.cube,
                 level: r.level,
                 rng: rng,
-                budget: r.budget,
+                budget: budget,
                 evaluator: eval);
         return DecisionReply(
             id: r.id, stats: _stats(watch, evaluated: eval.calls), yes: yes);
       case BotRequestKind.analyze:
-        final profile = LevelProfile.of(r.level);
-        final budget =
-            r.budget ?? (r.cascade ? profile.cascadeBudget : profile.budget);
         final a = analyzeTurn(
           position: r.position,
           side: r.side,
