@@ -19,6 +19,11 @@ final class EvalResult {
   const EvalResult(this.winProb, this.gammonProb, this.lossGammonProb);
 
   /// Cubeless equity for `me`: positive is good.
+  ///
+  /// The evaluators are antisymmetric up to rounding (~1e-12): the two
+  /// sides' equities are negatives of each other, but not bit for bit.
+  /// Never compare equities for exact equality; use a tolerance or an
+  /// explicit tie-break.
   double get equity => (2 * winProb - 1) + (gammonProb - lossGammonProb);
 
   @override

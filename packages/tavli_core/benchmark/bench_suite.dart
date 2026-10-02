@@ -1,5 +1,6 @@
 /// Benchmarks with budgets (plan Task 17), shared by
-/// `play_generation_bench_test.dart` (run by `dart test`, asserts on) and
+/// `play_generation_bench_test.dart` (run by `dart test ... benchmark`,
+/// asserts on) and
 /// `run_benchmarks.dart` (asserts off: the numbers for the SP1 report).
 library;
 

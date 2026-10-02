@@ -1,12 +1,13 @@
-# benchmark/ holds the bench-tagged budget tests (plan Task 17).
-paths: [test, benchmark]
+# benchmark/ holds the bench-tagged budget tests (plan Task 17). They are
+# not in the default paths: a plain `dart test` runs suites in parallel,
+# which skews their timings. Run them alone, as tool/ci/check.sh does:
+#   dart test --tags bench --concurrency=1 benchmark
+paths: [test]
 
 tags:
   fuzz:
     timeout: 20x
   bench:
     timeout: 5x
-    # Timing tests share the machine with other suites in a plain
-    # `dart test`; a retry absorbs a noisy run (a real regression fails
-    # every time). CI runs them alone (tool/ci/check.sh).
+    # A retry absorbs a noisy run (a real regression fails every time).
     retry: 2

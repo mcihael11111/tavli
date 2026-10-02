@@ -9,7 +9,8 @@ import 'package:test/test.dart';
 
 import 'bench_suite.dart';
 
-/// Benchmarks with budgets (plan Task 17), run by `dart test`.
+/// Benchmarks with budgets (plan Task 17), run alone by
+/// `dart test --tags bench --concurrency=1 benchmark` (tool/ci/check.sh).
 ///
 /// `dart test` runs with asserts on, so each budget is checked at
 /// [assertAllowance] times its value (and `TAVLI_BENCH_SCALE`, for slow

@@ -46,3 +46,32 @@ int shotsAt(BoardView p, Side s, int target, int from) {
   }
   return n;
 }
+
+/// The best prime of [s] weighted by what it traps: over every run of
+/// consecutive own points (pips with at least [minCount] own unpinned
+/// checkers), `len² × min(trapped, 2) / 2`, where `trapped` counts the
+/// opposing checkers (bar included) that still have to cross the run. A
+/// prime with nothing behind it scores 0.
+///
+/// Runs are followed along the opponent's path (its own pips), so this
+/// works for either direction.
+double trappingPrime(BoardView p, Side s, int minCount) {
+  final them = s.opponent;
+  final g = p.geometry;
+  var behind = p.onBar(them); // opposing checkers above the current pip
+  var run = 0, trapped = 0;
+  var best = 0.0;
+  for (var t = 24; t >= 1; t--) {
+    final mine = g.toOpponent(t);
+    if (p.count(s, mine) >= minCount && !p.isPinned(s, mine)) {
+      if (run == 0) trapped = behind > 2 ? 2 : behind;
+      run++;
+      final v = run * run * trapped / 2;
+      if (v > best) best = v;
+    } else {
+      run = 0;
+    }
+    behind += p.count(them, t);
+  }
+  return best;
+}

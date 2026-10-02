@@ -8,7 +8,8 @@ import 'evaluator.dart';
 import 'family_common.dart';
 import 'features.dart';
 
-/// Hitting games: pip lead, home points, made points, primes, anchors,
+/// Hitting games: pip lead, home points, made points, primes (by what
+/// they trap: [trappingPrime]), anchors,
 /// blots weighted by the shots at them, and the bar. Ideas from the legacy
 /// `BoardEvaluator`, re-derived over [Features].
 ///
@@ -26,7 +27,7 @@ final class HittingEvaluator implements Evaluator {
     final s = _side(
             f.homePointsMe,
             f.madePointsMe,
-            f.primeLenMe,
+            trappingPrime(p, me, 2),
             f.anchorsMe,
             f.barMe,
             f.offMe,
@@ -37,7 +38,7 @@ final class HittingEvaluator implements Evaluator {
         _side(
             f.homePointsOpp,
             f.madePointsOpp,
-            f.primeLenOpp,
+            trappingPrime(p, opp, 2),
             f.anchorsOpp,
             f.barOpp,
             f.offOpp,
@@ -56,14 +57,16 @@ final class HittingEvaluator implements Evaluator {
   }
 
   /// One side's structure, against [theirHome] home points.
-  static double _side(int home, int made, int prime, int anchors, int bar,
+  /// [prime] is the [trappingPrime] value (length², scaled by what it
+  /// traps).
+  static double _side(int home, int made, double prime, int anchors, int bar,
       int off, int blots, int direct, int indirect, int theirHome) {
     final risk = (0.02 * blots + 0.04 * direct + 0.015 * indirect) *
         (1 + 0.15 * theirHome);
     final cappedAnchors = anchors > 2 ? 2 : anchors;
     return 0.15 * home +
         0.05 * made +
-        0.04 * prime * prime +
+        0.04 * prime +
         0.1 * cappedAnchors +
         0.03 * off -
         bar * (0.3 + 0.1 * theirHome) -

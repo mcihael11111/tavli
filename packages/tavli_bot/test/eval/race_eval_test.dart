@@ -9,13 +9,15 @@ final _portes = Variant.portes.rules;
 const _race = RaceEvaluator();
 
 void main() {
-  test('equal pip counts: winProb 0.40..0.55, no gammons', () {
-    // Identical home boards, 75 pips each.
+  test('equal pip counts: winProb 0.40..0.55, no real gammons', () {
+    // Identical home boards, 75 pips each: either side needs ~9 rolls to
+    // finish and has a checker off after one, so the smooth gammon share
+    // is negligible (no cliff to exactly 0 any more).
     final p = posOpp({6: 5, 5: 5, 4: 5}, {6: 5, 5: 5, 4: 5});
     final e = _race.evaluate(p, _one, _portes);
     expect(e.winProb, inInclusiveRange(0.40, 0.55));
-    expect(e.gammonProb, 0);
-    expect(e.lossGammonProb, 0);
+    expect(e.gammonProb, lessThan(1e-6));
+    expect(e.lossGammonProb, lessThan(1e-6));
   });
 
   test('me 20 pips ahead in a 100-pip race: winProb > 0.7', () {
@@ -63,5 +65,29 @@ void main() {
     expect(effectivePips(stacked, Side.one), 48);
     expect(effectivePips(stacked, Side.two), 45);
     expect(e.winProb, lessThan(0.5));
+  });
+
+  test('crossovers: 15 on their 7-point vs my 4 on the 6: gammon > 0.5', () {
+    // They need 15 crossovers (~6.5 rolls at 2.3 a roll) before a checker
+    // can come off; I need ~3 rolls for 24 pips.
+    final p = posOpp({6: 4}, {7: 15});
+    final e = _race.evaluate(p, _one, _portes);
+    expect(e.gammonProb, greaterThan(0.5));
+  });
+
+  test('gammon share is monotone and smooth as my pips drop', () {
+    // My runner walks from my 16 to my 7 (home unchanged, so the wastage
+    // is constant); they have 15 on their 8.
+    double? prev;
+    for (var k = 16; k >= 7; k--) {
+      final p = posOpp({k: 1, 6: 1, 5: 1, 4: 1}, {8: 15});
+      final e = _race.evaluate(p, _one, _portes);
+      final share = e.gammonProb / e.winProb;
+      if (prev != null) {
+        expect(share, greaterThanOrEqualTo(prev), reason: 'k=$k');
+        expect(share - prev, lessThanOrEqualTo(0.1), reason: 'k=$k');
+      }
+      prev = share;
+    }
   });
 }

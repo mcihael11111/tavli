@@ -23,13 +23,20 @@ for pkg in packages/*/; do
   (cd "$pkg" && dart test --reporter=compact --exclude-tags bench)
 done
 
-# Budgeted benchmarks run alone (one suite at a time) so that other suites
-# do not skew their timings. TAVLI_BENCH_SCALE (default 1) relaxes every
-# budget on slow runners.
+# Budgeted benchmarks live in each package's benchmark/ (outside the
+# default test paths) and run alone, one suite at a time, so that other
+# suites do not skew their timings. A bench-tagged test under test/ would
+# also run in the parallel package tests above, so it is an error.
+# TAVLI_BENCH_SCALE (default 1) relaxes every budget on slow runners.
 echo "== package benchmarks (tag bench, TAVLI_BENCH_SCALE=${TAVLI_BENCH_SCALE:-1})"
 for pkg in packages/*/; do
-  if grep -rqs "@Tags(\['bench'\])" "$pkg"test "$pkg"benchmark; then
-    (cd "$pkg" && dart test --reporter=compact --tags bench --concurrency=1)
+  if grep -rqs "@Tags(\['bench'\])" "$pkg"test; then
+    echo "bench-tagged tests must live in ${pkg}benchmark/, not ${pkg}test/:"
+    grep -rls "@Tags(\['bench'\])" "$pkg"test
+    exit 1
+  fi
+  if grep -rqs "@Tags(\['bench'\])" "$pkg"benchmark; then
+    (cd "$pkg" && dart test --reporter=compact --tags bench --concurrency=1 benchmark)
   fi
 done
 

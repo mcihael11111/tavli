@@ -9,9 +9,9 @@ import 'family_common.dart';
 import 'features.dart';
 
 /// Pinning games: pins held (by how far the pinned checker is from its
-/// home), the mother (own pip 24: a pinned mother ends a Plakoto game, so
-/// leaving it alone within reach is costly), made points, blots and pip
-/// lead. Ideas from the legacy `PlakotoEvaluator`, re-derived over
+/// home), the mother (own pip 24: under the mother rule, which every pin
+/// variant in the catalog has, a pinned mother ends the game, so leaving
+/// it alone within reach is costly), made points, blots and pip lead. Ideas from the legacy `PlakotoEvaluator`, re-derived over
 /// [Features].
 ///
 /// The score is `side(me) − side(opp) + lead`, each side valued by the
@@ -53,15 +53,15 @@ final class PinningEvaluator implements Evaluator {
     }
     if (motherRule && p.isPinned(them, 24)) pins += 1.5;
 
-    // My mother alone on my 24, unpinned, within the opponent's reach.
+    // My mother alone on my 24, unpinned, within the opponent's reach
+    // (only a mother-rule variant makes that pin decisive).
     var mother = 0.0;
-    if (p.count(s, 24) == 1 && !p.isPinned(s, 24)) {
+    if (motherRule && p.count(s, 24) == 1 && !p.isPinned(s, 24)) {
       final q = p.geometry.toOpponent(24);
-      final weight = motherRule ? 1.0 : 0.3;
       if (shotsAt(p, them, q, 1) > 0) {
-        mother = 0.6 * weight;
+        mother = 0.6;
       } else if (shotsAt(p, them, q, 7) > 0) {
-        mother = 0.25 * weight;
+        mother = 0.25;
       }
     }
 

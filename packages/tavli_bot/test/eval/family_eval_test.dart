@@ -69,6 +69,15 @@ void main() {
           worse: posOpp({24: 2, 13: 3, 11: 2, 9: 2, 7: 2, 6: 2, 3: 2}, them),
         ),
         (
+          why: 'my 5-prime (10..6) with two of theirs trapped behind it on '
+              'my 5 beats the same prime with nothing behind it, even with '
+              'their pips 159 vs 162 and two blots there',
+          better: posOpp({24: 2, 13: 2, 10: 2, 9: 2, 8: 2, 7: 2, 6: 3},
+              {20: 2, 13: 5, 8: 3, 6: 5}),
+          worse: posOpp({24: 2, 13: 2, 10: 2, 9: 2, 8: 2, 7: 2, 6: 3},
+              {14: 2, 13: 5, 10: 3, 9: 1, 8: 3, 6: 1}),
+        ),
+        (
           why: 'seven pips ahead with the same points (a checker safely '
               '13 -> 6)',
           better: posOpp({24: 2, 13: 4, 8: 3, 6: 6}, them),
@@ -169,6 +178,15 @@ void main() {
           why: 'more borne off in the home stretch',
           better: posSame({6: 5, 5: 5}, {6: 5, 5: 5, 4: 2, 14: 1}),
           worse: posSame({6: 5, 5: 5, 1: 1}, {6: 5, 5: 5, 4: 2, 14: 1}),
+        ),
+        (
+          why: 'a legal six-prime on my 18..13 (their 6..1) with their '
+              'checkers behind it beats a 5-point block plus a gap, even '
+              '2 pips behind',
+          better: posSame({24: 9, 18: 1, 17: 1, 16: 1, 15: 1, 14: 1, 13: 1},
+              {24: 10, 20: 2, 15: 3}),
+          worse: posSame({24: 9, 18: 1, 17: 1, 16: 1, 15: 1, 14: 1, 11: 1},
+              {24: 10, 20: 2, 15: 3}),
         ),
       ]);
     });

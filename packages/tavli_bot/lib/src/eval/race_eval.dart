@@ -27,6 +27,24 @@ double effectivePips(BoardView p, Side s) {
   return p.pipCount(s) + waste;
 }
 
+/// Checkers of [s] outside its home board (own pips 7..25).
+int outsideHome(BoardView p, Side s) {
+  var n = 0;
+  for (var pip = 7; pip <= 25; pip++) {
+    n += p.count(s, pip);
+  }
+  return n;
+}
+
+/// Rolls [s] needs before its first checker can come off: the larger of
+/// its pips to the first bear-off ([firstOffPips] / 8.1) and its
+/// crossovers (checkers to bring home, about 2.3 a roll).
+double rollsToFirstOff(BoardView p, Side s) {
+  final byPips = firstOffPips(p, s) / pipsPerRoll;
+  final byCrossovers = outsideHome(p, s) / 2.3;
+  return byPips > byCrossovers ? byPips : byCrossovers;
+}
+
 /// Pips [s] needs to bear off its first checker: every checker outside
 /// the home board brought to the 6-point, plus the lowest home checker's
 /// pip (6 if none is home yet).
@@ -51,10 +69,16 @@ int firstOffPips(BoardView p, Side s) {
 /// logistic(11 · lead)`. Callers needing the on-roll effect (the cube
 /// policy) add it.
 ///
-/// Gammons: I win a gammon only if the opponent has nothing off and needs
-/// more rolls to get its first checker off ([firstOffPips] / 8.1) than I
-/// need to finish (effective pips / 8.1); then `logistic(4·margin − 1)`
-/// of that margin in rolls, as a share of my wins.
+/// Gammons: none once the loser has a checker off. Otherwise the share of
+/// my wins that are gammons is `logistic(3·m − 0.75)` of the margin m =
+/// the loser's [rollsToFirstOff] − my rolls to finish (effective pips /
+/// 8.1): smooth and monotone, centred a quarter-roll in my favour. The
+/// slope is 3, not 4, so one pip (1/8.1 roll) moves the share by at most
+/// 3/4 × 1/8.1 ≈ 0.09.
+///
+/// Gammons mean nothing under `ScoringModel.checkersRemaining` (Tawla 31);
+/// callers scoring such variants ignore [EvalResult.gammonProb] and
+/// [EvalResult.lossGammonProb].
 final class RaceEvaluator implements Evaluator {
   const RaceEvaluator();
 
@@ -76,7 +100,7 @@ final class RaceEvaluator implements Evaluator {
   static double _gammonShare(BoardView p, Side w, double epcW) {
     final l = w.opponent;
     if (p.borneOff(l) > 0) return 0;
-    final margin = (firstOffPips(p, l) - epcW) / pipsPerRoll;
-    return margin > 0 ? logistic(4 * margin - 1) : 0;
+    final margin = rollsToFirstOff(p, l) - epcW / pipsPerRoll;
+    return logistic(3 * margin - 0.75);
   }
 }

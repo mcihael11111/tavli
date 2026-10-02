@@ -33,9 +33,9 @@ final class RunningEvaluator implements Evaluator {
 
   /// One side [s]'s value.
   static double _side(BoardView p, Side s, VariantRules r) {
-    final block = blockade(p, s);
-    final cap = _forbidsSix(r.primes) ? 5 : 24;
-    final b = block > cap ? cap : block;
+    // Not capped for prime-restricted variants: the finals scored are
+    // legal, so a six-prime here is one the rules allow.
+    final b = blockade(p, s);
     final head = p.count(s, 24);
     final headWeight = r.head != null ? 0.05 : 0.03;
     final adv = r.advancement;
@@ -70,14 +70,6 @@ final class RunningEvaluator implements Evaluator {
     }
     return best;
   }
-
-  /// Whether the variant forbids some six-point prime (D12, D14, D19):
-  /// such structures score nothing beyond a five-point one.
-  static bool _forbidsSix(PrimeRules pr) =>
-      pr.noSixOwnStartQuarter ||
-      pr.noSixBeforeOccupiedOppHead ||
-      pr.noPrimeTrappingAll ||
-      pr.maxPointsInOppStartQuarter != null;
 
   /// The lowest own pip (1..24) holding a checker of [s]; 25 if none.
   static int _lowest(BoardView p, Side s) {
