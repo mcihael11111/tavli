@@ -129,7 +129,8 @@ test/...  benchmark/...  tool/tournament.dart (headless tournaments)
 2. **0-ply:** score every play with the evaluator (opponent to move: use `−equity` of the opponent's view, or evaluate from `me` with the opponent on roll).
 3. If `profile.depth == 0`, go to selection.
 4. **1-ply on the top-K by 0-ply:** for each candidate final, the expectation over the 21 rolls (weights 1/36, 2/36) of the opponent's best reply, chosen greedily by the opponent's own 0-ply evaluation. The value is `−equity` from the opponent's perspective after their reply.
-   - Opponent replies use the core generator. Cascade replies use `CascadeWalker.greedyCompletion`.
+   - Opponent replies use the core generator.
+   - *Superseded by plan Task 5 (2026-10-02):* opponent doubles in look-ahead are played as **four dice** for every variant, and no cascade trees are built in look-ahead. This bounds Gul Bara normal turns: Medium p95 is 5 ms.
 5. **Iterative widening:** K starts at `profile.k`. While budget remains, K doubles up to `profile.kMax`.
 6. **Expert only:** 2-ply on the top 2 1-ply candidates if budget remains, using the opponent's top-3 replies per roll. Otherwise keep the 1-ply result.
 7. **Selection:**
@@ -167,6 +168,11 @@ These apply only where the variant's cube is available and enabled. The cube is 
 | **Take** | Take iff the taker's `winProb ≥ 0.25`, adjusted for gammon risk: `winProb + 0.5·lossGammonProb_adj ≥ 0.25` |
 | **Easy** | Never offers. Takes iff `winProb ≥ 0.20` |
 
+*Superseded by plan Task 6 (2026-10-02):*
+- **All levels** use the 0-ply view of the current position with the on-roll race shift. The 1-ply averaging biased Hard/Expert by +0.07–0.11 winProb (winner's curse).
+- **The take rule** is `w + (g − lg)/2 ≥ 0.25`.
+- **Crawford:** `BotRequest.crawfordGame` makes `shouldOffer` return false.
+
 Tested by labelled positions: clear double, clear no-double, too good, clear take, clear pass.
 
 ---
@@ -187,6 +193,11 @@ Tested by labelled positions: clear double, clear no-double, too good, clear tak
 | poor | > 0.08 |
 
 **Per complete play:** `equityLoss` against the best play.
+
+*Superseded by plan Task 7 (2026-10-02):*
+- **Quality** is relative to the best **next** step, so one next step is always `best`.
+- **`lossSoFar`** carries how much the steps already taken have lost.
+- **Cascade labels** use a per-step greedy completion plus samples.
 
 **Budget:** Medium. Cascade turns use the sampled completions.
 
