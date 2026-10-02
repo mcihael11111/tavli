@@ -44,7 +44,6 @@ double terminalValue(GameResult r, Side me) {
 final class PlyScorer {
   PlyScorer(this.evaluator, this.rules, this.clock)
       : _start = Position.forRules(rules),
-        _cascades = rules.doubles == DoublesMode.cascade,
         _remaining = rules.scoring.model == ScoringModel.checkersRemaining;
 
   final Evaluator evaluator;
@@ -55,7 +54,7 @@ final class PlyScorer {
   int evaluated = 0;
 
   final Position _start;
-  final bool _cascades, _remaining;
+  final bool _remaining;
   static final _plain = TurnContext(), _first = TurnContext(firstTurn: true);
 
   /// The 0-ply value of [p] for [mover], who has just moved: the game's
@@ -87,34 +86,22 @@ final class PlyScorer {
   /// The finals [s] may reach from [p] with [dice], [p] itself if [s]
   /// cannot move.
   ///
-  /// A double in a cascading variant (Gul Bara) is played as its cascade
-  /// by [CascadeWalker.greedyCompletion] on [value]: one reply, not every
-  /// final. Which doubles cascade depends on the game's roll count, which
-  /// the search does not know, so every double is treated as cascading
-  /// there (plan Task 5's allowed simplification). With [cascades] false
-  /// a double is played as four dice instead: the 2-ply leaves do that,
-  /// because one failing cascade can take most of a second to generate
-  /// (it cannot be interrupted) and the leaves would run hundreds.
-  Iterable<Position> replies(Position p, Side s, List<int> dice,
-      {bool cascades = true}) {
-    final ctx = contextFor(p, s);
-    if (cascades && _cascades && dice.length == 4) {
-      final tree = generateCascade(p, s, cascadeQueue(dice[0]), rules, ctx);
-      if (!tree.hasPlay) return [p];
-      return [
-        CascadeWalker(tree).greedyCompletion((b) => value(b, s)).finalPosition
-      ];
-    }
-    final tree = generatePlays(p, s, dice, rules, ctx);
+  /// Look-ahead approximation: a double is always played as four dice,
+  /// also in a cascading variant (Gul Bara), where a double after the
+  /// opening rolls really cascades. The search does not know the game's
+  /// roll count, and one cascade tree can take most of a second to build
+  /// (uninterruptibly), so look-ahead never builds one. Only the bot's own
+  /// cascade turn is searched as a cascade (`searchCascade`).
+  Iterable<Position> replies(Position p, Side s, List<int> dice) {
+    final tree = generatePlays(p, s, dice, rules, contextFor(p, s));
     return tree.hasPlay ? tree.finals : [p];
   }
 
   /// The best 0-ply value [s] reaches from [p] with [dice]; null once the
   /// clock expires.
-  double? bestReply(Position p, Side s, List<int> dice,
-      {bool cascades = true}) {
+  double? bestReply(Position p, Side s, List<int> dice) {
     var best = double.negativeInfinity;
-    for (final q in replies(p, s, dice, cascades: cascades)) {
+    for (final q in replies(p, s, dice)) {
       if (clock.expired) return null;
       final v = value(q, s);
       if (v > best) best = v;
@@ -125,15 +112,15 @@ final class PlyScorer {
   /// [me]'s 1-ply value of [f], a position [me] just reached: over the
   /// opponent's 21 rolls, minus the opponent's best 0-ply reply, weighted
   /// by roll. A finished game scores its [terminalValue]. Null once the
-  /// clock expires. [cascades] as in [replies].
-  double? onePly(Position f, Side me, {bool cascades = true}) {
+  /// clock expires.
+  double? onePly(Position f, Side me) {
     final end = checkGameEnd(f, rules, justMoved: me, cubeValue: 1);
     if (end != null) return terminalValue(end, me);
     final opp = me.opponent;
     var sum = 0.0;
     for (final r in allRolls) {
       if (clock.expired) return null;
-      final b = bestReply(f, opp, r.dice, cascades: cascades);
+      final b = bestReply(f, opp, r.dice);
       if (b == null) return null;
       sum -= r.weight * b;
     }
@@ -142,8 +129,7 @@ final class PlyScorer {
 
   /// [me]'s 2-ply value of [f] (Expert): over the opponent's 21 rolls,
   /// the opponent takes the best by its own 1-ply value among its top
-  /// [replyWidth] replies by 0-ply (their 1-ply plays my doubles as four
-  /// dice, see [replies]). Null once the clock expires.
+  /// [replyWidth] replies by 0-ply. Null once the clock expires.
   double? twoPly(Position f, Side me, {int replyWidth = 3}) {
     final end = checkGameEnd(f, rules, justMoved: me, cubeValue: 1);
     if (end != null) return terminalValue(end, me);
@@ -159,7 +145,7 @@ final class PlyScorer {
       ranked.sort((a, b) => b.$2.compareTo(a.$2));
       var best = double.negativeInfinity;
       for (final (q, _) in ranked.take(replyWidth)) {
-        final v = onePly(q, opp, cascades: false);
+        final v = onePly(q, opp);
         if (v == null) return null;
         if (v > best) best = v;
       }

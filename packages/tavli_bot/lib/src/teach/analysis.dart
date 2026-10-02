@@ -29,10 +29,11 @@ StepQuality qualityOf(double gap) => gap <= 0.01
 ///
 /// - `nextStepEquity[s]`: the best value among the plays that continue
 ///   through `steps + [s]`;
+/// - `nextStepQuality[s]`: [qualityOf] the gap to the best next step, so
+///   at least one next step is always `best` (design §7);
 /// - `bestEquity`: the best play value of the whole turn;
-/// - `nextStepQuality[s]`: [qualityOf] `bestEquity − nextStepEquity[s]`.
-///   Against the whole turn, so after a weak step no next step may be
-///   `best` (a cue to undo);
+/// - `lossSoFar`: `bestEquity` minus the best value still reachable after
+///   [steps] (0 at the turn start);
 /// - `playEquityLoss`: `bestEquity` minus the value of the play [steps]
 ///   completes, or null while it is incomplete.
 ///
@@ -42,7 +43,8 @@ StepQuality qualityOf(double gap) => gap <= 0.01
 /// set finishes within [budget] (default: the profile's), every number
 /// comes from it, else every number is 0-ply: one level, never mixed.
 ///
-/// Cascades (lazy trees): sampled completions at 0-ply ([cascadeAnalysis]).
+/// Cascades (lazy trees): sampled and greedy completions at 0-ply
+/// ([cascadeAnalysis]).
 ///
 /// Throws [ArgumentError] if [steps] leave the tree.
 TurnAnalysis analyzeTurn({
@@ -76,9 +78,13 @@ TurnAnalysis analyzeTurn({
         nextStepQuality: const {},
         nextStepEquity: const {},
         bestEquity: v,
+        lossSoFar: 0,
         playEquityLoss: 0);
   }
-  if (cascade) return cascadeAnalysis(tree, node, side, prof, rng, scorer);
+  if (cascade) {
+    return cascadeAnalysis(
+        tree, node, position, side, steps, prof, rng, scorer);
+  }
 
   final finals = tree.finals.toList();
   final zero = {for (final f in finals) f: scorer.value(f, side)};
@@ -115,61 +121,102 @@ TurnAnalysis analyzeTurn({
     return b;
   }
 
-  final best = bestIn(value.keys);
-  final stepEq = {for (final s in next) s: bestIn(reach[s]!)};
+  return _result(
+    best: bestIn(value.keys),
+    stepEq: {for (final s in next) s: bestIn(reach[s]!)},
+    chosen: chosen == null ? null : value[chosen]!,
+  );
+}
+
+/// The analysis from the turn's best, the best value through each next
+/// step and, for a complete play, its value.
+TurnAnalysis _result(
+    {required double best,
+    required Map<Step, double> stepEq,
+    required double? chosen}) {
+  final bestNext = stepEq.values.fold(double.negativeInfinity, max);
+  final reachable = chosen ?? bestNext;
   return TurnAnalysis(
     nextStepQuality: {
-      for (final e in stepEq.entries) e.key: qualityOf(best - e.value),
+      for (final e in stepEq.entries) e.key: qualityOf(bestNext - e.value),
     },
     nextStepEquity: stepEq,
     bestEquity: best,
-    playEquityLoss: chosen == null ? null : max(0.0, best - value[chosen]!),
+    lossSoFar: max(0.0, best - reachable),
+    playEquityLoss: chosen == null ? null : max(0.0, best - chosen),
   );
 }
 
 /// [analyzeTurn] on a lazy cascade tree, whose finals are never
-/// enumerated: each next step gets random completions from its node (at
-/// least one, more while the clock allows, `profile.cascadeSamples` in
-/// all); while the clock allows, the turn's best also takes a greedy
-/// completion and samples from the root. All values 0-ply.
-TurnAnalysis cascadeAnalysis(PlayTree tree, PlayNode node, Side side,
-    LevelProfile profile, Random rng, PlyScorer scorer) {
+/// enumerated. Each next step gets a greedy completion from its node
+/// (best child by 0-ply at each node, so a good step is not labelled poor
+/// by an unlucky sample) plus random completions while the clock allows
+/// (`profile.cascadeSamples` in all); its value is their max. A greedy
+/// completion and, while the clock allows, samples from the root also
+/// count, for the turn's best and for the next step they take. All
+/// values 0-ply.
+TurnAnalysis cascadeAnalysis(
+  PlayTree tree,
+  PlayNode node,
+  Position start,
+  Side side,
+  List<Step> steps,
+  LevelProfile profile,
+  Random rng,
+  PlyScorer scorer,
+) {
   final clock = scorer.clock;
-  double v(Position f) => scorer.value(f, side);
-  var best = double.negativeInfinity;
-  final chosen = node.finalPosition;
+  final rules = StepRules(scorer.rules);
+  double v(BoardView p) => scorer.value(p, side);
+  // The position after [steps], to replay greedy walks from.
+  final here = start.toMutable();
+  for (final s in steps) {
+    rules.apply(here, side, s);
+  }
+  final at = here.freeze();
+
   final next = node.nextSteps.toList();
   final stepEq = <Step, double>{};
   final perStep = max(1, profile.cascadeSamples ~/ max(1, next.length));
   for (final s in next) {
     final child = node.child(s)!;
-    var b = double.negativeInfinity;
-    for (var i = 0; i < perStep; i++) {
-      if (i > 0 && clock.expired) break;
+    final m = at.toMutable();
+    rules.apply(m, side, s);
+    var b = v(_greedyFinal(child, m, side, rules, v));
+    for (var i = 1; i < perStep && !clock.expired; i++) {
       b = max(b, v(_randomFinal(child, rng)));
     }
     stepEq[s] = b;
-    best = max(best, b);
   }
+  final f = node.finalPosition;
+  final chosen = f == null ? null : v(f);
+  var best = max(stepEq.values.fold(double.negativeInfinity, max),
+      chosen ?? double.negativeInfinity);
+  // Plays from the root: each counts for the turn's best, and for the
+  // next step it takes after [steps] when it continues them (so at the
+  // turn start the best is always some step's).
   final walker = CascadeWalker(tree);
-  if (!clock.expired) {
-    best = max(best,
-        v(walker.greedyCompletion((p) => scorer.value(p, side)).finalPosition));
+  for (final p in [
+    walker.greedyCompletion(v),
+    ...walker.sampleCompletions(profile.cascadeSamples, rng,
+        stop: () => clock.expired),
+  ]) {
+    final x = v(p.finalPosition);
+    best = max(best, x);
+    if (p.steps.length > steps.length && _startsWith(p.steps, steps)) {
+      final s = p.steps[steps.length];
+      stepEq[s] = max(stepEq[s]!, x);
+    }
   }
-  for (final p in walker.sampleCompletions(profile.cascadeSamples, rng,
-      stop: () => clock.expired)) {
-    best = max(best, v(p.finalPosition));
+  return _result(best: best, stepEq: stepEq, chosen: chosen);
+}
+
+/// Whether [steps] begins with [prefix].
+bool _startsWith(List<Step> steps, List<Step> prefix) {
+  for (var i = 0; i < prefix.length; i++) {
+    if (steps[i] != prefix[i]) return false;
   }
-  final chosenValue = chosen == null ? null : v(chosen);
-  if (chosenValue != null) best = max(best, chosenValue);
-  return TurnAnalysis(
-    nextStepQuality: {
-      for (final e in stepEq.entries) e.key: qualityOf(best - e.value),
-    },
-    nextStepEquity: stepEq,
-    bestEquity: best,
-    playEquityLoss: chosenValue == null ? null : best - chosenValue,
-  );
+  return true;
 }
 
 /// The finals of the plays through [n] (identity DFS over a DAG).
@@ -192,12 +239,36 @@ Set<Position> _finalsFrom(PlayNode n) {
   return out;
 }
 
+/// The final of a greedy walk from [n], whose position is [m]: at each
+/// node the next step whose result has the highest [score] (the first on
+/// a tie). [m] is consumed.
+Position _greedyFinal(PlayNode n, MutablePosition m, Side side, StepRules rules,
+    double Function(BoardView) score) {
+  var x = n;
+  while (!x.isComplete) {
+    Step? best;
+    var bestScore = double.negativeInfinity;
+    for (final s in x.nextSteps) {
+      final a = rules.apply(m, side, s);
+      final sc = score(m);
+      rules.undo(m, side, a);
+      if (best == null || sc > bestScore) {
+        best = s;
+        bestScore = sc;
+      }
+    }
+    rules.apply(m, side, best!);
+    x = x.child(best)!;
+  }
+  return x.finalPosition!;
+}
+
 /// The final of a uniformly random walk from [n] to a complete node.
 Position _randomFinal(PlayNode n, Random rng) {
   var x = n;
   while (!x.isComplete) {
-    final next = x.nextSteps;
-    x = x.child(next.elementAt(rng.nextInt(next.length)))!;
+    final next = x.nextSteps.toList();
+    x = x.child(next[rng.nextInt(next.length)])!;
   }
   return x.finalPosition!;
 }

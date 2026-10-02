@@ -30,12 +30,12 @@ done
 # TAVLI_BENCH_SCALE (default 1) relaxes every budget on slow runners.
 echo "== package benchmarks (tag bench, TAVLI_BENCH_SCALE=${TAVLI_BENCH_SCALE:-1})"
 for pkg in packages/*/; do
-  if grep -rqs "@Tags(\['bench'\])" "$pkg"test; then
+  if grep -rqs "@Tags(\[[^]]*'bench'" "$pkg"test; then
     echo "bench-tagged tests must live in ${pkg}benchmark/, not ${pkg}test/:"
-    grep -rls "@Tags(\['bench'\])" "$pkg"test
+    grep -rls "@Tags(\[[^]]*'bench'" "$pkg"test
     exit 1
   fi
-  if grep -rqs "@Tags(\['bench'\])" "$pkg"benchmark; then
+  if grep -rqs "@Tags(\[[^]]*'bench'" "$pkg"benchmark; then
     (cd "$pkg" && dart test --reporter=compact --tags bench --concurrency=1 benchmark)
   fi
 done

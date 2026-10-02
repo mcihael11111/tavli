@@ -9,7 +9,6 @@ import 'package:tavli_core/tavli_core.dart';
 import '../eval/eval_dispatch.dart';
 import '../eval/evaluator.dart';
 import '../level/bot_level.dart';
-import '../worker/protocol.dart';
 import 'budget.dart';
 import 'cascade_search.dart';
 import 'ply.dart';
@@ -93,14 +92,6 @@ SearchResult choosePlay({
   final (i, v) = pickCandidate(pool, profile, rng);
   return SearchResult(plays[i], v, statsOf(scorer, depth));
 }
-
-/// The stats of a search by [scorer] that reached [depth].
-BotStats statsOf(PlyScorer scorer, int depth) => BotStats(
-      evaluated: scorer.evaluated,
-      depthReached: depth,
-      elapsedUs: scorer.clock.elapsedUs,
-      timedOut: scorer.clock.timedOut,
-    );
 
 /// Level 1 with iterative widening; null if the first `k` did not finish.
 List<Candidate>? _onePlyLevel(List<Play> plays, List<double> zero, Side side,

@@ -32,6 +32,10 @@ final class BotRequest {
   /// The turn context before the first step.
   final TurnContext context;
   final CubeState cube;
+
+  /// Whether this is the match's Crawford game, where no one may double:
+  /// the bot never offers then (the core enforces it too).
+  final bool crawfordGame;
   final BotLevel level;
 
   /// Seeds the request's `Random`: equal requests give equal replies.
@@ -56,6 +60,7 @@ final class BotRequest {
     this.cascade = false,
     required this.context,
     required this.cube,
+    this.crawfordGame = false,
     required this.level,
     required this.seed,
     this.budget,
@@ -77,6 +82,7 @@ final class BotRequest {
       other.budget == budget &&
       other.supersedes == supersedes &&
       other.cube == cube &&
+      other.crawfordGame == crawfordGame &&
       other.context == context &&
       other.position == position &&
       listEq(other.dice, dice) &&
@@ -93,6 +99,7 @@ final class BotRequest {
         cascade,
         context,
         cube,
+        crawfordGame,
         level,
         seed,
         budget,

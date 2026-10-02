@@ -7,8 +7,9 @@ import 'package:tavli_core/tavli_core.dart';
 import '../util/collection_eq.dart';
 
 /// How good a next step is, by the equity gap between the best play it
-/// leads to and the best play overall: best ≤ 0.01, good ≤ 0.03,
-/// acceptable ≤ 0.08, poor > 0.08.
+/// leads to and the best play through any next step (design §7: relative
+/// to the best step): best ≤ 0.01, good ≤ 0.03, acceptable ≤ 0.08,
+/// poor > 0.08.
 enum StepQuality { best, good, acceptable, poor }
 
 /// How good each next step of a turn is, and the chosen play if complete.
@@ -19,8 +20,12 @@ final class TurnAnalysis {
   /// The best play value reachable through each next step.
   final Map<Step, double> nextStepEquity;
 
-  /// The best play value of the turn.
+  /// The best play value of the turn (from its start).
   final double bestEquity;
+
+  /// What the steps taken so far have cost: [bestEquity] minus the best
+  /// play value still reachable after them (≥ 0; 0 at the turn start).
+  final double lossSoFar;
 
   /// When the steps taken form a complete play: best − chosen (≥ 0).
   final double? playEquityLoss;
@@ -30,6 +35,7 @@ final class TurnAnalysis {
     required Map<Step, StepQuality> nextStepQuality,
     required Map<Step, double> nextStepEquity,
     required this.bestEquity,
+    required this.lossSoFar,
     required this.playEquityLoss,
   })  : nextStepQuality = Map.unmodifiable(nextStepQuality),
         nextStepEquity = Map.unmodifiable(nextStepEquity);
@@ -38,15 +44,17 @@ final class TurnAnalysis {
   bool operator ==(Object other) =>
       other is TurnAnalysis &&
       other.bestEquity == bestEquity &&
+      other.lossSoFar == lossSoFar &&
       other.playEquityLoss == playEquityLoss &&
       mapEq(other.nextStepQuality, nextStepQuality) &&
       mapEq(other.nextStepEquity, nextStepEquity);
 
   @override
-  int get hashCode => Object.hash(bestEquity, playEquityLoss,
+  int get hashCode => Object.hash(bestEquity, lossSoFar, playEquityLoss,
       mapHash(nextStepQuality), mapHash(nextStepEquity));
 
   @override
-  String toString() => 'TurnAnalysis(best: $bestEquity, loss: $playEquityLoss, '
+  String toString() => 'TurnAnalysis(best: $bestEquity, lossSoFar: $lossSoFar, '
+      'loss: $playEquityLoss, '
       'steps: $nextStepQuality)';
 }

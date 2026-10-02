@@ -11,8 +11,8 @@ import 'features.dart';
 /// Pinning games: pins held (by how far the pinned checker is from its
 /// home), the mother (own pip 24: under the mother rule, which every pin
 /// variant in the catalog has, a pinned mother ends the game, so leaving
-/// it alone within reach is costly), made points, blots and pip lead. Ideas from the legacy `PlakotoEvaluator`, re-derived over
-/// [Features].
+/// it alone within reach is costly), made points, blots and pip lead.
+/// Ideas from the legacy `PlakotoEvaluator`, re-derived over [Features].
 ///
 /// The score is `side(me) − side(opp) + lead`, each side valued by the
 /// same function: exactly antisymmetric and on-roll neutral.

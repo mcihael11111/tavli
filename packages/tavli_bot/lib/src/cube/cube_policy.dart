@@ -10,8 +10,6 @@ import '../eval/evaluator.dart';
 import '../eval/features.dart';
 import '../eval/race_eval.dart';
 import '../level/bot_level.dart';
-import '../search/budget.dart';
-import '../search/ply.dart';
 
 /// Offer at this win chance or more (market-window style)...
 const double offerThreshold = 0.68;
@@ -34,13 +32,14 @@ const double raceOnRollLead = 0.04;
 ///
 /// Never when the variant or game has no cube, a double is pending,
 /// [side] does not hold the cube (it is centred or [side]'s), the cube
-/// is at 64, or at [BotLevel.easy]. Otherwise offers when
+/// is at 64, in the Crawford game ([crawfordGame], which the core also
+/// enforces), or at [BotLevel.easy]. Otherwise offers when
 /// `winProb ≥ offerThreshold` and the position is not too good
 /// (`winProb ≥ tooGoodWin` with `gammonProb ≥ tooGoodGammon`), on
-/// [cubeView]. The Crawford rule is the core's to enforce.
+/// [cubeView].
 ///
-/// [rng] is accepted for the uniform request shape; the decision is
-/// deterministic.
+/// [rng] and [budget] are accepted for the uniform request shape; the
+/// decision is deterministic and 0-ply, so it needs no budget.
 bool shouldOffer({
   required Position position,
   required Side side,
@@ -50,14 +49,15 @@ bool shouldOffer({
   required Random rng,
   Duration? budget,
   Evaluator? evaluator,
+  bool crawfordGame = false,
 }) {
+  if (crawfordGame) return false;
   if (!rules.cube.available || !cube.enabled || cube.offeredBy != null) {
     return false;
   }
   if (cube.owner != null && cube.owner != side) return false;
   if (cube.value >= 64 || level == BotLevel.easy) return false;
-  final e = cubeView(position, side, rules, level,
-      budget: budget, evaluator: evaluator);
+  final e = cubeView(position, side, rules, evaluator: evaluator);
   final tooGood = e.winProb >= tooGoodWin && e.gammonProb >= tooGoodGammon;
   return e.winProb >= offerThreshold && !tooGood;
 }
@@ -70,7 +70,7 @@ bool shouldOffer({
 /// (−1): `E = 2w − 1 + g − lg ≥ −1/2`, so gammon risk raises the bar (the
 /// design's "winProb + 0.5·lossGammonProb_adj ≥ 0.25", with the gammon
 /// term signed). Cube ownership is not valued. Easy takes iff
-/// `w ≥ easyTakeThreshold`.
+/// `w ≥ easyTakeThreshold`. [rng] and [budget] as in [shouldOffer].
 bool shouldTake({
   required Position position,
   required Side side,
@@ -81,60 +81,25 @@ bool shouldTake({
   Duration? budget,
   Evaluator? evaluator,
 }) {
-  final o = cubeView(position, side.opponent, rules, level,
-      budget: budget, evaluator: evaluator);
+  final o = cubeView(position, side.opponent, rules, evaluator: evaluator);
   final w = 1 - o.winProb, g = o.lossGammonProb, lg = o.gammonProb;
   if (level == BotLevel.easy) return w >= easyTakeThreshold;
   return w + (g - lg) / 2 >= takeThreshold;
 }
 
 /// The chances of [onRoll], about to roll in [position], for a cube
-/// decision.
+/// decision: the 0-ply evaluation from [onRoll]'s view, shifted for the
+/// roll ([withRaceRoll]). Every level uses it.
 ///
-/// - Easy and Medium: the 0-ply evaluation, shifted for the roll
-///   ([withRaceRoll]).
-/// - Hard and Expert: the average over [onRoll]'s 21 rolls (weights
-///   1/36, 2/36) of the evaluation after its best play by 0-ply, with the
-///   opponent then on roll ([withRaceRoll] the other way); a play that
-///   ends the game counts as a sure win (a gammon if it scored one). Falls
-///   back to 0-ply if [budget] (default: the level's) runs out.
-EvalResult cubeView(
-  Position position,
-  Side onRoll,
-  VariantRules rules,
-  BotLevel level, {
-  Duration? budget,
-  Evaluator? evaluator,
-}) {
+/// Hard and Expert used to average over [onRoll]'s 21 rolls (design §6),
+/// but the max over noisy evaluations after each roll (winner's curse)
+/// read 0.07-0.11 winProb high. They may get 1-ply back once the
+/// evaluator is calibrated (plan Task 10).
+EvalResult cubeView(Position position, Side onRoll, VariantRules rules,
+    {Evaluator? evaluator}) {
   final e = evaluator ?? evaluatorFor(rules);
-  final zero = withRaceRoll(
-      e.evaluate(position, onRoll, rules), position, rules,
+  return withRaceRoll(e.evaluate(position, onRoll, rules), position, rules,
       onRoll: true);
-  if (level == BotLevel.easy || level == BotLevel.medium) return zero;
-  final clock = SearchClock(budget ?? LevelProfile.of(level).budget);
-  final scorer = PlyScorer(e, rules, clock);
-  var w = 0.0, g = 0.0, lg = 0.0;
-  for (final r in allRolls) {
-    if (clock.expired) return zero;
-    Position? best;
-    var bestValue = double.negativeInfinity;
-    for (final q in scorer.replies(position, onRoll, r.dice, cascades: false)) {
-      final v = scorer.value(q, onRoll);
-      if (v > bestValue) {
-        best = q;
-        bestValue = v;
-      }
-    }
-    final end = checkGameEnd(best!, rules, justMoved: onRoll, cubeValue: 1);
-    final x = end != null
-        ? EvalResult(1, end.kind == ResultKind.single ? 0 : 1, 0)
-        : withRaceRoll(e.evaluate(best, onRoll, rules), best, rules,
-            onRoll: false);
-    w += r.weight * x.winProb;
-    g += r.weight * x.gammonProb;
-    lg += r.weight * x.lossGammonProb;
-  }
-  return EvalResult(w / 36, g / 36, lg / 36);
 }
 
 /// [e], a side's evaluation of [p], with the on-roll effect in a race

@@ -1,5 +1,7 @@
 import 'dart:math';
 
+import 'package:tavli_bot/src/search/budget.dart';
+import 'package:tavli_bot/src/search/ply.dart';
 import 'package:tavli_bot/tavli_bot.dart';
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
@@ -165,6 +167,50 @@ void main() {
       }
       expect(seen.length, greaterThan(1));
       expect(seen.length, lessThanOrEqualTo((n * easy.topFraction).ceil()));
+    });
+  });
+
+  group('Gul Bara look-ahead plays doubles as four dice', () {
+    final gulBara = Variant.gulBara.rules;
+    final ps = randomPositions(Variant.gulBara, 20, Random(21));
+
+    test('replies to a double are its four-dice finals, never a cascade', () {
+      final scorer = PlyScorer(evaluatorFor(gulBara), gulBara,
+          SearchClock(const Duration(hours: 1)));
+      for (final p in ps) {
+        for (var d = 1; d <= 6; d++) {
+          final dice = [d, d, d, d];
+          final tree = generatePlays(p, Side.two, dice, gulBara, TurnContext());
+          expect(scorer.replies(p, Side.two, dice).toSet(),
+              tree.hasPlay ? tree.finals : {p});
+        }
+      }
+    });
+
+    test('Medium 1-ply over every opponent roll finishes quickly', () {
+      final medium = LevelProfile.of(BotLevel.medium);
+      for (var rep = 0; rep < 2; rep++) {
+        // The first round warms up the code paths.
+        for (final p in ps) {
+          final w = Stopwatch()..start();
+          final r = choosePlay(
+            position: p,
+            side: Side.one,
+            dice: [5, 2],
+            cascade: false,
+            context: TurnContext(),
+            rules: gulBara,
+            profile: medium,
+            rng: Random(1),
+            budget: const Duration(seconds: 60),
+          );
+          // Unbounded, so this is the whole 1-ply (k = 3..6 candidates x
+          // 21 rolls, doubles included): about 5 ms asserts off. A single
+          // cascade build in look-ahead could take up to 0.8 s.
+          expect(w.elapsedMilliseconds, lessThan(500), reason: '$p');
+          expect(r.stats.timedOut, isFalse);
+        }
+      }
     });
   });
 

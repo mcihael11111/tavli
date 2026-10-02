@@ -69,15 +69,18 @@ int firstOffPips(BoardView p, Side s) {
 ///
 /// On-roll neutral and exactly antisymmetric (plan Task 3): the lead is
 /// `(epcOpp − epcMe) / ((epcMe + epcOpp) / 2)` and `winProb =
-/// logistic(raceSlope · lead)`. Callers needing the on-roll effect (the cube
-/// policy) add it.
+/// logistic(raceSlope · lead)`. Callers needing the on-roll effect (the
+/// cube policy) add it.
 ///
 /// Gammons: none once the loser has a checker off. Otherwise the share of
 /// my wins that are gammons is `logistic(3·m − 0.75)` of the margin m =
 /// the loser's [rollsToFirstOff] − my rolls to finish (effective pips /
 /// 8.1): smooth and monotone, centred a quarter-roll in my favour. The
-/// slope is 3, not 4, so one pip (1/8.1 roll) moves the share by at most
-/// 3/4 × 1/8.1 ≈ 0.09.
+/// slope is 3, not 4, so one pip of the pip terms (1/8.1 roll) moves the
+/// share by at most 3/4 × 1/8.1 ≈ 0.09. That bound is for pips only: when
+/// the loser's [rollsToFirstOff] is set by its crossovers, bringing one
+/// checker home moves the margin by 1/2.3 roll, and the share by up to
+/// about 0.33.
 ///
 /// Gammons mean nothing under `ScoringModel.checkersRemaining` (Tawla 31);
 /// callers scoring such variants ignore [EvalResult.gammonProb] and

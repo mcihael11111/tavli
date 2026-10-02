@@ -35,10 +35,16 @@ TurnAnalysis _analyze(
     );
 
 /// Qualities follow the equities: a higher equity never has a worse
-/// quality, and the gaps match the thresholds.
+/// quality, the gaps to the best next step match the thresholds, and one
+/// next step is best.
 void _expectConsistent(TurnAnalysis a, {String reason = ''}) {
+  if (a.nextStepEquity.isEmpty) return;
+  final bestNext = a.nextStepEquity.values.reduce(max);
+  expect(bestNext, lessThanOrEqualTo(a.bestEquity), reason: reason);
+  expect(a.lossSoFar, closeTo(a.bestEquity - bestNext, 1e-12), reason: reason);
+  expect(a.nextStepQuality.values, contains(StepQuality.best), reason: reason);
   for (final s in a.nextStepEquity.keys) {
-    final gap = a.bestEquity - a.nextStepEquity[s]!;
+    final gap = bestNext - a.nextStepEquity[s]!;
     expect(gap, greaterThanOrEqualTo(0), reason: reason);
     expect(a.nextStepQuality[s], qualityOf(gap), reason: reason);
     for (final t in a.nextStepEquity.keys) {
@@ -75,6 +81,7 @@ void main() {
           expect(a.nextStepQuality.values, contains(StepQuality.best),
               reason: '$v $p');
           expect(a.playEquityLoss, isNull);
+          expect(a.lossSoFar, 0);
           _expectConsistent(a, reason: '$v $p');
         }
       }
@@ -107,9 +114,13 @@ void main() {
       expect(worse.playEquityLoss, greaterThan(0.08));
     });
 
-    test('after a weak step no next step is best', () {
+    test('after a weak first step: a next step is best, lossSoFar > 0', () {
       final a = _analyze(t.position, t.dice, r, steps: const [Step(24, 20, 4)]);
-      expect(a.nextStepQuality.values, everyElement(StepQuality.poor));
+      // 24/23 (both off the mother) beats 10/9 (mother left alone), and
+      // is best among what is left, though 0.4 below the turn's best.
+      expect(a.nextStepQuality[const Step(24, 23, 1)], StepQuality.best);
+      expect(a.nextStepQuality[const Step(10, 9, 1)], StepQuality.poor);
+      expect(a.lossSoFar, greaterThan(0.08));
       _expectConsistent(a);
     });
   });
@@ -173,6 +184,7 @@ void main() {
         final a = _analyze(f.position, f.queue, r,
             side: f.side, cascade: true, budget: null);
         expect(a.nextStepEquity, isNotEmpty);
+        expect(a.lossSoFar, 0);
         _expectConsistent(a, reason: name);
       });
     }

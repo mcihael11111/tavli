@@ -10,6 +10,7 @@ BotRequest request({
   List<Step> steps = const [],
   Duration? budget,
   int? supersedes,
+  bool crawfordGame = false,
 }) =>
     BotRequest(
       id: id,
@@ -21,6 +22,7 @@ BotRequest request({
       cascade: false,
       context: TurnContext(firstTurn: true, diceOfTurn: dice),
       cube: const CubeState(value: 2, owner: Side.one, enabled: true),
+      crawfordGame: crawfordGame,
       level: BotLevel.hard,
       seed: 1234,
       budget: budget,
@@ -42,6 +44,7 @@ void main() {
       expect(
           request(budget: const Duration(milliseconds: 5)), isNot(request()));
       expect(request(supersedes: 6), isNot(request()));
+      expect(request(crawfordGame: true), isNot(request()));
     });
 
     test('lists are unmodifiable copies', () {
@@ -61,6 +64,7 @@ void main() {
         steps: const [Step(24, 19, 5)],
         budget: const Duration(milliseconds: 40),
         supersedes: 6,
+        crawfordGame: true,
       );
       final back = await Isolate.run(() => r);
       expect(back, r);
@@ -84,6 +88,7 @@ void main() {
       expect(r.steps, isEmpty);
       expect(r.budget, isNull);
       expect(r.supersedes, isNull);
+      expect(r.crawfordGame, isFalse);
       expect(await Isolate.run(() => r), r);
     });
   });
@@ -109,6 +114,7 @@ void main() {
               const Step(13, 8, 5): 0.1,
             },
             bestEquity: 0.25,
+            lossSoFar: 0.05,
             playEquityLoss: null,
           ),
         ),
@@ -137,6 +143,7 @@ void main() {
         nextStepQuality: q,
         nextStepEquity: {const Step(24, 19, 5): 0.0},
         bestEquity: 0.02,
+        lossSoFar: 0.02,
         playEquityLoss: 0.02,
       );
       q.clear();

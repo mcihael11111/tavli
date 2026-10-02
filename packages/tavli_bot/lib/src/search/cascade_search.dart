@@ -8,7 +8,6 @@ import 'package:tavli_core/tavli_core.dart';
 
 import '../level/bot_level.dart';
 import 'ply.dart';
-import 'search.dart';
 import 'selection.dart';
 
 /// [side]'s play of the cascade [queue] from [position].
@@ -39,7 +38,11 @@ SearchResult searchCascade(
   }
   final walker = CascadeWalker(tree);
   final clock = scorer.clock;
-  final greedy = walker.greedyCompletion((p) => scorer.value(p, side));
+  // The greedy walk scores its final as a child: keep its scores so the
+  // final is not evaluated twice.
+  final scored = <BoardView, double>{};
+  final greedy =
+      walker.greedyCompletion((p) => scored[p] = scorer.value(p, side));
   final plays = [greedy];
   for (final s in walker.sampleCompletions(profile.cascadeSamples, rng,
       stop: () => clock.expired)) {
@@ -48,7 +51,8 @@ SearchResult searchCascade(
   final pool = <Candidate>[];
   for (var i = 0; i < plays.length; i++) {
     if (i > 0 && clock.expired) break;
-    pool.add((i, scorer.value(plays[i].finalPosition, side)));
+    final f = plays[i].finalPosition;
+    pool.add((i, (i == 0 ? scored[f] : null) ?? scorer.value(f, side)));
   }
   final (i, v) = pickCandidate(pool, profile, rng);
   return SearchResult(plays[i], v, statsOf(scorer, 0));

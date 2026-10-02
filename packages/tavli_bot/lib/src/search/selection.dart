@@ -8,6 +8,7 @@ import 'package:tavli_core/tavli_core.dart';
 
 import '../level/bot_level.dart';
 import '../worker/protocol.dart';
+import 'ply.dart';
 
 /// The play the search chose.
 final class SearchResult {
@@ -66,3 +67,11 @@ Candidate pickCandidate(
 List<int> normalDice(List<int> dice) => dice.length == 2 && dice[0] == dice[1]
     ? [for (var i = 0; i < 4; i++) dice[0]]
     : dice;
+
+/// The stats of a search by [scorer] that reached [depth].
+BotStats statsOf(PlyScorer scorer, int depth) => BotStats(
+      evaluated: scorer.evaluated,
+      depthReached: depth,
+      elapsedUs: scorer.clock.elapsedUs,
+      timedOut: scorer.clock.timedOut,
+    );
