@@ -7,14 +7,19 @@ part of 'play_generator.dart';
 /// context and dice used) share one node, so walk the tree by steps; do not
 /// enumerate every path of a long cascade.
 final class PlayNode {
-  PlayNode._();
+  PlayNode._() : _position = null;
 
   /// A cascade node whose children are computed on first access.
   PlayNode._lazy(_Cascade cascade, Position pos, TurnContext ctx, int index,
       {required bool complete})
-      : _lazy = _LazyState(cascade, pos, ctx, index) {
+      : _position = pos,
+        _lazy = _LazyState(cascade, pos, ctx, index) {
     if (complete) _final = pos;
   }
+
+  /// Cascade nodes only: the position after this prefix, which
+  /// `CascadeWalker.greedyCompletion` scores. Null on eager nodes.
+  final Position? _position;
 
   // Insertion order follows the search, so iteration is deterministic.
   final Map<Step, PlayNode> _children = {};
@@ -119,6 +124,65 @@ final class PlayTree {
       if (n == null) return null;
     }
     return n;
+  }
+
+  /// Every legal play, one per distinct final, each with the first path
+  /// to it found by a depth-first search over [PlayNode.nextSteps]; the
+  /// list is in that order of first discovery.
+  ///
+  /// Eager trees only: throws [StateError] on a lazy cascade tree (use
+  /// [pathTo] or `CascadeWalker` there).
+  List<Play> plays() {
+    if (isLazy) throw StateError('plays() is not available on cascade trees');
+    final out = <Play>[];
+    final found = <Position>{};
+    final seen = HashSet<PlayNode>.identity();
+    final path = <Step>[];
+    // A node seen before has had its whole subtree searched, so it holds
+    // no undiscovered final.
+    void visit(PlayNode n) {
+      if (!seen.add(n)) return;
+      final f = n.finalPosition;
+      if (f != null) {
+        if (found.add(f)) out.add(Play(f, List.unmodifiable(path)));
+        return;
+      }
+      for (final s in n.nextSteps) {
+        path.add(s);
+        visit(n.child(s)!);
+        path.removeLast();
+      }
+    }
+
+    if (hasPlay) visit(root);
+    return out;
+  }
+
+  /// One legal step sequence from [root] to a complete node whose final is
+  /// [target], or null if [target] is not a legal final.
+  ///
+  /// Works on lazy cascade trees too: a depth-first search over
+  /// [PlayNode.nextSteps] that remembers dead-end nodes, so each node is
+  /// expanded at most once.
+  List<Step>? pathTo(Position target) {
+    final eager = _finals;
+    if (!hasPlay || eager != null && !eager.contains(target)) return null;
+    final dead = HashSet<PlayNode>.identity();
+    final path = <Step>[];
+    bool visit(PlayNode n) {
+      final f = n.finalPosition;
+      if (f != null) return f == target;
+      if (dead.contains(n)) return false;
+      for (final s in n.nextSteps) {
+        path.add(s);
+        if (visit(n.child(s)!)) return true;
+        path.removeLast();
+      }
+      dead.add(n);
+      return false;
+    }
+
+    return visit(root) ? List.unmodifiable(path) : null;
   }
 
   /// Up to `limit + 1` distinct finals: the search stops once it has more

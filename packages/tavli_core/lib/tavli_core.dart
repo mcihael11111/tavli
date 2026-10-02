@@ -19,6 +19,7 @@ export 'src/match/match.dart';
 export 'src/match/match_action.dart';
 export 'src/match/match_config.dart';
 export 'src/match/match_event.dart';
+export 'src/play/play.dart';
 export 'src/play/play_generator.dart';
 export 'src/play/step.dart';
 export 'src/rules/game_end.dart';
