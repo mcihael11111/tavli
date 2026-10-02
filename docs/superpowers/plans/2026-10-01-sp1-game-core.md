@@ -982,7 +982,7 @@ Games per variant = `int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? ''
   - If they differ, write the position and roll to the test output.
   - Determine which engine is right **using matrix G1–G9**.
   - If legacy is wrong, add the case to a documented `knownLegacyBugs` list with the rule ID. If core is wrong, fix core.
-- [ ] Run the exit fuzz: `TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz` in `packages/tavli_core`. This may take a long time; run it in the background and record the wall time. *(Started 2026-10-02 00:29 AEST, est. ~1.5 h; see the SP1 report §3.)*
+- [x] Run the exit fuzz: `TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz` in `packages/tavli_core`. *(Passed 2026-10-02: 1.3M games, 348M actions, 0 failures, 1 h 25 min; see the SP1 report §3.)*
 - [x] Write the report:
   - test counts per suite;
   - benchmark table (p50/p95/max per variant);

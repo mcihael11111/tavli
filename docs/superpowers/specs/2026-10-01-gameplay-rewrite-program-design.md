@@ -138,7 +138,7 @@ Dependency rules, enforced by an import-lint test:
 - a pin mask for pinning games
 - side to move
 
-Stored in **player-relative coordinates**, so one move generator serves both opposing-direction and same-direction games. Each position has a 64-bit Zobrist hash, used for deduplication, caching and the session log.
+Stored in **player-relative coordinates**, so one move generator serves both opposing-direction and same-direction games. Each position has a web-safe incremental 30-bit Zobrist hash with equality confirmation, used for deduplication and memoization (see the SP1 design spec §3.2). Side-to-move lives in `GameState`, not `Position`.
 
 **Variant rules.** A `VariantRules` value (extending today's `variant_rules.dart`) plus a small set of rule hooks:
 - capture mode: hit / pin / none
@@ -391,6 +391,31 @@ Effort is relative, in focused development sessions. Each row's exit criteria ar
 - **Test config:** `tavli_core` needs its own `dart_test.yaml`, because the root one only applies to `flutter test`. It should define a `fuzz` tag with extended timeouts and an iteration count CI can scale, so the 100k-games-per-variant suite fits the 30-minute CI job.
 - **Purity allowlist:** the `tavli_core` purity allowlist (`dart:core/async/collection/convert/math/typed_data` plus itself) is deliberate. Adding `package:meta` or `package:collection` means widening it on purpose.
 - **Adapter location:** adapters between core types and the app's `GameVariant`/`GameResult` live in the app under `lib/gameplay/`, never in core.
+
+**SP1 close-out (2026-10-02).** All exit criteria are met:
+- 13 variants;
+- rule-ID coverage;
+- oracle differential;
+- the 100k-per-variant fuzz (1.3M games, 0 failures);
+- benchmarks within budget on desktop;
+- CI green.
+
+CI runs 40 fuzz games per variant; the 100k run is a recorded local exit run.
+
+**Gates carried forward:**
+- **(c)** Galaxy S AOT generation benchmark (≤ 2 ms p95), run alongside gate (b) before SP3.
+- **(d)** Gul Bara cascades can take up to about 0.4 s to build, so SP3 reduces Gul Bara rolls off the UI isolate (or adds a pruning bound first), and SP4 keeps live states in memory.
+
+**SP2 inputs from the SP1 review:**
+- **Path to a play:** core needs `PlayTree` final→path (e.g. `pathTo(Position)` or plays-with-steps), because bots choose finals but submit `SubmitPlay(steps)`.
+- **Bot isolate request:** use a lean request message (variant, position, side, dice, context, cube), not a `GameState` (its cached tree is heavy to copy) and not JSON (re-validation and tree rebuild).
+- **Cascades:** cascade bots must walk or sample the lazy tree; Easy's 20 ms budget can't cover a worst-case cascade build, so cascade decisions get their own budget.
+- **Minor test hardening:**
+  - real hash checks via JSON rebuild in `mutable_position_test`;
+  - a reducer-step regression cap of about 5 µs;
+  - 200 positions in the legacy differential.
+
+**SP3 input:** a "remaining dice" helper for the UI.
 
 Ordering: 0 → 1 → 2 → 3 → 4 → 5. Sub-project 4's server work may start in parallel with 3 once 1 is done, because both depend only on `tavli_core`.
 

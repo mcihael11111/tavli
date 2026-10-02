@@ -99,7 +99,15 @@ All oracle and lazy-vs-brute tests stayed green. Measurements before → after (
 - **Failing cascades.** A failing 24-entry cascade (1-1 at roll ≥ 4) must visit every reachable state to prove that the queue's end cannot be reached. The worst found takes about 0.35 s.
 - **Succeeding cascades.** A succeeding cascade can still search deep before it finds a full path. The worst found takes about 65 ms.
 
-Both are under 0.1 % of sampled cascades. A sound pruning bound (or move ordering for the succeeding case) is the next step if SP2 bots hit them.
+Both are under 0.1 % of sampled cascades. They hit **every consumer**, not only bots:
+- `RollDice` builds the cascade root synchronously, and `GameState.fromJson` rebuilds it. That affects:
+  - the SP3 UI isolate (possible frame hitch);
+  - resume-after-kill;
+  - `replay`;
+  - a stateless SP4 server rebuilding state from JSON.
+- **Carried requirements:**
+  - SP3 must reduce Gul Bara `RollDice` off the UI isolate, or add a sound pruning bound first.
+  - SP4 keeps live states in memory per room rather than rebuilding from JSON per action.
 
 ## 3. Fuzz (Task 16)
 
@@ -152,8 +160,10 @@ Both are under 0.1 % of sampled cascades. A sound pruning bound (or move orderin
 | mahbusaArab | 22,848,236 | 177,381 | mother 46,687 · draw 22,958 · single 21,882 · gammon 8,473 |
 | tawla31 | 30,107,000 | 233,354 | checkersRemaining 100,000 |
 | **Total** | **348,093,694** | **2,639,421** | 26,000 replays · 13,923,742 JSON round-trips |
-- Estimate: about 1.5 h (Portes did 10k games in 41 s), so about 1.3 M games.
-- When it finishes, record its totals here and tick the exit-checklist item.
+
+### Carried gates (from the SP1 final review)
+- **Galaxy S AOT generation run.** Program spec §3.3 makes "≤ 2 ms p95 generation" a device gate in profile/release builds. The worst Mac fixtures are Plakoto 1.69 ms and Mahbusa Arab 1.72 ms (1.51 ms AOT), which is little headroom. Run `benchmark/run_benchmarks.dart` compiled AOT on the phone, together with SP0 gate (b), before SP3 starts.
+- If the phone misses the budget, the first lever is deferring the depth ≥ 2 memo `freeze()` in `play_search.dart` to the leaves.
 
 ## 4. Oracle comparisons
 
