@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../../benchmark/bench_fixtures.dart';
 import '../support/cascades.dart';
 import '../support/plays.dart';
 import '../support/positions.dart';
@@ -81,6 +82,27 @@ void main() {
       final t = generateCascade(p, S.one, q, _gul, TurnContext());
       expect(() => t.enumerateFinals(limit: 8), throwsStateError);
       expect(CascadeWalker(t).sampleCompletions(8, Random(1)), hasLength(8));
+    });
+
+    test('stop is checked before each walk', () {
+      // worstCascade: about 1 s for sample(8) without a stop.
+      const f = worstCascade;
+      final p = f.position;
+      final t = generateCascade(p, f.side, f.dice, _gul, TurnContext());
+      final sw = Stopwatch()..start();
+      var checks = 0;
+      final got = CascadeWalker(t)
+          .sampleCompletions(8, Random(3), stop: () => checks++ >= 1);
+      sw.stop();
+      expect(got.length, lessThanOrEqualTo(1));
+      expect(checks, 2);
+      expect(sw.elapsedMilliseconds, lessThan(500));
+      for (final pl in got) {
+        expect(t.walk(pl.steps)?.finalPosition, pl.finalPosition);
+      }
+      // Stopped up front: nothing.
+      expect(CascadeWalker(t).sampleCompletions(8, Random(3), stop: () => true),
+          isEmpty);
     });
 
     test('n <= 0 gives nothing', () {

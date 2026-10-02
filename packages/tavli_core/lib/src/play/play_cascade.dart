@@ -37,7 +37,7 @@ final class _Cascade {
   void expand(PlayNode n, _LazyState s) {
     final need = diceUsed - s.index;
     if (need <= 0) return;
-    final m = s.position.toMutable();
+    final m = n._position!.toMutable();
     final die = queue[s.index];
     for (final step in _steps.basicSteps(m, side, die)) {
       final a = _tryStep(m, step, s.ctx);

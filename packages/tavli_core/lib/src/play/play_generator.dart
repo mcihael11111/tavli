@@ -81,7 +81,8 @@ PlayTree generateCascade(
   final cascade = _Cascade(rules, s, q);
   final root = cascade.start(p, ctx.withDice(q));
   final used = cascade.diceUsed;
-  return PlayTree._(root, null, used, List.unmodifiable(q.sublist(used)));
+  return PlayTree._(
+      root, null, used, List.unmodifiable(q.sublist(used)), cascade);
 }
 
 PlayTree _generate(

@@ -4,12 +4,12 @@ import 'package:tavli_bot/tavli_bot.dart';
 import 'package:tavli_testkit/tavli_testkit.dart';
 import 'package:test/test.dart';
 
-/// Allowlist, not blocklist: tavli_bot is pure (no I/O, no Flutter). Beyond
-/// the core SDK libraries it may use dart:isolate, because the bot hosts its
+/// Allowlist, not blocklist: tavli_bot is pure (no I/O, no Flutter, no
+/// serialization). Beyond the core SDK libraries it may use dart:isolate, because the bot hosts its
 /// own worker isolate, plus its own package and tavli_core. Anything else
 /// matches and is reported.
 final _notAllowed = RegExp(
-  r'^(?!(dart:(core|async|collection|convert|math|typed_data|isolate)$)'
+  r'^(?!(dart:(core|async|collection|math|typed_data|isolate)$)'
   r'|package:tavli_bot/|package:tavli_core/)',
 );
 
@@ -45,6 +45,7 @@ void main() {
   test('allowlist regex flags disallowed imports and permits allowed ones', () {
     for (final bad in [
       'dart:io',
+      'dart:convert',
       'package:flutter/material.dart',
       'package:flame/flame.dart',
     ]) {

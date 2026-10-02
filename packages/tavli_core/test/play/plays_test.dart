@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../../benchmark/bench_fixtures.dart';
 import '../support/cascades.dart';
 import '../support/plays.dart';
 import '../support/positions.dart';
@@ -26,6 +27,17 @@ void expectPlayPath(PlayTree t, Position start, Side s, VariantRules rules,
   expect(n!.isComplete, isTrue, reason: 'path is not complete: $steps');
   expect(n.finalPosition, f);
   expect(after(start, s, rules, steps), f);
+}
+
+/// [p] with one opponent checker of [me] moved from its pip 5 to 4.
+Position _moveOpponent(Position p, Side me) {
+  final j = p.toJson();
+  final key = me.opponent == S.one ? 'one' : 'two';
+  final counts = [...(j[key]! as List).cast<int>()];
+  expect(counts[5], greaterThan(0));
+  counts[5]--;
+  counts[4]++;
+  return Position.fromJson({...j, key: counts});
 }
 
 void main() {
@@ -106,6 +118,67 @@ void main() {
           Position.forRules(_gul), S.one, cascadeQueue(6), _gul, TurnContext());
       expect(t.isLazy, isTrue);
       expect(t.plays, throwsStateError);
+    });
+
+    test('pathTo on worstCascade: non-finals are rejected fast', () {
+      const f = worstCascade;
+      final p = f.position;
+      final t = generateCascade(p, f.side, f.dice, _gul, TurnContext());
+      final w = CascadeWalker(t);
+      final real = w.sampleCompletions(3, Random(5));
+      expect(real, isNotEmpty);
+      final half = real.first.steps.sublist(0, real.first.steps.length ~/ 2);
+      final nonFinals = {
+        'start': p,
+        'half a play': after(p, f.side, _gul, half),
+        // A real final with the opponent changed: no play moves the
+        // opponent in a block game.
+        'opponent moved': _moveOpponent(real.first.finalPosition, f.side),
+      };
+      nonFinals.forEach((name, target) {
+        final sw = Stopwatch()..start();
+        expect(t.pathTo(target), isNull, reason: name);
+        sw.stop();
+        // Asserts on; unpruned, 'start' walks the whole tree.
+        expect(sw.elapsedMilliseconds, lessThan(200), reason: name);
+      });
+      // Real finals still resolve (walker steps and pathTo agree on the
+      // final, not necessarily on the path).
+      for (final pl in [
+        ...real,
+        w.greedyCompletion((b) => -b.pipCount(f.side).toDouble())
+      ]) {
+        final path = t.pathTo(pl.finalPosition);
+        expect(path, isNotNull);
+        expectPlayPath(t, p, f.side, _gul, path!, pl.finalPosition);
+      }
+    });
+
+    test('pathTo finds every final of random cascades (prune soundness)', () {
+      final rng = Random(11);
+      var checked = 0;
+      final positions = randomReachablePositions(Variant.gulBara, 30, rng);
+      for (var i = 0; i < positions.length; i++) {
+        final p = positions[i];
+        final side = i.isEven ? S.one : S.two;
+        for (var d = 1; d <= 6; d++) {
+          final t =
+              generateCascade(p, side, cascadeQueue(d), _gul, TurnContext());
+          Set<Position> finals;
+          try {
+            finals = t.enumerateFinals(limit: 60);
+          } on StateError {
+            continue; // too many to check them all here
+          }
+          for (final f in finals) {
+            final path = t.pathTo(f);
+            expect(path, isNotNull, reason: '$p $side $d $f');
+            expectPlayPath(t, p, side, _gul, path!, f);
+            checked++;
+          }
+        }
+      }
+      expect(checked, greaterThan(200));
     });
 
     smallCascades.forEach((name, c) {

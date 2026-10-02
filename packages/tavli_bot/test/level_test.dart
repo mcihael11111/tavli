@@ -8,6 +8,7 @@ void main() {
     final p = LevelProfile.of(BotLevel.easy);
     expect(p.depth, 0);
     expect(p.expertTwoPly, isFalse);
+    expect((p.k, p.kMax), (0, 0));
     expect(p.noise, 0.12);
     expect(p.topFraction, 0.5);
     expect(p.cascadeSamples, 8);
