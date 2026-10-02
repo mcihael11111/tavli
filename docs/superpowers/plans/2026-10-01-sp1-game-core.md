@@ -999,7 +999,7 @@ Games per variant = `int.tryParse(Platform.environment['TAVLI_FUZZ_GAMES'] ?? ''
 - [x] All 13 variants in the catalog with decision tests (Task 2).
 - [x] Every matrix rule ID (G1–G9, §4 topics, D1–D22 where engine-relevant) has ≥ 1 test. Generate a list with `grep -ho "test('[A-Z][0-9]*" -r test | sort -u` and compare it with the matrix.
 - [x] Oracle differential clean.
-- [ ] Fuzz: 100,000 games per variant with zero failures, recorded. *(In progress; 2,000/variant recorded with zero failures.)*
+- [x] Fuzz: 100,000 games per variant with zero failures, recorded (1.3M games, 348M actions, 2026-10-02).
 - [x] Benchmarks within budget.
 - [x] `tool/ci/check.sh` → `ALL GREEN`.
 - [x] SP1 report committed.

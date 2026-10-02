@@ -11,7 +11,7 @@
 - **424 package tests pass**, plus the app-level Portes legacy differential.
 - **Oracle differential:** clean. **Portes legacy differential:** clean, with 0 known legacy bugs.
 - **Fuzz:** 2,000 games per variant (26,000 games, 6.9 M actions) with zero failures.
-- **100k run: IN PROGRESS.** It was started 2026-10-02 00:29 AEST and should take about 1.5 h. Its output goes to a local run log (not committed); the command is `cd packages/tavli_core && TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz --reporter expanded`.
+- **100k run: PASSED.** 1,300,000 games (100,000 per variant) and 348,093,694 actions, with **0 failures**. Also run: 2,639,421 oracle checks, 26,000 replays and 13,923,742 JSON round-trips, in 1 h 25 min (2026-10-02). Command: `cd packages/tavli_core && TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz --reporter expanded`.
 - **Benchmarks:** every budget is met with asserts off.
   - Worst generation fixture p95: 1.72 ms (budget 2 ms).
   - Reducer `StepAction` p95: 0.5 µs (budget 50 µs).
@@ -133,8 +133,25 @@ Both are under 0.1 % of sampled cascades. A sound pruning bound (or move orderin
 | mahbusaArab | 456,851 | mother 935, single 450, draw 454, gammon 161 |
 | tawla31 | 602,922 | checkersRemaining 2000 |
 
-**100k run: IN PROGRESS.** Output goes to a local run log (not committed).
-- Command: `cd packages/tavli_core && TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz --reporter expanded`, started 2026-10-02 00:29 AEST.
+**100k run: PASSED (2026-10-02, 1:25:26, 0 failures).** Output is in a local run log (not committed).
+- Command: `cd packages/tavli_core && TAVLI_FUZZ_GAMES=100000 dart test --tags fuzz --reporter expanded`.
+
+| Variant | Actions | Oracle checks | Outcomes |
+|---|---|---|---|
+| portes | 28,838,107 | 221,981 | gammon 59,809 · single 40,191 |
+| plakoto | 22,873,046 | 176,964 | mother 46,886 · draw 22,584 · single 22,082 · gammon 8,448 |
+| fevga | 30,155,100 | 233,515 | single 81,258 · gammon 18,742 |
+| tavla | 28,660,467 | 219,714 | gammon 59,898 · single 40,102 |
+| tapa | 22,915,910 | 176,880 | mother 46,838 · draw 22,767 · single 21,952 · gammon 8,443 |
+| moultezim | 30,255,959 | 233,698 | single 81,093 · gammon 18,907 |
+| gulBara | 18,708,416 | 110,251 (7,936 large cascades skipped) | gammon 68,854 · single 31,146 · remainders 108,145 |
+| longNard | 31,036,701 | 236,401 | single 82,801 · gammon 17,199 · cube takes 287,930 (max 64) |
+| shortNard | 29,440,136 | 222,197 | single 39,731 · gammon 36,521 · koks 23,748 · cube max 64 |
+| sheshBesh | 29,390,747 | 220,749 | single 40,093 · gammon 36,404 · Turkish mars 23,503 · cube max 64 |
+| mahbusa | 22,863,869 | 176,336 | mother 46,594 · draw 22,766 · single 22,053 · gammon 8,587 |
+| mahbusaArab | 22,848,236 | 177,381 | mother 46,687 · draw 22,958 · single 21,882 · gammon 8,473 |
+| tawla31 | 30,107,000 | 233,354 | checkersRemaining 100,000 |
+| **Total** | **348,093,694** | **2,639,421** | 26,000 replays · 13,923,742 JSON round-trips |
 - Estimate: about 1.5 h (Portes did 10k games in 41 s), so about 1.3 M games.
 - When it finishes, record its totals here and tick the exit-checklist item.
 
@@ -240,4 +257,4 @@ Consequence: resigning at move 1 concedes, because nothing is borne off yet (che
 
 ## 9. SP1 exit checklist status
 
-All items are ticked except the 100,000-game fuzz, which is in progress (see §3).
+All items are ticked. The 100,000-games-per-variant fuzz passed with 0 failures (see §3).
