@@ -14,6 +14,7 @@ export 'src/eval/pinning_eval.dart';
 export 'src/eval/race_eval.dart';
 export 'src/eval/running_eval.dart';
 export 'src/level/bot_level.dart';
+export 'src/search/search.dart';
 export 'src/teach/analysis_types.dart';
 export 'src/worker/protocol.dart';
 
