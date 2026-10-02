@@ -6,9 +6,13 @@ library;
 
 import 'package:tavli_core/tavli_core.dart';
 
+export 'src/eval/eval_dispatch.dart';
 export 'src/eval/evaluator.dart';
 export 'src/eval/features.dart';
+export 'src/eval/hitting_eval.dart';
+export 'src/eval/pinning_eval.dart';
 export 'src/eval/race_eval.dart';
+export 'src/eval/running_eval.dart';
 export 'src/level/bot_level.dart';
 export 'src/teach/analysis_types.dart';
 export 'src/worker/protocol.dart';

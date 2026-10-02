@@ -13,11 +13,11 @@ final _portes = Variant.portes.rules;
 void main() {
   test('race: a mirrored position swaps the sides (±0.02)', () {
     final races = [
-      opp({6: 10, 4: 5}, {7: 10, 6: 5}),
-      opp({7: 10, 6: 5}, {8: 15}),
-      opp({1: 1}, {6: 15}),
-      opp({6: 4, 3: 3, 2: 4, 1: 4}, {6: 1, 5: 1, 4: 4, 3: 3, 2: 3, 1: 3}),
-      opp({12: 3, 6: 12}, {10: 2, 5: 13}),
+      posOpp({6: 10, 4: 5}, {7: 10, 6: 5}),
+      posOpp({7: 10, 6: 5}, {8: 15}),
+      posOpp({1: 1}, {6: 15}),
+      posOpp({6: 4, 3: 3, 2: 4, 1: 4}, {6: 1, 5: 1, 4: 4, 3: 3, 2: 3, 1: 3}),
+      posOpp({12: 3, 6: 12}, {10: 2, 5: 13}),
     ];
     for (final p in races) {
       expect(isRace(p, _portes), isTrue, reason: '$p');

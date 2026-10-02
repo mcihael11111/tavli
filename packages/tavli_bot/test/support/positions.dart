@@ -11,7 +11,7 @@ import 'package:test/test.dart';
 
 /// An opposing-direction position from own-pip maps; omitted checkers are
 /// borne off.
-Position opp(
+Position posOpp(
   Map<int, int> one,
   Map<int, int> two, {
   int barOne = 0,
@@ -30,7 +30,7 @@ Position opp(
     );
 
 /// A same-direction position from own-pip maps.
-Position same(Map<int, int> one, Map<int, int> two) =>
+Position posSame(Map<int, int> one, Map<int, int> two) =>
     Position.fromPips(one: one, two: two, direction: Direction.same);
 
 /// [p] with the two sides' checkers swapped.
