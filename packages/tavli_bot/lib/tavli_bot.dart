@@ -6,6 +6,7 @@ library;
 
 import 'package:tavli_core/tavli_core.dart';
 
+export 'src/cube/cube_policy.dart';
 export 'src/eval/eval_dispatch.dart';
 export 'src/eval/evaluator.dart';
 export 'src/eval/features.dart';

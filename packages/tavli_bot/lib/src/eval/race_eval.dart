@@ -10,6 +10,9 @@ import 'evaluator.dart';
 /// Average pips per roll, for converting pips to rolls.
 const double pipsPerRoll = 8.1;
 
+/// The race's logistic slope: `winProb = logistic(raceSlope · lead)`.
+const double raceSlope = 11;
+
 /// Effective pip count of [s]: pips plus wastage, where wastage is 1 per
 /// checker beyond 3 on each of the own points 1..3, plus 0.5 per empty
 /// own point among 4..6 (the home-board gaps that waste pips in the
@@ -66,7 +69,7 @@ int firstOffPips(BoardView p, Side s) {
 ///
 /// On-roll neutral and exactly antisymmetric (plan Task 3): the lead is
 /// `(epcOpp − epcMe) / ((epcMe + epcOpp) / 2)` and `winProb =
-/// logistic(11 · lead)`. Callers needing the on-roll effect (the cube
+/// logistic(raceSlope · lead)`. Callers needing the on-roll effect (the cube
 /// policy) add it.
 ///
 /// Gammons: none once the loser has a checker off. Otherwise the share of
@@ -87,7 +90,7 @@ final class RaceEvaluator implements Evaluator {
     final opp = me.opponent;
     final epcMe = effectivePips(p, me), epcOpp = effectivePips(p, opp);
     final mean = math.max((epcMe + epcOpp) / 2, 1.0);
-    final s = 11 * (epcOpp - epcMe) / mean;
+    final s = raceSlope * (epcOpp - epcMe) / mean;
     final win = logistic(s), loss = logistic(-s);
     return EvalResult(
       win,
