@@ -16,6 +16,7 @@ export 'src/eval/race_eval.dart';
 export 'src/eval/running_eval.dart';
 export 'src/level/bot_level.dart';
 export 'src/search/search.dart';
+export 'src/teach/analysis.dart';
 export 'src/teach/analysis_types.dart';
 export 'src/worker/protocol.dart';
 
