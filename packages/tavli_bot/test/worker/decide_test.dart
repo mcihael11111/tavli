@@ -4,6 +4,7 @@ import 'package:tavli_bot/tavli_bot.dart';
 import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
+import '../support/generation_fixtures.dart';
 import '../support/positions.dart';
 import '../support/search_support.dart' show worstCascade;
 
@@ -23,6 +24,7 @@ BotRequest _req(
   Duration? budget = _big,
   int seed = 1,
   int id = 1,
+  TurnContext? context,
 }) =>
     BotRequest(
       id: id,
@@ -32,7 +34,7 @@ BotRequest _req(
       side: side,
       dice: dice,
       cascade: cascade,
-      context: TurnContext(firstTurn: position == null),
+      context: context ?? TurnContext(firstTurn: position == null),
       cube: cube,
       level: level,
       seed: seed,
@@ -159,7 +161,58 @@ void main() {
           _req(Variant.plakoto, position: p, dice: const [6, 5], level: level);
       final a = Bot.decide(r) as PlayReply, b = Bot.decide(r) as PlayReply;
       expect(a.steps, b.steps, reason: level.name);
+      expect(a.stats.timedOut, isFalse, reason: level.name);
     }
+  });
+
+  test('cascade remainders (tails of a cascade queue) are valid', () {
+    final p = randomPositions(Variant.gulBara, 1, Random(5)).single;
+    for (final q in [
+      cascadeQueue(1),
+      cascadeQueue(4),
+      const [5, 6, 6, 6, 6],
+      const [6],
+    ]) {
+      final r = _req(Variant.gulBara,
+          position: p, dice: q, cascade: true, level: BotLevel.easy);
+      final reply = Bot.decide(r);
+      expect(reply, isA<PlayReply>(), reason: '$q: $reply');
+      _expectReplays(r, (reply as PlayReply).steps);
+    }
+  });
+
+  test('a request budget is capped at 2x the level budget', () {
+    for (final level in BotLevel.values) {
+      final prof = LevelProfile.of(level);
+      Duration of(Duration? b, {bool cascade = false}) =>
+          Bot.requestBudget(_req(Variant.gulBara,
+              level: level,
+              budget: b,
+              cascade: cascade,
+              dice: cascade ? cascadeQueue(3) : const [3, 1]));
+      expect(of(null), prof.budget);
+      expect(of(null, cascade: true), prof.cascadeBudget);
+      expect(
+          of(const Duration(milliseconds: 1)), const Duration(milliseconds: 1));
+      expect(of(_big), prof.budget * 2);
+      expect(of(_big, cascade: true), prof.cascadeBudget * 2);
+    }
+    // And decide honours it: Expert's 2-ply on Mahbusa's worst fixture
+    // would take about 0.75 s unbounded.
+    final f =
+        generationFixtures.firstWhere((f) => f.variant == Variant.mahbusa);
+    final w = Stopwatch()..start();
+    final reply = Bot.decide(_req(Variant.mahbusa,
+        position: f.position,
+        side: f.side,
+        dice: f.dice,
+        level: BotLevel.expert,
+        budget: const Duration(seconds: 60)));
+    expect(reply.stats.timedOut, isTrue);
+    expect(
+        w.elapsedMilliseconds,
+        lessThan(
+            2 * LevelProfile.of(BotLevel.expert).budget.inMilliseconds + 100));
   });
 
   test('the search gets the budget less a 5 % reserve (at least 1 ms)', () {
@@ -201,6 +254,23 @@ void main() {
           _req(Variant.portes, steps: const [Step(24, 21, 3)]),
       'steps off the tree': _req(Variant.portes,
           kind: BotRequestKind.analyze, steps: const [Step(24, 18, 6)]),
+      'cascade queue not ending in 6s':
+          _req(Variant.gulBara, dice: const [2, 2, 2, 2], cascade: true),
+      'cascade queue with a gap': _req(Variant.gulBara,
+          dice: const [4, 4, 4, 4, 6, 6, 6, 6], cascade: true),
+      'cascade queue out of order':
+          _req(Variant.gulBara, dice: const [6, 6, 6, 5], cascade: true),
+      'negative head departures':
+          _req(Variant.longNard, context: TurnContext(headDepartures: -1)),
+      'too many head departures':
+          _req(Variant.longNard, context: TurnContext(headDepartures: 16)),
+      'home hit on pip 0':
+          _req(Variant.portes, context: TurnContext(homeHitMask: 1)),
+      'home hit on pip 7':
+          _req(Variant.portes, context: TurnContext(homeHitMask: 1 << 7)),
+      '25 steps': _req(Variant.portes,
+          kind: BotRequestKind.analyze,
+          steps: List.filled(25, const Step(24, 21, 3))),
     };
     for (final MapEntry(key: why, value: r) in bad.entries) {
       test(why, () {

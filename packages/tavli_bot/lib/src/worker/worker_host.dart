@@ -15,10 +15,26 @@ import '../bot.dart';
 import '../level/bot_level.dart';
 import 'protocol.dart';
 
-/// Drops request [id] if it has not started.
+/// A request as sent to the worker: [seq] is the client's own sequence
+/// number, unique per [BotWorker], so a reply can never be matched to a
+/// later request that reuses the caller's [BotRequest.id].
+final class RequestEnvelope {
+  const RequestEnvelope(this.seq, this.request);
+  final int seq;
+  final BotRequest request;
+}
+
+/// The reply to the [RequestEnvelope] with the same [seq].
+final class ReplyEnvelope {
+  const ReplyEnvelope(this.seq, this.reply);
+  final int seq;
+  final BotReply reply;
+}
+
+/// Drops the request with sequence number [seq] if it has not started.
 final class CancelMessage {
-  const CancelMessage(this.id);
-  final int id;
+  const CancelMessage(this.seq);
+  final int seq;
 }
 
 /// A host-side job that is not a [BotRequest].
@@ -27,7 +43,7 @@ enum ControlKind {
   warm,
 
   /// Replies with the ids decided so far (the last [WorkerHost.ledgerSize];
-  /// answered on receipt). For tests.
+  /// answered on receipt), or null unless spawned for a test.
   ledger,
 }
 
@@ -44,33 +60,34 @@ final class ControlReply {
   final Object? value;
 }
 
-/// Closes the host's port; the isolate then ends.
-final class ShutdownMessage {
-  const ShutdownMessage();
-}
-
-/// Test-only faults, set by `BotWorker.spawnForTest`: when request
-/// [exitOn] is about to be decided the isolate exits
-/// (`Isolate.exit()`), and when [throwOn] is, an uncaught error kills it.
-final class WorkerFaults {
-  const WorkerFaults({this.exitOn, this.throwOn});
-  final int? exitOn, throwOn;
+/// Test-only behaviour, set by `BotWorker.spawnForTest`; the defaults are
+/// production's:
+/// - [exitOn]: the isolate exits (`Isolate.exit()`) when it is about to
+///   decide the request with that id;
+/// - [throwOn]: an uncaught error kills it there instead;
+/// - [stallHandshakeFrom]: the isolates spawned at or after this spawn
+///   number (1-based) never complete the handshake;
+/// - [ledger]: keep the decided ids for `BotWorker.decidedIds`.
+final class WorkerTestHooks {
+  const WorkerTestHooks(
+      {this.exitOn,
+      this.throwOn,
+      this.stallHandshakeFrom,
+      this.ledger = false});
+  final int? exitOn, throwOn, stallHandshakeFrom;
+  final bool ledger;
 }
 
 /// The isolate entry point: sends its port back (the handshake), then
-/// serves it until a [ShutdownMessage].
-void workerMain((SendPort, WorkerFaults) args) {
-  final (out, faults) = args;
+/// serves it until the client kills the isolate. [args]: the reply port,
+/// the hooks and this isolate's spawn number.
+void workerMain((SendPort, WorkerTestHooks, int) args) {
+  final (out, hooks, spawn) = args;
   final port = ReceivePort();
-  final host = WorkerHost(out, faults);
-  port.listen((m) {
-    if (m is ShutdownMessage) {
-      port.close();
-    } else {
-      host.receive(m);
-    }
-  });
-  out.send(port.sendPort);
+  final host = WorkerHost(out, hooks);
+  port.listen(host.receive);
+  final stall = hooks.stallHandshakeFrom;
+  if (stall == null || spawn < stall) out.send(port.sendPort);
 }
 
 /// Queues requests and answers them in order, one per event-loop turn.
@@ -78,38 +95,36 @@ void workerMain((SendPort, WorkerFaults) args) {
 /// Cancellation: [Bot.decide] runs synchronously, so no message is read
 /// while a request runs. Each request runs in its own event (a zero
 /// timer, which the VM posts behind the messages already received), so
-/// every cancel or superseding request that arrived meanwhile is applied
-/// before the next one starts: a cancelled request still in the queue is
-/// dropped unanswered. A running request runs to its budget and is
-/// answered; the client has already failed it and discards the reply.
+/// every cancel that arrived meanwhile is applied before the next one
+/// starts: a cancelled request still in the queue is dropped unanswered.
+/// A running request runs to its budget and is answered; the client has
+/// already failed it and drops the reply (its sequence number is no
+/// longer pending).
 final class WorkerHost {
-  WorkerHost(this._out, this._faults);
+  WorkerHost(this._out, this._hooks);
 
   /// How many decided ids [ControlKind.ledger] remembers.
   static const ledgerSize = 256;
 
   final SendPort _out;
-  final WorkerFaults _faults;
+  final WorkerTestHooks _hooks;
   final _queue = ListQueue<Object>();
   final _decided = ListQueue<int>();
   bool _scheduled = false;
 
   void receive(Object? m) {
     switch (m) {
-      case BotRequest(:final supersedes):
-        if (supersedes != null) _drop(supersedes);
+      case RequestEnvelope():
         _enqueue(m);
-      case CancelMessage(:final id):
-        _drop(id);
+      case CancelMessage(:final seq):
+        _queue.removeWhere((j) => j is RequestEnvelope && j.seq == seq);
       case ControlMessage(kind: ControlKind.ledger, :final token):
-        _out.send(ControlReply(token, List<int>.of(_decided)));
+        _out.send(
+            ControlReply(token, _hooks.ledger ? List<int>.of(_decided) : null));
       case ControlMessage():
         _enqueue(m);
     }
   }
-
-  void _drop(int id) =>
-      _queue.removeWhere((j) => j is BotRequest && j.id == id);
 
   void _enqueue(Object job) {
     _queue.add(job);
@@ -137,13 +152,15 @@ final class WorkerHost {
 
   void _run(Object job) {
     switch (job) {
-      case BotRequest():
-        if (job.id == _faults.exitOn) Isolate.exit();
-        if (job.id == _faults.throwOn) throw StateError('test fault');
-        final reply = Bot.decide(job);
-        _decided.add(job.id);
-        if (_decided.length > ledgerSize) _decided.removeFirst();
-        _out.send(reply);
+      case RequestEnvelope(:final seq, request: final r):
+        if (r.id == _hooks.exitOn) Isolate.exit();
+        if (r.id == _hooks.throwOn) throw StateError('test fault');
+        final reply = Bot.decide(r);
+        if (_hooks.ledger) {
+          _decided.add(r.id);
+          if (_decided.length > ledgerSize) _decided.removeFirst();
+        }
+        _out.send(ReplyEnvelope(seq, reply));
       case ControlMessage(:final token):
         for (final r in warmRequests()) {
           Bot.decide(r);

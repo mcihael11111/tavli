@@ -9,6 +9,7 @@ import 'package:tavli_core/tavli_core.dart';
 import 'package:test/test.dart';
 
 import '../support/generation_fixtures.dart';
+import '../support/search_support.dart' show worstFailingCascade;
 
 /// Mahbusa's worst fixture (749 plays): Expert needs about 0.75 s for it
 /// (asserts off), so an Expert search here runs to its budget.
@@ -52,13 +53,27 @@ Matcher _error(String message) =>
 
 void main() {
   late BotWorker worker;
-  setUp(() async => worker = await BotWorker.spawn());
+  // spawnForTest for decidedIds; no fault hooks set.
+  setUp(() async => worker = await BotWorker.spawnForTest());
   tearDown(() => worker.dispose());
 
   test('round trip: replies equal in-process decide, for every kind', () async {
     await worker.warm();
+    // Small positions, far inside their budgets, so timing cannot change
+    // a reply (the timedOut checks below).
     final rs = [
-      _quick(1),
+      BotRequest(
+        id: 1,
+        kind: BotRequestKind.choosePlay,
+        variant: Variant.plakoto,
+        position: Position.forRules(Variant.plakoto.rules),
+        side: Side.one,
+        dice: const [6, 5],
+        context: TurnContext(firstTurn: true),
+        cube: const CubeState(enabled: false),
+        level: BotLevel.medium,
+        seed: 1,
+      ),
       BotRequest(
         id: 2,
         kind: BotRequestKind.offerDouble,
@@ -87,7 +102,10 @@ void main() {
     ];
     for (final r in rs) {
       final got = await worker.request(r);
+      Bot.decide(r); // warms this isolate
       final want = Bot.decide(r);
+      expect(got.stats.timedOut, isFalse, reason: '$got');
+      expect(want.stats.timedOut, isFalse, reason: '$want');
       expect(got.runtimeType, want.runtimeType, reason: '$got');
       expect(got.id, r.id);
       switch ((got, want)) {
@@ -166,6 +184,35 @@ void main() {
       expect(await worker.decidedIds(), [1, 3]);
     });
 
+    test('a reused id after cancelling a running request gets its own reply',
+        () async {
+      // SP1's worstFailingCascade at Medium: about 0.3 s of
+      // non-interruptible core tree build.
+      final f = worstFailingCascade;
+      BotRequest at(BotRequestKind kind) => BotRequest(
+            id: 20,
+            kind: kind,
+            variant: Variant.gulBara,
+            position: f.position,
+            side: f.side,
+            dice: kind == BotRequestKind.choosePlay ? f.queue : const [],
+            cascade: kind == BotRequestKind.choosePlay,
+            context: TurnContext(),
+            cube: const CubeState(enabled: true),
+            level: BotLevel.medium,
+            seed: 20,
+          );
+      await worker.warm();
+      final running = worker.request(at(BotRequestKind.choosePlay));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      worker.cancel(20);
+      expect(await running, _error('cancelled'));
+      final again = await worker.request(at(BotRequestKind.offerDouble));
+      expect(again, isA<DecisionReply>(), reason: '$again');
+      expect(again.id, 20);
+      expect(await worker.decidedIds(), [20, 20]);
+    });
+
     test('cancelling an unknown or answered id is a no-op', () async {
       expect(await worker.request(_quick(1)), isA<PlayReply>());
       worker.cancel(1);
@@ -201,6 +248,50 @@ void main() {
         expect(await w.decidedIds(), [15]);
       });
     }
+  });
+
+  test('respawns back off: 50 ms, doubling per death without a reply',
+      () async {
+    final w = await BotWorker.spawnForTest(exitOn: 13);
+    addTearDown(w.dispose);
+    final watch = Stopwatch()..start();
+    expect(await w.request(_quick(13)), _error('worker exited'));
+    final first = watch.elapsedMilliseconds;
+    expect(await w.request(_quick(13)), _error('worker exited'));
+    final second = watch.elapsedMilliseconds;
+    expect(await w.request(_quick(15)), isA<PlayReply>());
+    final third = watch.elapsedMilliseconds;
+    expect(second - first, greaterThanOrEqualTo(50));
+    expect(third - second, greaterThanOrEqualTo(100));
+    expect(w.spawnCount, 3);
+    // A reply resets the backoff.
+    final quick = Stopwatch()..start();
+    expect(await w.request(_quick(16)), isA<PlayReply>());
+    expect(quick.elapsedMilliseconds, lessThan(50));
+  });
+
+  test('a respawn whose handshake times out fails the waiting requests',
+      () async {
+    final w = await BotWorker.spawnForTest(
+        exitOn: 13,
+        stallHandshakeFrom: 2,
+        handshakeTimeout: const Duration(milliseconds: 200));
+    addTearDown(w.dispose);
+    expect(await w.request(_quick(13)), _error('worker exited'));
+    final a = w.request(_quick(14)), b = w.request(_quick(15));
+    for (final r in [await a, await b]) {
+      expect(
+          r,
+          isA<ErrorReply>().having((e) => e.message, 'message',
+              startsWith('worker spawn failed: TimeoutException')));
+    }
+  });
+
+  test('decidedIds is test-only', () async {
+    final w = await BotWorker.spawn();
+    addTearDown(w.dispose);
+    expect(await w.request(_quick(1)), isA<PlayReply>());
+    await expectLater(w.decidedIds(), throwsStateError);
   });
 
   test('dispose fails pending requests; later requests throw', () async {

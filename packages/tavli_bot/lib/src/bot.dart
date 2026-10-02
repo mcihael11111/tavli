@@ -13,6 +13,7 @@ import 'eval/evaluator.dart';
 import 'level/bot_level.dart';
 import 'search/search.dart';
 import 'teach/analysis.dart';
+import 'util/collection_eq.dart';
 import 'worker/protocol.dart';
 
 /// The bot's single entry point.
@@ -30,9 +31,8 @@ abstract final class Bot {
   /// - `analyze` → [AnalysisReply] from [analyzeTurn] at the request's
   ///   level.
   ///
-  /// The request's `Random` is `Random(seed)`. Its budget (the request's
-  /// if set, else the level's, the cascade budget for a cascade) bounds
-  /// the whole call: the search gets [searchBudget] of it.
+  /// The request's `Random` is `Random(seed)`. Its [requestBudget]
+  /// bounds the whole call: the search gets [searchBudget] of it.
   /// `stats.elapsedUs` covers the whole call.
   /// See [validate] for what a request must satisfy.
   static BotReply decide(BotRequest request) {
@@ -58,14 +58,21 @@ abstract final class Bot {
   /// - the position's direction is the variant's, and the game is not
   ///   over ([endsGame] for neither side);
   /// - `choosePlay` / `analyze`: with `cascade`, the variant cascades and
-  ///   the dice are a queue of 1..24 dice in 1..6; without, the dice are
-  ///   `[a, b]` (a double as `[d, d]` or `[d, d, d, d]`) in 1..6;
+  ///   the dice are a whole [cascadeQueue] or a non-empty tail of one (a
+  ///   remainder turn, D16-B), as the core accepts in a saved game;
+  ///   without, the dice are `[a, b]` (a double as `[d, d]` or
+  ///   `[d, d, d, d]`) in 1..6;
   /// - `offerDouble` / `takeDouble`: no dice and no cascade (the cube is
   ///   handled before rolling); `takeDouble` needs the cube enabled and
   ///   offered by the bot's opponent;
-  /// - `steps` only for `analyze`, and a budget, when set, ≥ 0.
+  /// - the context is plausible: 0..15 head departures, home hits only
+  ///   on pips 1..6;
+  /// - `steps` only for `analyze`, at most 24 (a whole cascade);
+  /// - a budget, when set, ≥ 0 (a large one is capped: [requestBudget]).
   ///
-  /// Whether the steps are a legal prefix is checked by the analysis.
+  /// The request may come from an untrusted client (the SP4 server calls
+  /// decide directly), so nothing here is trusted. Whether the steps are
+  /// a legal prefix is checked by the analysis.
   static String? validate(BotRequest r) {
     final rules = r.variant.rules;
     final p = r.position;
@@ -78,9 +85,18 @@ abstract final class Bot {
     }
     final b = r.budget;
     if (b != null && b.isNegative) return 'negative budget $b';
+    final ctx = r.context;
+    if (ctx.headDepartures < 0 || ctx.headDepartures > 15) {
+      return 'context head departures ${ctx.headDepartures}';
+    }
+    if (ctx.homeHitMask & ~0x7E != 0) {
+      return 'context home hits 0x${ctx.homeHitMask.toRadixString(16)} '
+          'outside pips 1..6';
+    }
     if (r.kind != BotRequestKind.analyze && r.steps.isNotEmpty) {
       return 'steps are only for analyze';
     }
+    if (r.steps.length > 24) return '${r.steps.length} steps (max 24)';
     switch (r.kind) {
       case BotRequestKind.choosePlay || BotRequestKind.analyze:
         final d = r.dice;
@@ -89,7 +105,12 @@ abstract final class Bot {
           if (rules.cascade == null) {
             return '${r.variant.name} has no cascades';
           }
-          if (d.isEmpty || d.length > 24) return 'cascade queue $d';
+          final all = cascadeQueue(1); // every queue is a tail of this
+          if (d.isEmpty ||
+              d.length > all.length ||
+              !listEq(d, all.sublist(all.length - d.length))) {
+            return 'cascade queue $d is not a tail of a cascade queue';
+          }
         } else {
           final ok =
               d.length == 2 || d.length == 4 && d.every((v) => v == d.first);
@@ -107,6 +128,21 @@ abstract final class Bot {
     return null;
   }
 
+  /// A request's whole-call limit: its own budget if set, else the
+  /// level's (the cascade budget for a cascade), capped at
+  /// [maxBudgetFactor] times the level's. The cap keeps a client from
+  /// tying the worker (or a server) up with a huge budget.
+  static Duration requestBudget(BotRequest r) {
+    final profile = LevelProfile.of(r.level);
+    final level = r.cascade ? profile.cascadeBudget : profile.budget;
+    final own = r.budget;
+    final cap = level * maxBudgetFactor;
+    return own == null ? level : (own > cap ? cap : own);
+  }
+
+  /// See [requestBudget].
+  static const maxBudgetFactor = 2;
+
   /// What the search may spend of a request's [budget]: all but a
   /// reserve of 5 % (at least 1 ms, at most all of it). A search polls
   /// its clock between units of work, so it overruns its deadline by the
@@ -122,8 +158,7 @@ abstract final class Bot {
     final rng = Random(r.seed);
     final eval = _CountingEvaluator(evaluatorFor(rules));
     final profile = LevelProfile.of(r.level);
-    final budget = searchBudget(
-        r.budget ?? (r.cascade ? profile.cascadeBudget : profile.budget));
+    final budget = searchBudget(requestBudget(r));
     switch (r.kind) {
       case BotRequestKind.choosePlay:
         final res = choosePlay(
