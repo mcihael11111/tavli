@@ -392,6 +392,8 @@ Effort is relative, in focused development sessions. Each row's exit criteria ar
 - **Purity allowlist:** the `tavli_core` purity allowlist (`dart:core/async/collection/convert/math/typed_data` plus itself) is deliberate. Adding `package:meta` or `package:collection` means widening it on purpose.
 - **Adapter location:** adapters between core types and the app's `GameVariant`/`GameResult` live in the app under `lib/gameplay/`, never in core.
 
+**SP0 gate (a) closed 2026-10-02:** first GitHub CI run on `rewrite/gameplay` green (3m32s). Runner pinned to `ubuntu-24.04`.
+
 **SP1 close-out (2026-10-02).** All exit criteria are met:
 - 13 variants;
 - rule-ID coverage;
