@@ -6,6 +6,7 @@ library;
 
 import 'package:tavli_core/tavli_core.dart';
 
+export 'src/bot.dart';
 export 'src/cube/cube_policy.dart';
 export 'src/eval/eval_dispatch.dart';
 export 'src/eval/evaluator.dart';
@@ -18,6 +19,7 @@ export 'src/level/bot_level.dart';
 export 'src/search/search.dart';
 export 'src/teach/analysis.dart';
 export 'src/teach/analysis_types.dart';
+export 'src/worker/bot_worker.dart';
 export 'src/worker/protocol.dart';
 
 /// The core schema version this bot build was built against. Worker messages
