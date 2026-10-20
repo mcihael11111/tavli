@@ -54,7 +54,7 @@ abstract final class BotRequests {
       side: side,
       dice: moving ? s.dice : const [],
       cascade: moving && s.cascadeMode,
-      context: moving ? _turnStartContext(s) : s.context,
+      context: moving ? s.turnStartContext : s.context,
       cube: s.cube,
       crawfordGame: s.crawfordGame,
       level: level,
@@ -72,11 +72,5 @@ abstract final class BotRequests {
           s.phase, 'phase', '${kind.name} needs ${phase.name}');
     }
     return side;
-  }
-
-  static TurnContext _turnStartContext(GameState s) {
-    // With no step taken the current context is the turn-start one.
-    if (s.steps.isEmpty) return s.context;
-    throw UnsupportedError('mid-turn requests need GameState.turnStartContext');
   }
 }

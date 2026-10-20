@@ -86,12 +86,7 @@ List<BotRequestKind> _kindsFor(GameState s) => switch (s.phase) {
       _ => const [],
     };
 
-const _needsTurnStartContext =
-    'needs the public GameState.turnStartContext (plan Task 1)';
-
 void main() {
-  // Mid-turn requests need the core's public GameState.turnStartContext
-  // (plan Task 1); until it lands those tests are skipped.
   for (final midTurn in [false, true]) {
     for (final v in Variant.values) {
       final label = midTurn ? ' (mid-turn)' : '';
@@ -132,7 +127,7 @@ void main() {
               containsAll(
                   [BotRequestKind.offerDouble, BotRequestKind.takeDouble]));
         }
-      }, skip: midTurn ? _needsTurnStartContext : false);
+      });
     }
   }
 
@@ -166,7 +161,7 @@ void main() {
         expect((r.id, r.seed, r.level, r.supersedes, r.budget),
             (7, 9, BotLevel.medium, 6, const Duration(milliseconds: 5)));
       }
-    }, skip: _needsTurnStartContext);
+    });
 
     test('at the turn start: the current state', () {
       final s0 = rolled(Variant.longNard, [6, 5]);
