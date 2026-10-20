@@ -9,9 +9,14 @@ import 'family_common.dart';
 import 'features.dart';
 
 /// Running (block) games: the blockade in front of the opponent, the
-/// runner's release (sole-runner variants), the head (own pip 24) and pip
-/// lead. Ideas from the legacy `FevgaEvaluator`, re-derived over player-
-/// relative pips.
+/// runner's release (sole-runner variants), the head (own pip 24), the
+/// points held, checkers home, stacking and pip lead. Ideas from the
+/// legacy `FevgaEvaluator`, re-derived over player-relative pips.
+///
+/// Every play of a turn moves the same pips, so the pip lead does not
+/// rank plays; the structure terms do. Points held, checkers home and
+/// the stacking penalty were added at the Task 10 tuning (SP2 report):
+/// without them noiseless 0-ply lost to the noisy Easy in Fevga.
 ///
 /// The score is `side(me) − side(opp) + lead`, each side valued by the
 /// same function: exactly antisymmetric and on-roll neutral.
@@ -45,7 +50,22 @@ final class RunningEvaluator implements Evaluator {
     if (adv != null && head < 15 && _lowest(p, s) <= adv.releasePip) {
       released = 0.2;
     }
-    return 0.05 * b * b - headWeight * head + released;
+    // Points held off the head (a single checker blocks), checkers home
+    // or borne off, and checkers stacked beyond 3 on a point.
+    var points = 0, home = p.borneOff(s), stacked = 0;
+    for (var pip = 1; pip <= 23; pip++) {
+      final c = p.count(s, pip);
+      if (c == 0) continue;
+      points++;
+      if (pip <= 6) home += c;
+      if (c > 3) stacked += c - 3;
+    }
+    return 0.05 * b * b -
+        headWeight * head +
+        released +
+        0.05 * points +
+        0.1 * home -
+        0.05 * stacked;
   }
 
   /// The longest run of consecutive points [s] holds in front of the
