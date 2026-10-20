@@ -1,6 +1,8 @@
 import 'package:tavli_bot/tavli_bot.dart';
 import 'package:test/test.dart';
 
+// The values pinned here are the tuned ones (plan Task 10: tuning may
+// change the design's initial values; the tournaments are the gates).
 void main() {
   const ms = Duration(milliseconds: 1);
 
@@ -9,20 +11,20 @@ void main() {
     expect(p.depth, 0);
     expect(p.expertTwoPly, isFalse);
     expect((p.k, p.kMax), (0, 0));
-    expect(p.noise, 0.12);
+    expect(p.noise, 0.3);
     expect(p.topFraction, 0.5);
     expect(p.cascadeSamples, 8);
     expect(p.budget, ms * 20);
     expect(p.cascadeBudget, ms * 40);
   });
 
-  test('medium: 1-ply, K 3 -> 6', () {
+  test('medium: 1-ply, K 2 -> 6, noise over all candidates', () {
     final p = LevelProfile.of(BotLevel.medium);
     expect(p.depth, 1);
     expect(p.expertTwoPly, isFalse);
-    expect((p.k, p.kMax), (3, 6));
-    expect(p.noise, 0.04);
-    expect(p.topFraction, 0.2);
+    expect((p.k, p.kMax), (2, 6));
+    expect(p.noise, 0.1);
+    expect(p.topFraction, 1.0);
     expect(p.cascadeSamples, 24);
     expect(p.budget, ms * 80);
     expect(p.cascadeBudget, ms * 160);

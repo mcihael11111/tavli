@@ -6,8 +6,10 @@ library;
 enum BotLevel { easy, medium, hard, expert }
 
 /// How a level searches: depth, candidate widening, selection noise and
-/// time budgets. Initial values from the design table, tuned only against
-/// the strength gates.
+/// time budgets. Initial values from the design table, tuned against the
+/// strength gates (plan Task 10; the tuning log is in the SP2 report):
+/// Easy noise 0.12 -> 0.3; Medium K 3 -> 2, noise 0.04 -> 0.1, top
+/// fraction 0.2 -> 1.0.
 final class LevelProfile {
   /// 0 = score the plays only; 1 = expectation over the opponent's rolls.
   final int depth;
@@ -53,7 +55,7 @@ final class LevelProfile {
     expertTwoPly: false,
     k: 0,
     kMax: 0,
-    noise: 0.12,
+    noise: 0.3,
     topFraction: 0.5,
     cascadeSamples: 8,
     budget: Duration(milliseconds: 20),
@@ -63,10 +65,10 @@ final class LevelProfile {
   static const _medium = LevelProfile(
     depth: 1,
     expertTwoPly: false,
-    k: 3,
+    k: 2,
     kMax: 6,
-    noise: 0.04,
-    topFraction: 0.2,
+    noise: 0.1,
+    topFraction: 1.0,
     cascadeSamples: 24,
     budget: Duration(milliseconds: 80),
     cascadeBudget: Duration(milliseconds: 160),
