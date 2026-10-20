@@ -20,7 +20,7 @@ export 'src/match/match_action.dart';
 export 'src/match/match_config.dart';
 export 'src/match/match_event.dart';
 export 'src/play/play.dart';
-export 'src/play/play_generator.dart';
+export 'src/play/play_generator.dart' hide generateCascadeUnpruned;
 export 'src/play/step.dart';
 export 'src/rules/game_end.dart';
 export 'src/rules/step_rules.dart';

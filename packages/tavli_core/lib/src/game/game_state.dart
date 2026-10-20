@@ -193,6 +193,14 @@ final class GameState {
   /// then cached. Throws [StateError] when there are no dice to play.
   PlayTree get tree => _tree ??= _buildTree();
 
+  /// The turn context at the start of the current moving phase, before
+  /// [steps]: the side's first turn (D18) while it has completed no turn,
+  /// with [dice]. [context] is this advanced past [steps]; the generators
+  /// take it as their start context (a bot request for this phase does
+  /// too). Not stored in JSON: derived from the other fields.
+  TurnContext get turnStartContext =>
+      _startContext(sideToMove, turnsTaken, dice);
+
   /// The node of [tree] reached by [steps]. Like [tree], throws
   /// [StateError] when there are no dice to play: outside `moving`, except
   /// in a game that ended mid-turn, where it is the node the game ended at.
@@ -204,7 +212,7 @@ final class GameState {
       throw StateError('no dice to play in $phase');
     }
     final rules = variant.rules;
-    final ctx = _startContext(side, turnsTaken, const []);
+    final ctx = turnStartContext;
     return cascadeMode
         ? generateCascade(turnStart, side, dice, rules, ctx)
         : generatePlays(turnStart, side, dice, rules, ctx);

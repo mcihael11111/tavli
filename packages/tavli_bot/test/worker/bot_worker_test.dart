@@ -180,28 +180,27 @@ void main() {
 
     test('a reused id after cancelling a running request gets its own reply',
         () async {
-      // SP1's worstFailingCascade at Medium: about 0.3 s of
-      // non-interruptible core tree build.
+      // The running request is an Expert search held to its budget (a
+      // cascade tree build is now too fast to still be running).
       final f = worstFailingCascade;
-      BotRequest at(BotRequestKind kind) => BotRequest(
-            id: 20,
-            kind: kind,
-            variant: Variant.gulBara,
-            position: f.position,
-            side: f.side,
-            dice: kind == BotRequestKind.choosePlay ? f.queue : const [],
-            cascade: kind == BotRequestKind.choosePlay,
-            context: TurnContext(),
-            cube: const CubeState(enabled: true),
-            level: BotLevel.medium,
-            seed: 20,
-          );
+      final reuse = BotRequest(
+        id: 20,
+        kind: BotRequestKind.offerDouble,
+        variant: Variant.gulBara,
+        position: f.position,
+        side: f.side,
+        dice: const [],
+        context: TurnContext(),
+        cube: const CubeState(enabled: true),
+        level: BotLevel.medium,
+        seed: 20,
+      );
       await worker.warm();
-      final running = worker.request(at(BotRequestKind.choosePlay));
+      final running = worker.request(_slow(20, 400));
       await Future<void>.delayed(const Duration(milliseconds: 50));
       worker.cancel(20);
       expect(await running, _error('cancelled'));
-      final again = await worker.request(at(BotRequestKind.offerDouble));
+      final again = await worker.request(reuse);
       expect(again, isA<DecisionReply>(), reason: '$again');
       expect(again.id, 20);
       expect(await worker.decidedIds(), [20, 20]);

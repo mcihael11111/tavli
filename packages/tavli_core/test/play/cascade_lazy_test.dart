@@ -197,7 +197,8 @@ void main() {
           two: {24: 11, 22: 1, 19: 1, 16: 1, 10: 1},
         ),
         // The worst failing cascade seen in random play: 23 of 24 dice, and
-        // proving 24 unreachable visits ~117k states (~200 ms asserts-off).
+        // proving 24 unreachable visited ~117k states (~200 ms asserts-off)
+        // before the SP3 pruning bound.
         posSame(
           one: {
             24: 2,

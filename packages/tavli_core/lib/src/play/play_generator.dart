@@ -17,6 +17,7 @@ import '../variant/variant_rules.dart';
 import 'play.dart';
 import 'step.dart';
 
+part 'cascade_bound.dart';
 part 'cascade_walker.dart';
 part 'play_cascade.dart';
 part 'play_search.dart';
@@ -78,9 +79,28 @@ PlayTree generateCascade(
   if (!PlayFilters(rules).isNoOp) {
     throw ArgumentError.value(rules, 'rules', 'cascades take no filters');
   }
-  final cascade = _Cascade(rules, s, q);
-  final root = cascade.start(p, ctx.withDice(q));
+  return _cascadeTree(_Cascade(rules, s, q, p), p, ctx.withDice(q));
+}
+
+/// Test-only reference: [generateCascade] without the [_CascadeBound]
+/// pruning (the plain max-playable search), for differential fuzzing.
+/// Hidden from the package's public API.
+PlayTree generateCascadeUnpruned(
+  Position p,
+  Side s,
+  List<int> queue,
+  VariantRules rules,
+  TurnContext ctx,
+) {
+  final q = List<int>.unmodifiable(queue);
+  return _cascadeTree(
+      _Cascade(rules, s, q, p, pruned: false), p, ctx.withDice(q));
+}
+
+PlayTree _cascadeTree(_Cascade cascade, Position p, TurnContext ctx) {
+  final root = cascade.start(p, ctx);
   final used = cascade.diceUsed;
+  final q = cascade.queue;
   return PlayTree._(
       root, null, used, List.unmodifiable(q.sublist(used)), cascade);
 }
