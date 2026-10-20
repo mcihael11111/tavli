@@ -419,6 +419,27 @@ CI runs 40 fuzz games per variant; the 100k run is a recorded local exit run.
 
 **SP3 input:** a "remaining dice" helper for the UI.
 
+**SP2 close-out (2026-10-20).** All SP2 engineering exit items are met:
+- 164 bot tests;
+- desktop-gate benchmarks within budget;
+- strength gates in Portes, Plakoto and Fevga;
+- legacy floor 85.3 %;
+- worker responsiveness gate;
+- CI green.
+
+Details: `docs/superpowers/perf/2026-10-02-sp2-bot-report.md`.
+
+**Carried gates:**
+- **(c), extended:** the Galaxy S AOT run also covers the bot benchmarks. Re-check Expert's margin at the measured device speed ratio; the lever is a smaller Expert kMax.
+- **(d):** Gul Bara cascade latency and garbage-collection pauses from the shared isolate heap (measured p99 ≈ 8 ms, max ≈ 15 ms on desktop).
+
+**Open for the user:** the Expert-vs-Hard gate was passed under the lenient reading "the 95 % CI upper bound ≥ 50 %". No family shows Expert *significantly* stronger than Hard. Expert vs Medium is 63–71 %.
+
+**SP3 inputs from the SP2 review:**
+- **Request helper:** a `BotRequest.fromState(GameState, {kind, level, id, seed})` helper. The turn-start context is private in core, so expose `GameState.turnStartContext`. The helper must handle cascades, remainder turns, Crawford, the cube, and analyze steps.
+- **Evaluator tests:** labelled pairs for the new running-evaluator terms (points held, home, stacking).
+- **Tournament log:** commit gate-run outputs and the tuning harness for auditability.
+
 Ordering: 0 → 1 → 2 → 3 → 4 → 5. Sub-project 4's server work may start in parallel with 3 once 1 is done, because both depend only on `tavli_core`.
 
 ### 6.1 Migration strategy

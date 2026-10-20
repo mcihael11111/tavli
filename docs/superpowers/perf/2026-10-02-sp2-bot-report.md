@@ -203,7 +203,7 @@ Each row is 400 games (or 800–1000 for fast 0-ply runs), A vs B, with A's win 
 - Medium's noise spreads over all its 1-ply candidates; Portes needs this for a ≥ 55 % margin (#26 vs #23).
 - A noisier Easy restores the Fevga margin (#41). Fevga's equity gaps between plays are small, so noise costs more there.
 - The legacy floor has room for a noisier Easy: 89.0 % with the old Easy, 85.3 % with the tuned one.
-- The 14 labelled tactics still pass at Expert, and the evaluators stay exactly antisymmetric (`test/eval/symmetry_test.dart`).
+- The 14 labelled tactics still pass at Expert, and the evaluators stay exactly antisymmetric (`test/eval/family_eval_test.dart (families) and test/eval/symmetry_test.dart (race)`).
 
 **Not changed:**
 - The hitting and pinning evaluators (#13, #16).
@@ -258,3 +258,8 @@ These match the Task 9 figures (Hard p99 about 1.8 ms; cascade p99 6–7.5 ms, m
 - The hitting and pinning evaluators are tuned for 0-ply. The weight changes that help at 0-ply hurt at 1-ply, so evaluator work should be judged at 1-ply.
 - Under the 6-job tournament load, a decision's maximum time exceeded its budget by up to 2× (for example, Fevga Medium max 47 ms against 27). The asserts-off benchmarks on a quiet machine stay within the gates. This is load and E-core scheduling, not a search overrun.
 - Tournament results depend on timing (budgets), so gate numbers vary by a few points between runs and machines. The smoke test pins determinism with ample budgets.
+
+
+## Addendum (final review, 2026-10-20)
+- **Overruns under load are larger than stated above.** With 6 parallel tournament jobs, single decisions ran up to about 2.8× budget: Medium 74.7 ms max against 27 ms, Easy 11.1 ms against 7 ms. Quiet-machine benchmarks stay within the gates.
+- **The Expert-vs-Hard gate passes only under the lenient CI reading.** No family's interval excludes 50 %. This is flagged for user sign-off.
