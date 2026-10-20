@@ -36,8 +36,7 @@ List<ImportChainViolation> _scan(Directory gameplay, Directory lib) =>
       packageName: 'tavli',
       libRoot: lib,
       boundary: _boundary,
-      // SP3: set allowMissing: false once lib/gameplay exists.
-      allowMissing: true,
+      allowMissing: false,
     );
 
 void main() {

@@ -46,10 +46,20 @@ class SettingsService {
   static const _traditionKey = 'tables_tradition';
   static const _languageLevelKey = 'tables_language_level';
   static const _playerNameKey = 'tavli_player_name';
+  static const _animSpeedKey = 'tavli_anim_speed';
+  static const _hapticsKey = 'tavli_haptics';
+  static const _autoplayForcedKey = 'tavli_autoplay_forced';
+  static const _autoPassKey = 'tavli_auto_pass';
+  static const _autoRollKey = 'tavli_auto_roll';
 
   final SharedPreferences _prefs;
 
   SettingsService._(this._prefs);
+
+  /// A service over [prefs] that bypasses the singleton (tests only).
+  @visibleForTesting
+  factory SettingsService.withPrefs(SharedPreferences prefs) =>
+      SettingsService._(prefs);
 
   static SettingsService? _instance;
 
@@ -106,6 +116,26 @@ class SettingsService {
 
   bool get jacobyRule => _prefs.getBool(_jacobyKey) ?? false;
   set jacobyRule(bool v) => _prefs.setBool(_jacobyKey, v);
+
+  // ── Gameplay (new game experience) ────────────────────────
+  /// Animation speed name: 'slow', 'normal' or 'fast'.
+  String get animSpeed => _prefs.getString(_animSpeedKey) ?? 'normal';
+  set animSpeed(String v) => _prefs.setString(_animSpeedKey, v);
+
+  bool get haptics => _prefs.getBool(_hapticsKey) ?? true;
+  set haptics(bool v) => _prefs.setBool(_hapticsKey, v);
+
+  /// Play forced moves automatically.
+  bool get autoplayForced => _prefs.getBool(_autoplayForcedKey) ?? true;
+  set autoplayForced(bool v) => _prefs.setBool(_autoplayForcedKey, v);
+
+  /// Pass a turn with no legal move without input.
+  bool get autoPass => _prefs.getBool(_autoPassKey) ?? true;
+  set autoPass(bool v) => _prefs.setBool(_autoPassKey, v);
+
+  /// Roll automatically at turn start when no cube decision is possible.
+  bool get autoRoll => _prefs.getBool(_autoRollKey) ?? false;
+  set autoRoll(bool v) => _prefs.setBool(_autoRollKey, v);
 
   // ── Customization ─────────────────────────────────────────
   int get boardSet => _prefs.getInt(_boardSetKey) ?? 1;

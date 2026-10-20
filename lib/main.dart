@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'gameplay/services/game_audio.dart';
 import 'app/app.dart';
 import 'features/notifications/notification_service.dart';
 import 'features/profile/data/achievements.dart';
@@ -52,4 +55,7 @@ void main() async {
   );
 
   runApp(const ProviderScope(child: TavliApp()));
+
+  // Preload gameplay SFX off the startup path (never blocks the first frame).
+  unawaited(GameAudio.instance.init());
 }
