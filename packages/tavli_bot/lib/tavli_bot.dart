@@ -19,6 +19,8 @@ export 'src/level/bot_level.dart';
 export 'src/search/search.dart';
 export 'src/teach/analysis.dart';
 export 'src/teach/analysis_types.dart';
+export 'src/tournament/match_runner.dart';
+export 'src/tournament/pairing_summary.dart';
 export 'src/worker/bot_worker.dart';
 export 'src/worker/protocol.dart';
 

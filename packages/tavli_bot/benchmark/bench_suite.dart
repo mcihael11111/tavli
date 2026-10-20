@@ -302,8 +302,11 @@ BenchResult benchSmallBudget(BotLevel level, int samples,
     {Duration budget = const Duration(milliseconds: 2)}) {
   final f = playFixtures.reduce((a, b) => b.plays > a.plays ? b : a)..check();
   final p = f.position;
+  // The build and the play list: the search does both before it can
+  // stop (choosePlay calls `.plays()` on the tree).
   final build = measure(
-      () => generatePlays(p, f.side, f.dice, f.variant.rules, TurnContext()),
+      () => generatePlays(p, f.side, f.dice, f.variant.rules, TurnContext())
+          .plays(),
       name: 'build',
       samples: samples,
       minWarmup: Duration.zero);

@@ -58,6 +58,31 @@ void _expectConsistent(TurnAnalysis a, {String reason = ''}) {
 }
 
 void main() {
+  test('analyzeTurnRun reports its depth and whether it timed out', () {
+    final rules = Variant.portes.rules;
+    final start = Position.forRules(rules);
+    AnalysisRun run(LevelProfile p, Duration budget) => analyzeTurnRun(
+          position: start,
+          side: _one,
+          dice: const [5, 3],
+          cascade: false,
+          context: TurnContext(),
+          rules: rules,
+          steps: const [],
+          profile: p,
+          rng: Random(1),
+          budget: budget,
+        );
+    final medium = LevelProfile.of(BotLevel.medium);
+    final full = run(medium, const Duration(seconds: 60));
+    expect((full.depth, full.timedOut), (1, false));
+    expect(full.analysis, _analyze(start, [5, 3], rules, profile: medium));
+    final none = run(medium, Duration.zero);
+    expect((none.depth, none.timedOut), (0, true));
+    final easy = run(LevelProfile.of(BotLevel.easy), Duration.zero);
+    expect((easy.depth, easy.timedOut), (0, false), reason: '0-ply only');
+  });
+
   test('qualityOf thresholds', () {
     expect(qualityOf(0), StepQuality.best);
     expect(qualityOf(0.01), StepQuality.best);

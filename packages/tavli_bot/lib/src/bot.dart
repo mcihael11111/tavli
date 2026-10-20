@@ -28,7 +28,7 @@ abstract final class Bot {
   ///   to a legal complete play (empty when no step is legal);
   /// - `offerDouble` / `takeDouble` → [DecisionReply] from [shouldOffer]
   ///   / [shouldTake];
-  /// - `analyze` → [AnalysisReply] from [analyzeTurn] at the request's
+  /// - `analyze` → [AnalysisReply] from [analyzeTurnRun] at the request's
   ///   level.
   ///
   /// The request's `Random` is `Random(seed)`. Its [requestBudget]
@@ -206,7 +206,7 @@ abstract final class Bot {
         return DecisionReply(
             id: r.id, stats: _stats(watch, evaluated: eval.calls), yes: yes);
       case BotRequestKind.analyze:
-        final a = analyzeTurn(
+        final a = analyzeTurnRun(
           position: r.position,
           side: r.side,
           dice: r.dice,
@@ -219,16 +219,11 @@ abstract final class Bot {
           budget: budget,
           evaluator: eval,
         );
-        // The analysis does not report its depth: it is 1-ply unless the
-        // budget ran out, which is the best signal for both fields.
-        final over = watch.elapsedMicroseconds >= budget.inMicroseconds;
         return AnalysisReply(
             id: r.id,
             stats: _stats(watch,
-                evaluated: eval.calls,
-                depth: profile.depth >= 1 && !over ? 1 : 0,
-                timedOut: over),
-            analysis: a);
+                evaluated: eval.calls, depth: a.depth, timedOut: a.timedOut),
+            analysis: a.analysis);
     }
   }
 

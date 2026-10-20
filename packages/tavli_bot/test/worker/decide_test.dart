@@ -7,7 +7,9 @@ import 'package:test/test.dart';
 import '../support/positions.dart';
 import '../support/search_support.dart' show worstCascade;
 
-/// A budget no request here reaches, so timing cannot change a reply.
+/// The largest budget a request may ask for: `Bot.requestBudget` caps it
+/// at 2x the level's (160 ms at Medium), which every request here needs
+/// only a fraction of, so timing does not change a reply.
 const _big = Duration(seconds: 60);
 
 BotRequest _req(

@@ -59,6 +59,41 @@ TurnAnalysis analyzeTurn({
   required Random rng,
   Duration? budget,
   Evaluator? evaluator,
+}) =>
+    analyzeTurnRun(
+      position: position,
+      side: side,
+      dice: dice,
+      cascade: cascade,
+      context: context,
+      rules: rules,
+      steps: steps,
+      profile: profile,
+      rng: rng,
+      budget: budget,
+      evaluator: evaluator,
+    ).analysis;
+
+/// An [analyzeTurn] answer with how it was reached: the depth of its
+/// values (1 when the 1-ply set finished, else 0; always 0 for a
+/// cascade) and whether the clock ran out (some 1-ply values or cascade
+/// samples were skipped).
+typedef AnalysisRun = ({TurnAnalysis analysis, int depth, bool timedOut});
+
+/// [analyzeTurn], also reporting its depth and whether it timed out
+/// (`Bot.decide` puts them in the reply's stats).
+AnalysisRun analyzeTurnRun({
+  required Position position,
+  required Side side,
+  required List<int> dice,
+  required bool cascade,
+  required TurnContext context,
+  required VariantRules rules,
+  required List<Step> steps,
+  LevelProfile? profile,
+  required Random rng,
+  Duration? budget,
+  Evaluator? evaluator,
 }) {
   final prof = profile ?? LevelProfile.of(BotLevel.medium);
   final clock =
@@ -74,16 +109,21 @@ TurnAnalysis analyzeTurn({
   if (!tree.hasPlay) {
     // No legal play: the empty play is the turn.
     final v = scorer.value(position, side);
-    return TurnAnalysis(
-        nextStepQuality: const {},
-        nextStepEquity: const {},
-        bestEquity: v,
-        lossSoFar: 0,
-        playEquityLoss: 0);
+    return (
+      analysis: TurnAnalysis(
+          nextStepQuality: const {},
+          nextStepEquity: const {},
+          bestEquity: v,
+          lossSoFar: 0,
+          playEquityLoss: 0),
+      depth: 0,
+      timedOut: false,
+    );
   }
   if (cascade) {
-    return cascadeAnalysis(
-        tree, node, position, side, steps, prof, rng, scorer);
+    final a =
+        cascadeAnalysis(tree, node, position, side, steps, prof, rng, scorer);
+    return (analysis: a, depth: 0, timedOut: clock.timedOut);
   }
 
   final finals = tree.finals.toList();
@@ -121,10 +161,14 @@ TurnAnalysis analyzeTurn({
     return b;
   }
 
-  return _result(
-    best: bestIn(value.keys),
-    stepEq: {for (final s in next) s: bestIn(reach[s]!)},
-    chosen: chosen == null ? null : value[chosen]!,
+  return (
+    analysis: _result(
+      best: bestIn(value.keys),
+      stepEq: {for (final s in next) s: bestIn(reach[s]!)},
+      chosen: chosen == null ? null : value[chosen]!,
+    ),
+    depth: identical(value, zero) ? 0 : 1,
+    timedOut: clock.timedOut,
   );
 }
 
