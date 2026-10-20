@@ -39,6 +39,20 @@ Position toCore(BoardState b) {
   return p;
 }
 
+/// The legacy board for a core Portes position, [toMove] active: the
+/// inverse of [toCore].
+BoardState toLegacy(BoardView p, Side toMove) => BoardState(
+      points: [
+        for (var i = 0; i < 24; i++)
+          p.count(Side.one, i + 1) - p.count(Side.two, 24 - i),
+      ],
+      bar1: p.onBar(Side.one),
+      bar2: p.onBar(Side.two),
+      borneOff1: p.borneOff(Side.one),
+      borneOff2: p.borneOff(Side.two),
+      activePlayer: toMove == Side.one ? 1 : 2,
+    );
+
 /// The core side for the legacy active player.
 Side sideToMove(BoardState b) => b.activePlayer == 1 ? Side.one : Side.two;
 

@@ -157,6 +157,8 @@ test/...  benchmark/...  tool/tournament.dart (headless tournaments)
 | hard | 1 | 6 → 16 | 0.01 | 0.05 |
 | expert | 1 + 2-ply top-2 | 8 → 32 | 0 | 0 (best) |
 
+*Tuned at plan Task 10 (SP2 report §3):* Easy noise 0.3; Medium K 2 → 6, noise 0.1, topFraction 1.0. Hard and Expert keep the values above. The running evaluator gained points-held, home and stacking terms.
+
 The app's `easyWithHelp` maps to `easy` plus teaching analysis.
 
 ---
