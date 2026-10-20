@@ -23,6 +23,7 @@ export 'src/tournament/match_runner.dart';
 export 'src/tournament/pairing_summary.dart';
 export 'src/worker/bot_worker.dart';
 export 'src/worker/protocol.dart';
+export 'src/worker/request_builder.dart';
 
 /// The core schema version this bot build was built against. Worker messages
 /// stay inside one isolate group, so they share these Dart types directly and
