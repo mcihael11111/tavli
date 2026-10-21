@@ -292,6 +292,14 @@ void main() {
         hasLength(3));
     expect(h.notices.whereType<BotErrorNotice>(), hasLength(1));
     expect(h.view.busy, isFalse);
+
+    // Pause and resume act as a retry.
+    h.controller
+      ..pause()
+      ..resume();
+    await settle();
+    expect(h.backend.requests.where((r) => r.kind == BotRequestKind.choosePlay),
+        hasLength(6));
   });
 
   test('awaitingConfirm is false while paused', () async {
@@ -321,5 +329,29 @@ void main() {
     c.clearSelection();
     expect(c.leaveMatch(), isFalse);
     expect(c.resignGame(), isFalse);
+  });
+
+  test('pass & play: a new subscriber gets the orientation first', () async {
+    h = await Harness.create(
+        MatchSetup(mode: MatchMode.passAndPlay, variant: Variant.portes),
+        dice: [2, 5]);
+    h.controller.rollOpening();
+    h.controller.acknowledgeHandoff();
+    final got = <BoardCommand>[];
+    final sub = h.controller.commands.listen(got.add);
+    addTearDown(sub.cancel);
+    await settle();
+    expect((got[0] as FlipView).viewer, Side.two);
+    expect(got[1], isA<Sync>());
+  });
+
+  test('vs bot: the snapshot starts with the Sync', () async {
+    h = await Harness.create(_vs(Variant.portes));
+    final got = <BoardCommand>[];
+    final sub = h.controller.commands.listen(got.add);
+    addTearDown(sub.cancel);
+    await settle();
+    expect(got.first, isA<Sync>());
+    expect(got.whereType<FlipView>(), isEmpty);
   });
 }

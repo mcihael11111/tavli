@@ -254,7 +254,7 @@ void main() {
     test('auto-pass moves on with a notice', () async {
       await load(const {}, _closed);
       h.controller.roll();
-      expect(h.view.notice, isA<TurnPassedNotice>());
+      expect(h.view.notices.whereType<TurnPassedNotice>(), hasLength(1));
       expect(h.view.passAck, isNull);
       expect(h.view.busy, isTrue);
     });

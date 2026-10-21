@@ -30,6 +30,7 @@ export 'match_environment.dart';
 
 part 'bot_seat.dart';
 part 'match_flow.dart';
+part 'match_guards.dart';
 part 'teaching.dart';
 
 final matchControllerProvider = NotifierProvider.autoDispose
@@ -84,7 +85,7 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
     _bot = ref.read(botClientProvider);
     _env = ref.read(matchEnvironmentProvider);
     _rng = _env.random(arg.seed);
-    _seedRng = Random(arg.seed ?? Random.secure().nextInt(1 << 32));
+    _seedRng = Random(arg.seed ?? Random.secure().nextInt(0x7fffffff));
     _pacing = TurnPacing.forBot(arg.difficulty, arg.personality);
     ref.onDispose(_dispose);
     if (arg.mode == MatchMode.vsBot) unawaited(_bot.warmUp());
@@ -111,16 +112,7 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
   /// the animations that follow apply to it; mid bot turn that is the
   /// position after the steps animated so far) and the current
   /// selection, then every command in order. Closes on dispose.
-  Stream<BoardCommand> get commands => Stream.multi((c) {
-        c.add(Sync(_boardGame));
-        if (_hasMarks(state.selection)) c.add(ShowSelection(state.selection));
-        if (_disposed) {
-          c.close();
-          return;
-        }
-        final sub = _out.stream.listen(c.add, onDone: c.close);
-        c.onCancel = sub.cancel;
-      });
+  Stream<BoardCommand> get commands => Stream.multi(_subscribe);
 
   // ---- Human intents. Each returns whether it was accepted; a rejected
   // intent changes nothing and never throws.
@@ -252,11 +244,6 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
     return _act(() => _apply(ForfeitMatch(side), by: side));
   }
 
-  /// Who resigns: the human vs bot; in pass & play the viewer, who holds
-  /// the device (also while a handoff is pending).
-  Side get _resigner =>
-      _setup.mode == MatchMode.vsBot ? MatchSetup.humanSide : state.viewer;
-
   /// Starts the next game of a longer match (Tawla 31).
   bool nextGame() {
     if (_disposed || !state.betweenGames) return false;
@@ -294,6 +281,8 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
   void resume() {
     if (_disposed || !state.paused) return;
     state = state.copyWith(paused: false);
+    _botFailures = 0; // the pause menu doubles as a retry
+    _botStuck = false;
     _resumed?.complete();
     _resumed = null;
     _advance();
@@ -301,50 +290,5 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
 
   /// Replaces the match (scenario tests): a [Sync], then autoplay.
   @visibleForTesting
-  void debugLoad(MatchState m) {
-    _cancelBot();
-    _forcedKey = null;
-    _botFailures = 0;
-    _botStuck = false;
-    state = state.copyWith(match: m, lastAnalysis: null);
-    _setSelection(_baseSelection(m.game));
-    _sync(m.game);
-    _advance();
-  }
-
-  // ---- Guards.
-
-  bool _canAct() =>
-      !_disposed &&
-      !state.busy &&
-      !state.paused &&
-      state.handoff == null &&
-      state.passAck == null &&
-      state.outcome == null;
-
-  /// The human may act in [phase]: it is that phase and a human's input.
-  bool _humanPhase(GamePhase phase) {
-    if (!_canAct() || state.game.phase != phase) return false;
-    final side = _inputSide(state.game);
-    return side != null && !_setup.isBot(side);
-  }
-
-  /// Runs an accepted intent, then the automatic follow-ups.
-  bool _act(bool Function() intent) {
-    final ok = intent();
-    if (ok) _advance();
-    return ok;
-  }
-
-  void _dispose() {
-    _disposed = true;
-    _epoch++;
-    _bot
-      ..cancelLane(_botLane)
-      ..cancelLane(_teachLane)
-      ..cancelLane(_teachEndLane);
-    _resumed?.complete();
-    _resumed = null;
-    unawaited(_out.close());
-  }
+  void debugLoad(MatchState m) => _load(m);
 }

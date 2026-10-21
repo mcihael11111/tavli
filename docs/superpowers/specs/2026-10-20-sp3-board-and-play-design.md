@@ -104,6 +104,8 @@ input intents ─► MatchController.dispatch(action) ─► reduceMatch (core) 
 
 *Implementation note (SP3 Task 4–5):* the seats are not separate types. The bot seat, teaching and match flow are part-file extensions of `MatchController` (`bot_seat.dart`, `teaching.dart`, `match_flow.dart`), and the pass & play seat is the `handoff`/`viewer` state. SP4 will extract a `Seat` interface for the online seat.
 
+*SP5 note (persistence):* a restored game can leave the bot part-way through its turn (steps taken). The bot submits whole plays from the turn start, so the restore must undo those steps first (or the controller must do it before `choosePlay`); today the bot loop gives up after 3 rejected submits with a `BotErrorNotice`.
+
 **Dice:**
 - Local dice come from `Random.secure()` (a seeded `Random` in tests) in the controller, never from the UI.
 - `RollOpening` and `RollDice` are dispatched by the controller.
