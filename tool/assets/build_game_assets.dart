@@ -12,7 +12,8 @@
 /// board can register shadows and size the on-edge bear-off sliver.
 ///
 /// Decoding, cropping, resizing and packing use package:image (a dev
-/// dependency); WebP encoding shells out to `cwebp` (`brew install webp`),
+/// dependency); WebP encoding shells out to `cwebp` (`brew install webp`;
+/// the committed outputs were made with cwebp 1.6.0, libsharpyuv 0.4.2),
 /// since package:image cannot encode WebP. Run from the app root:
 ///
 ///     dart run tool/assets/build_game_assets.dart
@@ -86,7 +87,7 @@ Future<void> _build(Directory tmp) async {
 
   // Table: 4320 × 2700 → 1600 × 1000 (same 1.6 aspect).
   await writeWebp(resize(readPng('$_src/backgrounds/table.png'), 1600, 1000),
-      '$_out/table.webp', ['-q', '85', '-m', '6'], tmp);
+      '$_out/table.webp', ['-q', '85', '-m', '6', '-noalpha'], tmp);
   _measure('table', ['$_src/backgrounds/table.png'], ['$_out/table.webp']);
 
   // Checkers: the three sets are byte-identical, so set 1 serves all.

@@ -1,13 +1,13 @@
 {
   "image": "checkers.webp",
   "width": 1024,
-  "height": 436,
+  "height": 442,
   "generator": "tool/assets/build_game_assets.dart",
   "visibleAlphaMin": 128,
   "frames": {
     "light_normal": {
-      "x": 198,
-      "y": 240,
+      "x": 202,
+      "y": 244,
       "w": 193,
       "h": 193,
       "visible": {
@@ -20,8 +20,8 @@
       "scale": 0.8648648648648649
     },
     "light_selected": {
-      "x": 224,
-      "y": 2,
+      "x": 228,
+      "y": 4,
       "w": 220,
       "h": 236,
       "visible": {
@@ -34,8 +34,8 @@
       "scale": 0.8648648648648649
     },
     "light_shadow": {
-      "x": 666,
-      "y": 2,
+      "x": 674,
+      "y": 4,
       "w": 218,
       "h": 218,
       "visible": {
@@ -48,8 +48,8 @@
       "scale": 0.8648648648648649
     },
     "light_vertical": {
-      "x": 463,
-      "y": 240,
+      "x": 471,
+      "y": 244,
       "w": 68,
       "h": 176,
       "visible": {
@@ -62,8 +62,8 @@
       "scale": 0.8648648648648649
     },
     "dark_normal": {
-      "x": 2,
-      "y": 240,
+      "x": 4,
+      "y": 244,
       "w": 194,
       "h": 194,
       "visible": {
@@ -76,8 +76,8 @@
       "scale": 0.8648648648648649
     },
     "dark_selected": {
-      "x": 2,
-      "y": 2,
+      "x": 4,
+      "y": 4,
       "w": 220,
       "h": 236,
       "visible": {
@@ -90,8 +90,8 @@
       "scale": 0.8648648648648649
     },
     "dark_shadow": {
-      "x": 446,
-      "y": 2,
+      "x": 452,
+      "y": 4,
       "w": 218,
       "h": 218,
       "visible": {
@@ -104,8 +104,8 @@
       "scale": 0.8648648648648649
     },
     "dark_vertical": {
-      "x": 393,
-      "y": 240,
+      "x": 399,
+      "y": 244,
       "w": 68,
       "h": 176,
       "visible": {

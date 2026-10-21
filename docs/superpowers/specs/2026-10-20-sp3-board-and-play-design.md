@@ -176,6 +176,12 @@ On `MatchEnded`, or `GameEnded` for a single game:
 | Dice | Area at 75 % width / mid-height |
 | Cube | Spot on the bar centre-line |
 
+**Declared deviations from legacy geometry:**
+- **Orientation.** For every variant the local viewer's home (pips 1–6) is bottom-right, their pip 24 top-right, and their bar pile and tray at the bottom. That is the legacy hitting layout; the legacy pinning and running layouts (player 1 home top-right) are drawn rotated 180°. Intended.
+- **Stack compression.** Above 7 checkers a pile keeps the span of a 7-pile (step × 6 / (n − 1)); the legacy step × 7 / n still grew to 15. Bar piles compress the same way above 7.
+- **Bar hit band.** Widened about the bar centre to at least a checker diameter, and to 48 px where that leaves the inner columns' stack centres to the columns (capped on phone widths); tested before the columns.
+- **Slivers.** Sized from the atlas's cropped vertical sprite (about 47 × 172), not the legacy 77/202 that squashed the whole 400 px square.
+
 ### 4.2 Components
 - **Retained.** Every component is created once per match; checkers are pooled, 30 per match. Nothing is created per frame or per rebuild.
 - **No collision detection.** No `HasCollisionDetection`, no hitboxes.

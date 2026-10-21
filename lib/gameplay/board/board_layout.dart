@@ -21,24 +21,56 @@ class BoardLayout {
     final h = fitWidth ? size.width / BoardCalibration.aspect : size.height;
     final image =
         Rect.fromLTWH((size.width - w) / 2, (size.height - h) / 2, w, h);
-    return BoardLayout._(size, image, sliverAspect);
+    final sx = w / BoardCalibration.width, sy = h / BoardCalibration.height;
+    final pointWidth = BoardCalibration.spacingLeft * sx;
+    final radius = pointWidth * BoardCalibration.checkerRadiusPerPoint;
+    final dieSize = radius * BoardCalibration.dieSizePerRadius;
+    final sliverH =
+        (BoardCalibration.topTrayBottom - BoardCalibration.topTrayTop) *
+            sy *
+            BoardCalibration.sliverHeightPerTray;
+    final sliverSize = Size(sliverH * sliverAspect, sliverH);
+    final trayWidth =
+        (BoardCalibration.trayRight - BoardCalibration.trayLeft) * sx;
+    return BoardLayout._(
+      size: size,
+      imageRect: image,
+      sliverAspect: sliverAspect,
+      sx: sx,
+      sy: sy,
+      pointWidth: pointWidth,
+      pointHeight: BoardCalibration.triangleHeight * sy,
+      checkerRadius: radius,
+      stackStep: radius * 2 * BoardCalibration.stackOverlap,
+      dieSize: dieSize,
+      diceGap: dieSize * BoardCalibration.diceGapPerDie,
+      sliverSize: sliverSize,
+      sliverStep: math.min(
+          sliverSize.width * BoardCalibration.sliverStepPerWidth,
+          trayWidth / 15),
+    );
   }
 
-  BoardLayout._(this.size, this.imageRect, this.sliverAspect)
-      : _sx = imageRect.width / BoardCalibration.width,
-        _sy = imageRect.height / BoardCalibration.height {
-    pointWidth = BoardCalibration.spacingLeft * _sx;
-    pointHeight = BoardCalibration.triangleHeight * _sy;
-    checkerRadius = pointWidth * BoardCalibration.checkerRadiusPerPoint;
-    stackStep = checkerRadius * 2 * BoardCalibration.stackOverlap;
-    dieSize = checkerRadius * BoardCalibration.dieSizePerRadius;
-    diceGap = dieSize * BoardCalibration.diceGapPerDie;
-    final sliverH = _trayHeight * BoardCalibration.sliverHeightPerTray;
-    sliverSize = Size(sliverH * sliverAspect, sliverH);
-    sliverStep = math.min(
-        sliverSize.width * BoardCalibration.sliverStepPerWidth,
-        _trayWidth / 15);
-  }
+  BoardLayout._({
+    required this.size,
+    required this.imageRect,
+    required this.sliverAspect,
+    required double sx,
+    required double sy,
+    required this.pointWidth,
+    required this.pointHeight,
+    required this.checkerRadius,
+    required this.stackStep,
+    required this.dieSize,
+    required this.diceGap,
+    required this.sliverSize,
+    required this.sliverStep,
+  })  : _sx = sx,
+        _sy = sy;
+
+  /// Minimum width of the bar hit band, in logical pixels (a 48 dp
+  /// touch target).
+  static const double minBarHitWidth = 48;
 
   final Size size;
 
@@ -51,31 +83,26 @@ class BoardLayout {
   final double _sx, _sy;
 
   /// Point spacing used for disc sizing (the smaller, left-half spacing).
-  late final double pointWidth;
+  final double pointWidth;
 
   /// Triangle length (base to tip).
-  late final double pointHeight;
+  final double pointHeight;
 
   /// Visible checker disc radius.
-  late final double checkerRadius;
+  final double checkerRadius;
 
   /// Uncompressed centre-to-centre step of a stack.
-  late final double stackStep;
+  final double stackStep;
 
   /// Visible die face edge and the gap between dice.
-  late final double dieSize, diceGap;
+  final double dieSize, diceGap;
 
   /// Visible size of one bear-off sliver and the step between slivers.
-  late final Size sliverSize;
-  late final double sliverStep;
+  final Size sliverSize;
+  final double sliverStep;
 
   double _x(double px) => imageRect.left + px * _sx;
   double _y(double px) => imageRect.top + px * _sy;
-
-  double get _trayHeight =>
-      (BoardCalibration.topTrayBottom - BoardCalibration.topTrayTop) * _sy;
-  double get _trayWidth =>
-      (BoardCalibration.trayRight - BoardCalibration.trayLeft) * _sx;
 
   /// Playing region (frame included, tray strips excluded).
   Rect get boardRect => Rect.fromLTRB(
@@ -217,10 +244,21 @@ class BoardLayout {
         : Rect.fromLTRB(left, barCenterY, right, boardRect.bottom);
   }
 
-  /// The bar band between the halves, split at [barCenterY].
+  /// The bar hit band, split at [barCenterY]: the painted gap between the
+  /// halves, widened about [barX] to at least a checker diameter, and to
+  /// [minBarHitWidth] where that still leaves the innermost columns' stack
+  /// centre lines (with half a radius of margin) to the columns. On phone
+  /// widths the 48 px floor would swallow view point 6's stack (its centre
+  /// is only ~0.057 × image width from the bar), so it is capped there.
+  /// The band overlaps the inner columns' edges and is tested before them.
   Rect barRect(ViewEdge edge) {
-    final left = _centerX(6) + _halfSpacing(6);
-    final right = _centerX(5) - _halfSpacing(5);
+    final painted =
+        (_centerX(5) - _halfSpacing(5)) - (_centerX(6) + _halfSpacing(6));
+    final nearest = math.min(_centerX(5) - barX, barX - _centerX(6));
+    final room = 2 * (nearest - checkerRadius / 2);
+    final width = math.max(
+        math.max(painted, checkerRadius * 2), math.min(minBarHitWidth, room));
+    final left = barX - width / 2, right = barX + width / 2;
     return edge == ViewEdge.top
         ? Rect.fromLTRB(left, boardRect.top, right, barCenterY)
         : Rect.fromLTRB(left, barCenterY, right, boardRect.bottom);
@@ -233,13 +271,14 @@ class BoardLayout {
       : Rect.fromLTRB(
           imageRect.left, boardRect.bottom, imageRect.right, imageRect.bottom);
 
-  /// The region under [p], or null off the board image. The dice area
-  /// wins over the columns it overlaps (it lies between the tips).
+  /// The region under [p], or null off the board image. Precedence: dice
+  /// (it lies between the tips), trays, bar band, then point columns.
   BoardRegion? columnAt(Offset p) {
     if (!imageRect.contains(p)) return null;
     if (diceRect.contains(p)) return const DiceRegion();
-    if (p.dy < boardRect.top) return const TrayRegion(ViewEdge.top);
-    if (p.dy >= boardRect.bottom) return const TrayRegion(ViewEdge.bottom);
+    for (final e in ViewEdge.values) {
+      if (trayHitRect(e).contains(p)) return TrayRegion(e);
+    }
     final top = p.dy < barCenterY;
     final edge = top ? ViewEdge.top : ViewEdge.bottom;
     if (barRect(edge).contains(p)) return BarRegion(edge);

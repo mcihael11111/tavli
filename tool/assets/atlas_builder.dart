@@ -26,7 +26,7 @@ class _Packed {
   int x = 0, y = 0;
 }
 
-const _padding = 2;
+const _padding = 4;
 const _visibleThreshold = 127; // alpha ≥ 128
 
 /// Crops, scales and shelf-packs [specs] into [imageName] + [jsonName]

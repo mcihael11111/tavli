@@ -5,13 +5,16 @@ import 'board_region.dart';
 /// Maps a side's player-relative pip (matrix §1: 24..1 on the board,
 /// 25 the bar, 0 borne off) to where it is drawn, and back.
 ///
-/// The local [viewer] is drawn as the legacy board drew player 1: their
-/// home (pips 1..6) is the bottom-right quarter (view points 0..5), their
-/// pip 24 is top-right (view point 23), and their bar pile and tray are on
-/// the [ViewEdge.bottom]. The opponent's pips are placed through the
-/// variant's [Geometry] ([Direction.opposing]: home top-right;
-/// [Direction.same]: home top-left, start bottom-left). Pass & play flips
-/// the view by making [Side.two] the viewer.
+/// For every variant the local [viewer]'s home (pips 1..6) is the
+/// bottom-right quarter (view points 0..5), their pip 24 is top-right
+/// (view point 23), and their bar pile and tray are on [ViewEdge.bottom].
+/// For hitting games that is the legacy layout of player 1; legacy pinning
+/// and running layouts put player 1's home top-right, so they are drawn
+/// rotated 180° from legacy (an intended deviation, design §4.1). The
+/// opponent's pips are placed through the variant's [Geometry]
+/// ([Direction.opposing]: home top-right; [Direction.same]: home top-left,
+/// start bottom-left). Pass & play flips the view by making [Side.two]
+/// the viewer.
 class ViewTransform {
   const ViewTransform({required this.direction, this.viewer = Side.one});
 

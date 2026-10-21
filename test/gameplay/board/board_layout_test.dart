@@ -211,7 +211,11 @@ void main() {
             for (var j = 0; j <= 10; j++) {
               final p = Offset(r.left + (r.width - 1e-6) * i / 10,
                   r.top + (r.height - 1e-6) * j / 10);
-              if (l.diceRect.contains(p)) continue;
+              if (l.diceRect.contains(p) ||
+                  l.barRect(ViewEdge.top).contains(p) ||
+                  l.barRect(ViewEdge.bottom).contains(p)) {
+                continue; // tested before the columns
+              }
               expect(l.columnAt(p), want, reason: 'vp $vp at $p');
             }
           }
@@ -224,6 +228,11 @@ void main() {
             t[1].translate(-inset, 0),
             t[2]
           ]) {
+            // The inner base corners of view points 5/6/17/18 may lie in
+            // the widened bar band; tips never do.
+            final inBar = l.barRect(ViewEdge.top).contains(corner) ||
+                l.barRect(ViewEdge.bottom).contains(corner);
+            if (inBar && corner != t[2]) continue;
             expect(l.columnAt(corner), want, reason: 'triangle of $vp');
           }
           for (var i = 0; i < 15; i++) {
@@ -233,18 +242,55 @@ void main() {
       });
     }
 
-    test('columns do not overlap one another or the bar', () {
-      final l = layoutFor(portrait);
-      final rects = [
-        for (var vp = 0; vp < 24; vp++) l.columnRect(vp),
-        l.barRect(ViewEdge.top),
-        l.barRect(ViewEdge.bottom),
-      ];
-      for (var a = 0; a < rects.length; a++) {
-        for (var b = a + 1; b < rects.length; b++) {
-          final o = rects[a].intersect(rects[b]);
-          expect(o.width <= 1e-9 || o.height <= 1e-9, isTrue,
-              reason: 'rects $a and $b overlap');
+    test('columns do not overlap; the bar band spares stack centres', () {
+      for (final v in viewports) {
+        final l = layoutFor(v);
+        final rects = [for (var vp = 0; vp < 24; vp++) l.columnRect(vp)];
+        for (var a = 0; a < rects.length; a++) {
+          for (var b = a + 1; b < rects.length; b++) {
+            final o = rects[a].intersect(rects[b]);
+            expect(o.width <= 1e-9 || o.height <= 1e-9, isTrue,
+                reason: 'columns $a and $b overlap on $v');
+          }
+        }
+        for (var vp = 0; vp < 24; vp++) {
+          for (var i = 0; i < 15; i++) {
+            expect(l.columnAt(l.checkerCenter(vp, i, 15)), PointRegion(vp),
+                reason: 'stack centre of $vp under the bar band on $v');
+          }
+        }
+      }
+    });
+
+    test('bar band is at least a checker diameter (48 px given room)', () {
+      for (final v in viewports) {
+        final l = layoutFor(v);
+        for (final e in ViewEdge.values) {
+          final w = l.barRect(e).width;
+          expect(w, greaterThanOrEqualTo(l.checkerRadius * 2 - 1e-9));
+          if (v.width >= 1024) {
+            expect(w, greaterThanOrEqualTo(BoardLayout.minBarHitWidth));
+          }
+        }
+      }
+    });
+
+    test('taps across a bar checker\'s whole disc hit the bar', () {
+      for (final v in viewports) {
+        final l = layoutFor(v);
+        final r = l.checkerRadius * 0.999;
+        for (final e in ViewEdge.values) {
+          for (final (i, n) in [(0, 1), (2, 3), (6, 7), (14, 15)]) {
+            final c = l.barSlot(e, i, n);
+            for (var a = -10; a <= 10; a++) {
+              for (var b = -10; b <= 10; b++) {
+                final p = Offset(c.dx + r * a / 10, c.dy + r * b / 10);
+                if ((p - c).distance > r) continue;
+                expect(l.columnAt(p), BarRegion(e),
+                    reason: 'bar slot $i/$n ${e.name} at $p on $v');
+              }
+            }
+          }
         }
       }
     });
