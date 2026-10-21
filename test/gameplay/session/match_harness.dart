@@ -106,7 +106,11 @@ class Harness {
   final ScriptedRandom dice;
   final GameplaySettings settings;
   final commands = <BoardCommand>[];
+
+  /// Every notice, in order.
+  final notices = <MatchNotice?>[];
   late final StreamSubscription<BoardCommand> _sub;
+  late final ProviderSubscription<MatchView> _keep;
 
   static Future<Harness> create(
     MatchSetup setup, {
@@ -135,7 +139,9 @@ class Harness {
       )),
     ]);
     final h = Harness._(container, setup, b, recorder, rng, settings);
-    container.listen(matchControllerProvider(setup), (_, __) {});
+    h._keep = container.listen(matchControllerProvider(setup), (prev, next) {
+      if (next.noticeSeq != prev?.noticeSeq) h.notices.add(next.notice);
+    });
     h._sub = h.controller.commands.listen(h.commands.add);
     await settle();
     return h;
@@ -145,6 +151,15 @@ class Harness {
       container.read(matchControllerProvider(setup).notifier);
   MatchView get view => container.read(matchControllerProvider(setup));
   GameState get game => view.game;
+
+  /// Drops the last listener so the auto-disposed controller goes, while
+  /// the bot client stays.
+  Future<void> closeController() async {
+    await _sub.cancel();
+    _keep.close();
+    await container.pump();
+    await settle();
+  }
 
   Future<void> dispose() async {
     await _sub.cancel();

@@ -14,6 +14,7 @@ import '../features/game/domain/engine/variants/game_variant.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/profile/presentation/match_history_screen.dart';
 import '../features/profile/presentation/achievements_screen.dart';
+import '../features/profile/data/achievements.dart' show Achievement;
 import '../features/customization/presentation/customization_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import '../features/learn/presentation/screens/learn_hub_screen.dart';
@@ -129,6 +130,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             isOnline: args['isOnline'] as bool? ?? false,
             opponentName: args['opponentName'] as String?,
             ratingDelta: args['ratingDelta'] as int?,
+            recorded: args['recorded'] as bool? ?? false,
+            coinsEarned: args['coinsEarned'] as int? ?? 0,
+            achievement: args['achievement'] as Achievement?,
           );
         },
       ),

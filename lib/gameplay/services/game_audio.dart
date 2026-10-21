@@ -42,6 +42,10 @@ class GameAudio {
   final Map<SfxType, _Pool> _pools = {};
   Future<void>? _init;
 
+  /// Bumped by [dispose]: a load started before it disposes its players
+  /// instead of storing them.
+  int _generation = 0;
+
   GameAudio({
     SfxPlayerFactory? playerFactory,
     required double Function() volume,
@@ -79,11 +83,16 @@ class GameAudio {
   Future<void> init() => _init ??= _load();
 
   Future<void> _load() async {
+    final generation = _generation;
     final sounds = SfxType.values.map(canonical).toSet();
     await Future.wait(sounds.map((t) async {
       final size = _checkerSounds.contains(t) ? checkerPoolSize : 1;
       final players = [for (var i = 0; i < size; i++) _factory()];
       final loaded = await Future.wait(players.map((p) => _loadOne(p, t)));
+      if (generation != _generation) {
+        await Future.wait(players.map((p) => p.dispose().catchError((_) {})));
+        return;
+      }
       _pools[t] = _Pool([
         for (var i = 0; i < size; i++)
           if (loaded[i]) _Slot(players[i]),
@@ -132,13 +141,20 @@ class GameAudio {
     final v = _volume().clamp(0.0, 1.0);
     if (v <= 0) return;
     if (slot.volume != v) {
-      slot.volume = v;
-      unawaited(slot.player.setVolume(v).catchError((_) {}));
+      // Cached only once applied, so a failed set is retried next play.
+      unawaited(slot.player.setVolume(v).then<void>(
+            (_) => slot.volume = v,
+            onError: (Object _) => slot.volume = null,
+          ));
     }
     unawaited(slot.player.replay().catchError((_) {}));
   }
 
+  /// Releases every player; a load still running releases its own as it
+  /// finishes. A later [init] loads afresh.
   Future<void> dispose() async {
+    _generation++;
+    _init = null;
     final players = [
       for (final pool in _pools.values)
         for (final s in pool.slots) s.player,

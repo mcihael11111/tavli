@@ -46,7 +46,7 @@ class JustAudioSfxPlayer implements SfxPlayer {
   Future<void> replay() async {
     await _p.seek(Duration.zero);
     // play() completes only when playback stops, so it is not awaited.
-    unawaited(_p.play());
+    unawaited(_p.play().catchError((_) {}));
   }
 
   @override

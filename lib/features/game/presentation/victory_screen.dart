@@ -21,6 +21,13 @@ class VictoryScreen extends StatefulWidget {
   final String? opponentName;
   final int? ratingDelta;
 
+  /// The caller already recorded the game (the new gameplay path records in
+  /// its MatchController, vs bot only): this screen only shows
+  /// [coinsEarned] and the [achievement] toast and saves nothing.
+  final bool recorded;
+  final int coinsEarned;
+  final Achievement? achievement;
+
   const VictoryScreen({
     super.key,
     required this.result,
@@ -28,6 +35,9 @@ class VictoryScreen extends StatefulWidget {
     this.isOnline = false,
     this.opponentName,
     this.ratingDelta,
+    this.recorded = false,
+    this.coinsEarned = 0,
+    this.achievement,
   });
 
   @override
@@ -63,6 +73,13 @@ class _VictoryScreenState extends State<VictoryScreen>
       widget.difficulty,
       personality: SettingsService.instance.botPersonality,
     );
+
+    if (widget.recorded) {
+      _coinsEarned = widget.coinsEarned;
+      final a = widget.achievement;
+      if (a != null) _showAchievementToast(a);
+      return;
+    }
 
     // Record results, achievements, and coins. Wrapped in try/catch so
     // the victory screen never crashes — these are fire-and-forget saves.

@@ -20,41 +20,17 @@ import '../adapters/variant_adapter.dart';
 import '../services/gameplay_settings.dart';
 import 'board_command.dart';
 import 'bot_client.dart';
-import 'game_recorder.dart';
+import 'match_environment.dart';
 import 'match_setup.dart';
 import 'match_view.dart';
 import 'step_picker.dart';
 import 'ui_selection.dart';
 
+export 'match_environment.dart';
+
 part 'bot_seat.dart';
 part 'match_flow.dart';
 part 'teaching.dart';
-
-/// What a controller needs besides the bot and the settings; tests
-/// override [matchEnvironmentProvider] for instant pacing and a fake
-/// recorder.
-class MatchEnvironment {
-  const MatchEnvironment({
-    this.delay = _realDelay,
-    this.recorder = const ServiceGameRecorder(),
-    this.random = _defaultRandom,
-  });
-
-  /// Waits a pacing beat.
-  final Future<void> Function(Duration) delay;
-  final GameRecorder recorder;
-
-  /// The dice source for a setup seed: `Random(seed)`, else
-  /// `Random.secure()`.
-  final Random Function(int? seed) random;
-
-  static Future<void> _realDelay(Duration d) => Future.delayed(d);
-  static Random _defaultRandom(int? seed) =>
-      seed == null ? Random.secure() : Random(seed);
-}
-
-final matchEnvironmentProvider =
-    Provider<MatchEnvironment>((ref) => const MatchEnvironment());
 
 final matchControllerProvider = NotifierProvider.autoDispose
     .family<MatchController, MatchView, MatchSetup>(MatchController.new);
@@ -78,6 +54,9 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
   /// The moving phase forced autoplay already ran in (it runs once, so an
   /// undo does not replay it).
   Object? _forcedKey;
+
+  /// Teaching: the game an analysis was last requested for.
+  GameState? _analysisPending;
 
   late final Object _botLane = (this, 'bot');
   late final Object _teachLane = (this, 'teach');

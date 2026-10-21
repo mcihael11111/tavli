@@ -21,6 +21,8 @@ extension _Teaching on MatchController {
   void _requestAnalysis() {
     if (!_teachingTurn || _view.lastAnalysis != null) return;
     final g = _view.game;
+    if (identical(_analysisPending, g)) return;
+    _analysisPending = g;
     unawaited(_bot
         .requestOn(
       _teachLane,
