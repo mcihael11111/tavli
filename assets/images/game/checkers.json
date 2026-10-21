@@ -1,0 +1,121 @@
+{
+  "image": "checkers.webp",
+  "width": 1024,
+  "height": 436,
+  "generator": "tool/assets/build_game_assets.dart",
+  "visibleAlphaMin": 128,
+  "frames": {
+    "light_normal": {
+      "x": 198,
+      "y": 240,
+      "w": 193,
+      "h": 193,
+      "visible": {
+        "x": 0.87,
+        "y": 0.87,
+        "w": 191.27,
+        "h": 191.27
+      },
+      "source": "assets/images/checkers/set1_light_normal.png",
+      "scale": 0.8648648648648649
+    },
+    "light_selected": {
+      "x": 224,
+      "y": 2,
+      "w": 220,
+      "h": 236,
+      "visible": {
+        "x": 13.86,
+        "y": 27.66,
+        "w": 191.42,
+        "h": 191.05
+      },
+      "source": "assets/images/checkers/set1_light_selected.png",
+      "scale": 0.8648648648648649
+    },
+    "light_shadow": {
+      "x": 666,
+      "y": 2,
+      "w": 218,
+      "h": 218,
+      "visible": {
+        "x": 8.65,
+        "y": 8.65,
+        "w": 191.18,
+        "h": 191.18
+      },
+      "source": "assets/images/checkers/set1_light_shadow.png",
+      "scale": 0.8648648648648649
+    },
+    "light_vertical": {
+      "x": 463,
+      "y": 240,
+      "w": 68,
+      "h": 176,
+      "visible": {
+        "x": 13.77,
+        "y": 13.0,
+        "w": 40.46,
+        "h": 149.12
+      },
+      "source": "assets/images/checkers/set1_light_vertical.png",
+      "scale": 0.8648648648648649
+    },
+    "dark_normal": {
+      "x": 2,
+      "y": 240,
+      "w": 194,
+      "h": 194,
+      "visible": {
+        "x": 0.87,
+        "y": 0.87,
+        "w": 192.27,
+        "h": 192.27
+      },
+      "source": "assets/images/checkers/set1_dark_normal.png",
+      "scale": 0.8648648648648649
+    },
+    "dark_selected": {
+      "x": 2,
+      "y": 2,
+      "w": 220,
+      "h": 236,
+      "visible": {
+        "x": 13.86,
+        "y": 26.8,
+        "w": 192.28,
+        "h": 191.91
+      },
+      "source": "assets/images/checkers/set1_dark_selected.png",
+      "scale": 0.8648648648648649
+    },
+    "dark_shadow": {
+      "x": 446,
+      "y": 2,
+      "w": 218,
+      "h": 218,
+      "visible": {
+        "x": 8.65,
+        "y": 7.79,
+        "w": 192.05,
+        "h": 192.05
+      },
+      "source": "assets/images/checkers/set1_dark_shadow.png",
+      "scale": 0.8648648648648649
+    },
+    "dark_vertical": {
+      "x": 393,
+      "y": 240,
+      "w": 68,
+      "h": 176,
+      "visible": {
+        "x": 13.77,
+        "y": 13.8,
+        "w": 40.46,
+        "h": 148.39
+      },
+      "source": "assets/images/checkers/set1_dark_vertical.png",
+      "scale": 0.8648648648648649
+    }
+  }
+}

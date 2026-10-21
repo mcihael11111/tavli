@@ -1,0 +1,345 @@
+{
+  "image": "dice.webp",
+  "width": 1024,
+  "height": 951,
+  "generator": "tool/assets/build_game_assets.dart",
+  "visibleAlphaMin": 128,
+  "frames": {
+    "die_1": {
+      "x": 842,
+      "y": 644,
+      "w": 138,
+      "h": 137,
+      "visible": {
+        "x": 2.0,
+        "y": 1.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_1_active.png",
+      "scale": 1.0
+    },
+    "die_1_shadow": {
+      "x": 786,
+      "y": 448,
+      "w": 166,
+      "h": 166,
+      "visible": {
+        "x": 11.0,
+        "y": 9.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_1_shadow.png",
+      "scale": 1.0
+    },
+    "die_2": {
+      "x": 2,
+      "y": 812,
+      "w": 137,
+      "h": 137,
+      "visible": {
+        "x": 2.0,
+        "y": 1.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_2_active.png",
+      "scale": 1.0
+    },
+    "die_2_shadow": {
+      "x": 2,
+      "y": 644,
+      "w": 166,
+      "h": 166,
+      "visible": {
+        "x": 11.0,
+        "y": 9.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_2_shadow.png",
+      "scale": 1.0
+    },
+    "die_3": {
+      "x": 141,
+      "y": 812,
+      "w": 138,
+      "h": 137,
+      "visible": {
+        "x": 2.0,
+        "y": 1.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_3_active.png",
+      "scale": 1.0
+    },
+    "die_3_shadow": {
+      "x": 338,
+      "y": 644,
+      "w": 166,
+      "h": 165,
+      "visible": {
+        "x": 11.0,
+        "y": 9.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_3_shadow.png",
+      "scale": 1.0
+    },
+    "die_4": {
+      "x": 281,
+      "y": 812,
+      "w": 138,
+      "h": 137,
+      "visible": {
+        "x": 2.0,
+        "y": 1.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_4_active.png",
+      "scale": 1.0
+    },
+    "die_4_shadow": {
+      "x": 506,
+      "y": 644,
+      "w": 166,
+      "h": 165,
+      "visible": {
+        "x": 11.0,
+        "y": 9.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_4_shadow.png",
+      "scale": 1.0
+    },
+    "die_5": {
+      "x": 421,
+      "y": 812,
+      "w": 138,
+      "h": 137,
+      "visible": {
+        "x": 2.0,
+        "y": 1.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_5_active.png",
+      "scale": 1.0
+    },
+    "die_5_shadow": {
+      "x": 674,
+      "y": 644,
+      "w": 166,
+      "h": 165,
+      "visible": {
+        "x": 11.0,
+        "y": 9.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_5_shadow.png",
+      "scale": 1.0
+    },
+    "die_6": {
+      "x": 561,
+      "y": 812,
+      "w": 137,
+      "h": 137,
+      "visible": {
+        "x": 2.0,
+        "y": 1.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_6_active.png",
+      "scale": 1.0
+    },
+    "die_6_shadow": {
+      "x": 170,
+      "y": 644,
+      "w": 166,
+      "h": 166,
+      "visible": {
+        "x": 11.0,
+        "y": 9.0,
+        "w": 134.0,
+        "h": 135.0
+      },
+      "source": "assets/images/dice/set1_die_6_shadow.png",
+      "scale": 1.0
+    },
+    "cube_2": {
+      "x": 2,
+      "y": 448,
+      "w": 194,
+      "h": 194,
+      "visible": {
+        "x": 0.94,
+        "y": 0.94,
+        "w": 192.13,
+        "h": 191.19
+      },
+      "source": "assets/images/dice/doubling_cube_2.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_2_shadow": {
+      "x": 2,
+      "y": 2,
+      "w": 221,
+      "h": 221,
+      "visible": {
+        "x": 9.36,
+        "y": 9.36,
+        "w": 191.97,
+        "h": 191.03
+      },
+      "source": "assets/images/dice/doubling_cube_2_shadow.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_4": {
+      "x": 394,
+      "y": 448,
+      "w": 194,
+      "h": 194,
+      "visible": {
+        "x": 0.94,
+        "y": 0.94,
+        "w": 192.13,
+        "h": 191.19
+      },
+      "source": "assets/images/dice/doubling_cube_4.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_4_shadow": {
+      "x": 447,
+      "y": 2,
+      "w": 220,
+      "h": 221,
+      "visible": {
+        "x": 9.36,
+        "y": 9.36,
+        "w": 191.91,
+        "h": 191.03
+      },
+      "source": "assets/images/dice/doubling_cube_4_shadow.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_8": {
+      "x": 590,
+      "y": 448,
+      "w": 194,
+      "h": 194,
+      "visible": {
+        "x": 1.87,
+        "y": 0.94,
+        "w": 191.19,
+        "h": 191.19
+      },
+      "source": "assets/images/dice/doubling_cube_8.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_8_shadow": {
+      "x": 2,
+      "y": 225,
+      "w": 220,
+      "h": 221,
+      "visible": {
+        "x": 10.3,
+        "y": 9.36,
+        "w": 190.98,
+        "h": 191.03
+      },
+      "source": "assets/images/dice/doubling_cube_8_shadow.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_16": {
+      "x": 642,
+      "y": 225,
+      "w": 194,
+      "h": 194,
+      "visible": {
+        "x": 0.94,
+        "y": 0.94,
+        "w": 192.13,
+        "h": 191.19
+      },
+      "source": "assets/images/dice/doubling_cube_16.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_16_shadow": {
+      "x": 224,
+      "y": 225,
+      "w": 220,
+      "h": 220,
+      "visible": {
+        "x": 9.36,
+        "y": 8.43,
+        "w": 191.91,
+        "h": 190.98
+      },
+      "source": "assets/images/dice/doubling_cube_16_shadow.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_32": {
+      "x": 198,
+      "y": 448,
+      "w": 194,
+      "h": 194,
+      "visible": {
+        "x": 0.94,
+        "y": 0.94,
+        "w": 192.13,
+        "h": 191.19
+      },
+      "source": "assets/images/dice/doubling_cube_32.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_32_shadow": {
+      "x": 225,
+      "y": 2,
+      "w": 220,
+      "h": 221,
+      "visible": {
+        "x": 9.36,
+        "y": 9.36,
+        "w": 191.91,
+        "h": 191.03
+      },
+      "source": "assets/images/dice/doubling_cube_32_shadow.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_64": {
+      "x": 446,
+      "y": 225,
+      "w": 194,
+      "h": 195,
+      "visible": {
+        "x": 1.87,
+        "y": 1.88,
+        "w": 191.19,
+        "h": 191.25
+      },
+      "source": "assets/images/dice/doubling_cube_64.png",
+      "scale": 0.9365853658536586
+    },
+    "cube_64_shadow": {
+      "x": 669,
+      "y": 2,
+      "w": 220,
+      "h": 221,
+      "visible": {
+        "x": 10.3,
+        "y": 9.36,
+        "w": 190.98,
+        "h": 191.03
+      },
+      "source": "assets/images/dice/doubling_cube_64_shadow.png",
+      "scale": 0.9365853658536586
+    }
+  }
+}
