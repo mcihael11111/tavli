@@ -102,6 +102,8 @@ input intents ─► MatchController.dispatch(action) ─► reduceMatch (core) 
 - `BotSeat`: drives a `BotClient`, which wraps `BotWorker`
 - `PassPlayHumanSeat`: like `HumanSeat`, plus the pass interstitial
 
+*Implementation note (SP3 Task 4–5):* the seats are not separate types. The bot seat, teaching and match flow are part-file extensions of `MatchController` (`bot_seat.dart`, `teaching.dart`, `match_flow.dart`), and the pass & play seat is the `handoff`/`viewer` state. SP4 will extract a `Seat` interface for the online seat.
+
 **Dice:**
 - Local dice come from `Random.secure()` (a seeded `Random` in tests) in the controller, never from the UI.
 - `RollOpening` and `RollDice` are dispatched by the controller.
@@ -116,8 +118,9 @@ input intents ─► MatchController.dispatch(action) ─► reduceMatch (core) 
   - `commit`
   - `offerDouble`
   - `take`, `drop`
-  - `resign`
+  - `resignGame`, `leaveMatch`
 - Each maps to core `StepAction`, `UndoStep`, `CommitPlay` and so on.
+- **Resign (decision, SP3 review):** `resignGame` is `GameMove(Resign(side))`: A9 scoring, and a longer match goes on. `leaveMatch` is `ForfeitMatch(side)`. `MatchView.isMultiGame` (the match has a target) tells the chrome to offer "Resign game" and "Leave match"; a single-game match shows one "Resign", which is `leaveMatch`. In pass & play the resigning side is the viewer, who holds the device, even while a handoff is pending. A match left between games, after a game the other side won, records a single at cube 1.
 - **Legal destinations** come from `GameState.node.nextSteps` filtered by `from`.
 
 ### Autoplay

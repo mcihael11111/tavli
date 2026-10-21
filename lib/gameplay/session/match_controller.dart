@@ -41,6 +41,9 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
   late BotClient _bot;
   late MatchEnvironment _env;
   late Random _rng;
+
+  /// Bot request seeds, apart from the dice so they never shift a roll.
+  late Random _seedRng;
   late TurnPacing _pacing;
   final _out = StreamController<BoardCommand>.broadcast(sync: true);
 
@@ -58,6 +61,18 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
   /// Teaching: the game an analysis was last requested for.
   GameState? _analysisPending;
 
+  /// The last game snapshot the board was sent (the subscribe-time Sync;
+  /// mid bot turn, the position after the steps animated so far).
+  late GameState _boardGame;
+
+  /// Bot-turn events whose notices wait for the turn's animations.
+  final _deferred = <MatchEvent>[];
+
+  /// Consecutive bot iterations that made no progress; at
+  /// [maxBotFailures] the loop stops with a [BotErrorNotice].
+  int _botFailures = 0;
+  bool _botStuck = false;
+
   late final Object _botLane = (this, 'bot');
   late final Object _teachLane = (this, 'teach');
   late final Object _teachEndLane = (this, 'teachEnd');
@@ -69,16 +84,20 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
     _bot = ref.read(botClientProvider);
     _env = ref.read(matchEnvironmentProvider);
     _rng = _env.random(arg.seed);
+    _seedRng = Random(arg.seed ?? Random.secure().nextInt(1 << 32));
     _pacing = TurnPacing.forBot(arg.difficulty, arg.personality);
     ref.onDispose(_dispose);
     if (arg.mode == MatchMode.vsBot) unawaited(_bot.warmUp());
     scheduleMicrotask(() {
       if (!_disposed) _advance();
     });
+    final m = MatchState.initial(arg.config);
+    _boardGame = m.game;
     return MatchView(
-      match: MatchState.initial(arg.config),
+      match: m,
       selection: UiSelection.none,
       viewer: MatchSetup.humanSide,
+      mode: arg.mode,
     );
   }
 
@@ -88,12 +107,18 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
   MatchView get _view => state;
   set _view(MatchView v) => state = v;
 
-  /// The board's command stream: a [Sync] of the current game (and the
-  /// current selection) first, then every command in order.
+  /// The board's command stream: a [Sync] of the last snapshot sent (so
+  /// the animations that follow apply to it; mid bot turn that is the
+  /// position after the steps animated so far) and the current
+  /// selection, then every command in order. Closes on dispose.
   Stream<BoardCommand> get commands => Stream.multi((c) {
-        c.add(Sync(state.game));
+        c.add(Sync(_boardGame));
         if (_hasMarks(state.selection)) c.add(ShowSelection(state.selection));
-        final sub = _out.stream.listen(c.add);
+        if (_disposed) {
+          c.close();
+          return;
+        }
+        final sub = _out.stream.listen(c.add, onDone: c.close);
         c.onCancel = sub.cancel;
       });
 
@@ -133,7 +158,7 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
 
   /// Clears the selection (tap on empty board).
   void clearSelection() {
-    if (state.selection.source == null) return;
+    if (_disposed || state.selection.source == null) return;
     _setSelection(_baseSelection(state.game));
   }
 
@@ -149,7 +174,7 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
         if (s.from == src && s.to == to) s,
     ]);
     if (step == null) return false;
-    return _act(() => _apply(GameMove(StepAction(step))));
+    return _act(() => _human(GameMove(StepAction(step))));
   }
 
   /// Moves the checker on [from] by the active die, else the other die.
@@ -158,7 +183,7 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
     final step =
         StepPicker.quickStep(state.game, from, state.selection.activeDie);
     if (step == null) return false;
-    return _act(() => _apply(GameMove(StepAction(step))));
+    return _act(() => _human(GameMove(StepAction(step))));
   }
 
   /// Makes the next distinct die still to play the active one (not in a
@@ -180,7 +205,7 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
     if (!_humanPhase(GamePhase.moving) || state.game.steps.isEmpty) {
       return false;
     }
-    return _act(() => _apply(const GameMove(UndoStep())));
+    return _act(() => _human(const GameMove(UndoStep())));
   }
 
   /// Commits a complete play (the Confirm button).
@@ -196,30 +221,41 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
     if (!_humanPhase(GamePhase.awaitingRoll) || !_canDouble(state.game)) {
       return false;
     }
-    return _act(() => _apply(const GameMove(OfferDouble())));
+    return _act(() => _human(const GameMove(OfferDouble())));
   }
 
   /// Accepts the opponent's double.
   bool take() =>
       _humanPhase(GamePhase.cubeOffered) &&
-      _act(() => _apply(const GameMove(Take())));
+      _act(() => _human(const GameMove(Take())));
 
   /// Declines the opponent's double and loses the game.
   bool drop() =>
       _humanPhase(GamePhase.cubeOffered) &&
-      _act(() => _apply(const GameMove(Drop())));
+      _act(() => _human(const GameMove(Drop())));
 
-  /// Resigns: forfeits the match (the current game scores A9). Vs bot the
-  /// human resigns; in pass & play the side whose input it is (else the
-  /// viewer). Allowed while the bot thinks: its turn is abandoned.
-  bool resign() {
-    if (_disposed || state.match.isOver) return false;
-    final side = _setup.mode == MatchMode.vsBot
-        ? MatchSetup.humanSide
-        : _inputSide(state.game) ?? state.viewer;
+  /// Resigns the current game (A9 scoring); a longer match goes on.
+  /// Allowed while the bot thinks (its turn is abandoned) and while paused.
+  bool resignGame() {
+    if (_disposed || state.game.phase == GamePhase.gameOver) return false;
+    final side = _resigner;
     _cancelBot();
-    return _act(() => _apply(ForfeitMatch(side)));
+    return _act(() => _apply(GameMove(Resign(side)), by: side));
   }
+
+  /// Leaves the match: forfeits it (`ForfeitMatch`; an unfinished game is
+  /// resigned, A9). The single "Resign" of a one-game match.
+  bool leaveMatch() {
+    if (_disposed || state.match.isOver) return false;
+    final side = _resigner;
+    _cancelBot();
+    return _act(() => _apply(ForfeitMatch(side), by: side));
+  }
+
+  /// Who resigns: the human vs bot; in pass & play the viewer, who holds
+  /// the device (also while a handoff is pending).
+  Side get _resigner =>
+      _setup.mode == MatchMode.vsBot ? MatchSetup.humanSide : state.viewer;
 
   /// Starts the next game of a longer match (Tawla 31).
   bool nextGame() {
@@ -234,6 +270,8 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
     if (_disposed || to == null) return false;
     state = state.copyWith(viewer: to, handoff: null);
     _out.add(FlipView(to));
+    _setSelection(_baseSelection(state.game));
+    _requestAnalysis();
     _advance();
     return true;
   }
@@ -266,9 +304,11 @@ class MatchController extends AutoDisposeFamilyNotifier<MatchView, MatchSetup> {
   void debugLoad(MatchState m) {
     _cancelBot();
     _forcedKey = null;
+    _botFailures = 0;
+    _botStuck = false;
     state = state.copyWith(match: m, lastAnalysis: null);
     _setSelection(_baseSelection(m.game));
-    _out.add(Sync(m.game));
+    _sync(m.game);
     _advance();
   }
 

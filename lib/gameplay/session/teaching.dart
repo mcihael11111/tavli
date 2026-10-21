@@ -8,6 +8,7 @@ extension _Teaching on MatchController {
   bool get _teachingTurn {
     final g = _view.game;
     return _setup.teaching &&
+        !_botRunning &&
         g.phase == GamePhase.moving &&
         !_setup.isBot(g.sideToMove!);
   }
@@ -19,7 +20,15 @@ extension _Teaching on MatchController {
   /// Asks for an analysis of the current steps unless one is in hand.
   /// The reply is used only while the game is unchanged.
   void _requestAnalysis() {
-    if (!_teachingTurn || _view.lastAnalysis != null) return;
+    if (!_teachingTurn) {
+      // Nothing to teach now: drop a stale request.
+      if (_analysisPending != null) {
+        _analysisPending = null;
+        _bot.cancelLane(_teachLane);
+      }
+      return;
+    }
+    if (_view.lastAnalysis != null) return;
     final g = _view.game;
     if (identical(_analysisPending, g)) return;
     _analysisPending = g;
@@ -34,9 +43,13 @@ extension _Teaching on MatchController {
           supersedes: supersedes),
     )
         .then((r) {
-      if (_disposed || r is! AnalysisReply || !identical(_view.game, g)) {
+      if (_disposed) return;
+      if (r is! AnalysisReply) {
+        // Failed or cancelled: a later call may ask again.
+        if (identical(_analysisPending, g)) _analysisPending = null;
         return;
       }
+      if (!identical(_view.game, g)) return;
       _view = _view.copyWith(lastAnalysis: r.analysis);
       final sel = _view.selection;
       final source = sel.source;
@@ -54,6 +67,12 @@ extension _Teaching on MatchController {
     if (!_teachingTurn) return;
     final g = _view.game;
     if (!g.node.isComplete) return;
+    // The analysis in hand is of this complete play: no new request.
+    final known = _view.lastAnalysis?.playEquityLoss;
+    if (known != null) {
+      _notify(TeachingFeedback(known));
+      return;
+    }
     unawaited(_bot
         .requestOn(
       _teachEndLane,
@@ -68,7 +87,7 @@ extension _Teaching on MatchController {
       if (_disposed || r is! AnalysisReply) return;
       final loss = r.analysis.playEquityLoss;
       if (loss == null) return;
-      _view = _view.copyWith(notice: TeachingFeedback(loss));
+      _notify(TeachingFeedback(loss));
     }));
   }
 }

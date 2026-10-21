@@ -12,8 +12,8 @@ import 'package:tavli_core/tavli_core.dart';
 import 'match_setup.dart';
 import 'ui_selection.dart';
 
-/// A toast-style message for the chrome; each new one has a new
-/// [MatchView.noticeSeq].
+/// A toast-style message for the chrome. Each batch (one action, or a
+/// whole bot turn) is [MatchView.notices] with a new [MatchView.noticeSeq].
 sealed class MatchNotice {
   const MatchNotice();
 }
@@ -37,6 +37,11 @@ final class CubeAnswerNotice extends MatchNotice {
   const CubeAnswerNotice(this.by, {required this.took});
   final Side by;
   final bool took;
+}
+
+/// The bot failed to act several times running; its loop has stopped.
+final class BotErrorNotice extends MatchNotice {
+  const BotErrorNotice();
 }
 
 /// How a taught play rates (design §3 teaching thresholds).
@@ -114,12 +119,13 @@ final class MatchView {
     required this.match,
     required this.selection,
     required this.viewer,
+    required this.mode,
     this.busy = false,
     this.paused = false,
     this.lastAnalysis,
     this.handoff,
     this.passAck,
-    this.notice,
+    this.notices = const [],
     this.noticeSeq = 0,
     this.outcome,
   });
@@ -130,6 +136,8 @@ final class MatchView {
   /// The side the board is drawn from: the human vs bot; in pass & play
   /// the side holding the device.
   final Side viewer;
+
+  final MatchMode mode;
 
   /// The bot is thinking or acting; human intents are ignored.
   final bool busy;
@@ -147,8 +155,12 @@ final class MatchView {
   /// Auto-pass off: this side's passed turn waits for `acknowledgePass`.
   final Side? passAck;
 
-  final MatchNotice? notice;
+  /// The latest batch of notices, in order (unmodifiable).
+  final List<MatchNotice> notices;
   final int noticeSeq;
+
+  /// The last notice of the latest batch.
+  MatchNotice? get notice => notices.lastOrNull;
 
   /// Set once when the match is over.
   final MatchOutcome? outcome;
@@ -158,9 +170,30 @@ final class MatchView {
   /// The side whose double awaits an answer, if any.
   Side? get pendingDouble => game.cube.offeredBy;
 
+  /// Whether the human (vs bot), or the viewer (pass & play), may act on
+  /// [game] now: no bot turn, pause, handoff or pass acknowledgement
+  /// pending, and the input is theirs.
+  bool get humanInput {
+    if (busy || paused || handoff != null || passAck != null) return false;
+    final side = switch (game.phase) {
+      GamePhase.awaitingRoll || GamePhase.moving => game.sideToMove,
+      GamePhase.cubeOffered => game.cube.offeredBy?.opponent,
+      GamePhase.opening => viewer,
+      GamePhase.gameOver => null,
+    };
+    if (side == null) return false;
+    return mode == MatchMode.vsBot
+        ? side == MatchSetup.humanSide
+        : side == viewer;
+  }
+
   /// A complete play waits for Confirm (`moveConfirmation` on).
   bool get awaitingConfirm =>
-      game.phase == GamePhase.moving && !busy && game.node.isComplete;
+      game.phase == GamePhase.moving && humanInput && game.node.isComplete;
+
+  /// A match of several games (Tawla 31, a points match): the chrome
+  /// offers "Resign game" and "Leave match"; otherwise one "Resign".
+  bool get isMultiGame => match.config.target != null;
 
   /// A game of a longer match is over; `nextGame` starts the next one.
   bool get betweenGames => game.phase == GamePhase.gameOver && !match.isOver;
@@ -174,13 +207,14 @@ final class MatchView {
     Object? lastAnalysis = _keep,
     Object? handoff = _keep,
     Object? passAck = _keep,
-    MatchNotice? notice,
+    List<MatchNotice>? notices,
     MatchOutcome? outcome,
   }) =>
       MatchView(
         match: match ?? this.match,
         selection: selection ?? this.selection,
         viewer: viewer ?? this.viewer,
+        mode: mode,
         busy: busy ?? this.busy,
         paused: paused ?? this.paused,
         lastAnalysis: identical(lastAnalysis, _keep)
@@ -188,8 +222,8 @@ final class MatchView {
             : lastAnalysis as TurnAnalysis?,
         handoff: identical(handoff, _keep) ? this.handoff : handoff as Side?,
         passAck: identical(passAck, _keep) ? this.passAck : passAck as Side?,
-        notice: notice ?? this.notice,
-        noticeSeq: notice == null ? noticeSeq : noticeSeq + 1,
+        notices: notices == null ? this.notices : List.unmodifiable(notices),
+        noticeSeq: notices == null ? noticeSeq : noticeSeq + 1,
         outcome: outcome ?? this.outcome,
       );
 }

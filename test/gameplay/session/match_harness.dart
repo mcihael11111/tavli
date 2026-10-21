@@ -108,7 +108,7 @@ class Harness {
   final commands = <BoardCommand>[];
 
   /// Every notice, in order.
-  final notices = <MatchNotice?>[];
+  final notices = <MatchNotice>[];
   late final StreamSubscription<BoardCommand> _sub;
   late final ProviderSubscription<MatchView> _keep;
 
@@ -118,6 +118,7 @@ class Harness {
     List<int> dice = const [],
     FakeBackend? backend,
     int seed = 1,
+    Future<void> Function(Duration)? delay,
   }) async {
     SharedPreferences.setMockInitialValues(prefs);
     final settings = GameplaySettings(
@@ -133,14 +134,14 @@ class Harness {
         return c;
       }),
       matchEnvironmentProvider.overrideWithValue(MatchEnvironment(
-        delay: (_) async {},
+        delay: delay ?? (_) async {},
         recorder: recorder,
         random: (_) => rng,
       )),
     ]);
     final h = Harness._(container, setup, b, recorder, rng, settings);
     h._keep = container.listen(matchControllerProvider(setup), (prev, next) {
-      if (next.noticeSeq != prev?.noticeSeq) h.notices.add(next.notice);
+      if (next.noticeSeq != prev?.noticeSeq) h.notices.addAll(next.notices);
     });
     h._sub = h.controller.commands.listen(h.commands.add);
     await settle();
@@ -164,6 +165,28 @@ class Harness {
   Future<void> dispose() async {
     await _sub.cancel();
     container.dispose();
+  }
+}
+
+/// A pacing delay the test releases by hand.
+class GatedDelay {
+  final _pending = <Completer<void>>[];
+
+  int get pending => _pending.length;
+
+  Future<void> call(Duration d) {
+    final c = Completer<void>();
+    _pending.add(c);
+    return c.future;
+  }
+
+  /// Releases the waits pending now.
+  void release() {
+    final now = [..._pending];
+    _pending.clear();
+    for (final c in now) {
+      c.complete();
+    }
   }
 }
 

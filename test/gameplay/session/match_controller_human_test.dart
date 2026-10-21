@@ -289,7 +289,7 @@ void main() {
 
   test('resign concedes the A9 result and records it', () async {
     h = await Harness.create(_portes());
-    expect(h.controller.resign(), isTrue);
+    expect(h.controller.leaveMatch(), isTrue);
     expect(h.view.match.isOver, isTrue);
     final r = h.view.match.history.single;
     expect(r.kind, ResultKind.resign);
@@ -300,6 +300,6 @@ void main() {
     expect(out.result.type, app.GameResultType.gammon);
     expect(out.extras['recorded'], isTrue);
     expect(h.recorder.calls, hasLength(1));
-    expect(h.controller.resign(), isFalse);
+    expect(h.controller.leaveMatch(), isFalse);
   });
 }

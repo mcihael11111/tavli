@@ -151,7 +151,7 @@ void main() {
     h.backend.hold = true;
     h.controller.debugLoad(_botToRoll(Variant.portes));
     await settle();
-    expect(h.controller.resign(), isTrue);
+    expect(h.controller.leaveMatch(), isTrue);
     h.backend.release();
     await settle();
     expect(h.view.busy, isFalse);

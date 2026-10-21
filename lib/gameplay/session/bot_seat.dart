@@ -8,6 +8,10 @@ part of 'match_controller.dart';
 /// the speed setting) plus `interMoveSettle` between its steps.
 const checkerMoveDuration = Duration(milliseconds: 130);
 
+/// Bot iterations in a row without progress (a rejected action, say)
+/// before the loop gives up rather than spin.
+const maxBotFailures = 3;
+
 extension _BotSeat on MatchController {
   void _startBot() {
     if (_botRunning || _disposed) return;
@@ -22,6 +26,7 @@ extension _BotSeat on MatchController {
   void _cancelBot() {
     _epoch++;
     _bot.cancelLane(_botLane);
+    _deferred.clear();
     if (_botRunning) {
       _botRunning = false;
       if (!_disposed) _view = _view.copyWith(busy: false);
@@ -51,19 +56,26 @@ extension _BotSeat on MatchController {
           GamePhase.cubeOffered => await _botAnswer(epoch),
           GamePhase.opening || GamePhase.gameOver => false,
         };
+        final alive = !_disposed && epoch == _epoch;
+        if (alive && !identical(_view.game, g)) {
+          _botFailures = 0;
+        } else if (alive && !ok) {
+          _botFailures++;
+        }
         if (!ok) break;
       }
     } finally {
       if (epoch == _epoch && !_disposed) {
         _botRunning = false;
         _view = _view.copyWith(busy: false);
+        _flushBotTurn();
         _advance();
       }
     }
   }
 
   /// A fresh request seed from the match's random source.
-  int _seed() => _rng.nextInt(1 << 30);
+  int _seed() => _seedRng.nextInt(1 << 30);
 
   Future<BotReply?> _ask(int epoch, BotRequestKind kind) async {
     final g = _view.game;
@@ -88,14 +100,16 @@ extension _BotSeat on MatchController {
       final r = await _ask(epoch, BotRequestKind.offerDouble);
       if (r == null) return false;
       if (r is DecisionReply && r.yes) {
-        return _apply(const GameMove(OfferDouble()));
+        return _apply(const GameMove(OfferDouble()), by: MatchSetup.botSide);
       }
     }
     final side = _view.game.sideToMove;
     _out.add(Rattle(side, _pacing.diceRattle));
     if (!await _beat(epoch, _pacing.diceRattle)) return false;
     final d = DiceRoll.random(_rng);
-    if (!_apply(GameMove(RollDice(d.d1, d.d2)))) return false;
+    if (!_apply(GameMove(RollDice(d.d1, d.d2)), by: MatchSetup.botSide)) {
+      return false;
+    }
     return _beat(epoch, _pacing.dicePostRollBreather);
   }
 
@@ -106,22 +120,31 @@ extension _BotSeat on MatchController {
     if (r == null) return false;
     final steps = r is PlayReply && r.steps.isNotEmpty ? r.steps : _anyPlay(g);
     if (!identical(_view.game, g)) return false;
-    final u = _applyGet(GameMove(SubmitPlay(steps)), animate: false) ??
-        _applyGet(GameMove(SubmitPlay(_anyPlay(g))), animate: false);
+    final u = _applyGet(GameMove(SubmitPlay(steps)),
+            by: MatchSetup.botSide, animate: false) ??
+        _applyGet(GameMove(SubmitPlay(_anyPlay(g))),
+            by: MatchSetup.botSide, animate: false);
     if (u == null) return false;
     final settle = checkerMoveDuration * _settings.animSpeed.durationFactor +
         _pacing.interMoveSettle;
     final next = u.state.game;
+    var board = g;
     for (final e in u.events) {
       if (e is InGame && e.event is CheckerMoved) {
         final moved = e.event as CheckerMoved;
+        // The board's snapshot advances with each animated step, so a
+        // board subscribing now continues from here.
+        if (reduce(board, StepAction(moved.step.step))
+            case GameUpdate(:final state)) {
+          _boardGame = board = state;
+        }
         _out.add(AnimateSteps([moved.step], moved.side));
         if (!await _beat(epoch, settle)) return false;
       } else if (e is InGame) {
         _emit([e], next);
       }
     }
-    _out.add(Sync(_view.game));
+    _sync(_view.game);
     return _beat(epoch, _pacing.finalSettle);
   }
 
@@ -131,7 +154,8 @@ extension _BotSeat on MatchController {
     final r = await _ask(epoch, BotRequestKind.takeDouble);
     if (r == null) return false;
     final take = r is! DecisionReply || r.yes;
-    return _apply(GameMove(take ? const Take() : const Drop()));
+    return _apply(GameMove(take ? const Take() : const Drop()),
+        by: MatchSetup.botSide);
   }
 
   /// A legal play without search (the first path through the tree), for

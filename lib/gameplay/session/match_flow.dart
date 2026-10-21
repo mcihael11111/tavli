@@ -19,22 +19,54 @@ bool _canDouble(GameState g) =>
     reduce(g, const OfferDouble()) is GameUpdate;
 
 extension _Flow on MatchController {
-  /// Applies [a]; false if the core rejects it (nothing changes). With
-  /// [animate] the events go to the board now, else the caller sends them.
-  bool _apply(MatchAction a, {bool animate = true}) =>
-      _applyGet(a, animate: animate) != null;
+  /// The side a human action comes from: the human vs bot, the viewer
+  /// (who holds the device) in pass & play.
+  Side get _humanSide =>
+      _setup.mode == MatchMode.vsBot ? MatchSetup.humanSide : _view.viewer;
 
-  MatchUpdate? _applyGet(MatchAction a, {bool animate = true}) {
-    final r = reduceMatch(_view.match, a);
+  /// Applies [a] sent [by] that side; false if the core rejects it
+  /// (nothing changes). With [animate] the events go to the board now,
+  /// else the caller sends them.
+  bool _apply(MatchAction a, {Side? by, bool animate = true}) =>
+      _applyGet(a, by: by, animate: animate) != null;
+
+  /// A human action, sent by [_humanSide].
+  bool _human(MatchAction a) => _apply(a, by: _humanSide);
+
+  /// During the bot's turn the human's selection, notices and analysis
+  /// wait until its animations are sent ([_flushBotTurn]).
+  MatchUpdate? _applyGet(MatchAction a, {Side? by, bool animate = true}) {
+    final r = reduceMatch(_view.match, a, by: by);
     if (r is! MatchUpdate) return null;
     final g = r.state.game;
     if (animate) _emit(r.events, g);
     _view = _view.copyWith(match: r.state, lastAnalysis: null);
-    _setSelection(_baseSelection(g));
-    if (animate) _out.add(Sync(g));
-    _notices(r.events);
-    _requestAnalysis();
+    if (animate) _sync(g);
+    if (_botRunning) {
+      _deferred.addAll(r.events);
+      _setSelection(UiSelection.none);
+    } else {
+      _setSelection(_baseSelection(g));
+      _notices(r.events);
+      _requestAnalysis();
+    }
     return r;
+  }
+
+  /// Sends [g] as the board's snapshot.
+  void _sync(GameState g) {
+    _boardGame = g;
+    _out.add(Sync(g));
+  }
+
+  /// After the bot's turn: its notices, then the human's selection and
+  /// analysis.
+  void _flushBotTurn() {
+    final events = [..._deferred];
+    _deferred.clear();
+    _notices(events);
+    _setSelection(_baseSelection(_view.game));
+    _requestAnalysis();
   }
 
   /// The board commands for [events], ending at [g].
@@ -61,31 +93,43 @@ extension _Flow on MatchController {
     }
   }
 
+  /// One notice batch for [events] (all kept, in order).
   void _notices(List<MatchEvent> events) {
+    final out = <MatchNotice>[];
+    Side? ack;
     for (final m in events) {
       if (m is! InGame) continue;
       switch (m.event) {
         case TurnPassed(:final side, :final dice):
-          final ack = !_setup.isBot(side) && !_settings.autoPass;
-          _view = _view.copyWith(
-              notice: TurnPassedNotice(side, dice), passAck: ack ? side : null);
+          out.add(TurnPassedNotice(side, dice));
+          if (!_setup.isBot(side) && !_settings.autoPass) ack = side;
         case RemainderPassed(:final to, :final dice):
-          _view = _view.copyWith(notice: RemainderNotice(to, dice));
+          out.add(RemainderNotice(to, dice));
         case CubeTaken(:final by):
-          _view = _view.copyWith(notice: CubeAnswerNotice(by, took: true));
+          out.add(CubeAnswerNotice(by, took: true));
         case CubeDropped(:final by):
-          _view = _view.copyWith(notice: CubeAnswerNotice(by, took: false));
+          out.add(CubeAnswerNotice(by, took: false));
         default:
           break;
       }
     }
+    if (out.isEmpty) return;
+    _view = _view.copyWith(notices: out, passAck: ack ?? _view.passAck);
   }
 
+  void _notify(MatchNotice n) => _view = _view.copyWith(notices: [n]);
+
   /// No source selected: the movable sources and the active die during a
-  /// human's moving phase, else nothing.
+  /// human's moving phase with the input theirs (not during the bot's
+  /// turn, nor before a pass & play handoff), else nothing.
   UiSelection _baseSelection(GameState g) {
     final side = g.sideToMove;
-    if (g.phase != GamePhase.moving || side == null || _setup.isBot(side)) {
+    if (g.phase != GamePhase.moving ||
+        side == null ||
+        _setup.isBot(side) ||
+        _botRunning ||
+        _view.handoff != null ||
+        (_setup.mode == MatchMode.passAndPlay && side != _view.viewer)) {
       return UiSelection.none;
     }
     final left = StepPicker.remainingDice(g);
@@ -107,19 +151,20 @@ extension _Flow on MatchController {
   bool _rollOpening() {
     _out.add(Rattle(null, _pacing.diceRattle));
     final d = DiceRoll.random(_rng);
-    return _apply(GameMove(RollOpening(d.d1, d.d2)));
+    return _human(GameMove(RollOpening(d.d1, d.d2)));
   }
 
   bool _roll() {
     _out.add(Rattle(_view.game.sideToMove, _pacing.diceRattle));
     final d = DiceRoll.random(_rng);
-    return _apply(GameMove(RollDice(d.d1, d.d2)));
+    return _human(GameMove(RollDice(d.d1, d.d2)));
   }
 
   /// Commits the human's complete play, asking for teaching feedback first.
   bool _commitHuman() {
     _requestTurnFeedback();
-    return _apply(const GameMove(CommitPlay()));
+    _bot.cancelLane(_teachLane);
+    return _human(const GameMove(CommitPlay()));
   }
 
   /// Runs automatic actions until the game waits for input: human
@@ -149,7 +194,12 @@ extension _Flow on MatchController {
     }
     final actor = _inputSide(g);
     if (actor != null && _setup.isBot(actor)) {
-      _startBot();
+      if (_botFailures < maxBotFailures) {
+        _startBot();
+      } else if (!_botStuck) {
+        _botStuck = true;
+        _notify(const BotErrorNotice());
+      }
       return false;
     }
     if (_setup.mode == MatchMode.passAndPlay &&
@@ -179,7 +229,7 @@ extension _Flow on MatchController {
           final steps = StepPicker.forcedSteps(g);
           if (steps != null) {
             for (final s in steps) {
-              if (!_apply(GameMove(StepAction(s)))) break;
+              if (!_human(GameMove(StepAction(s)))) break;
               if (_view.game.phase != GamePhase.moving) break;
             }
             return true;
@@ -204,11 +254,15 @@ extension _Flow on MatchController {
       _view = _view.copyWith(outcome: MatchDrawn(last));
       return;
     }
-    final mapped = appResultOf(last);
+    // A match left between games (ForfeitMatch after a game the other
+    // side won) scores as a plain single.
+    final own = last.winner == winner;
     final result = app.GameResult(
       winner: winner == Side.one ? 1 : 2,
-      type: mapped?.type ?? app.GameResultType.single,
-      cubeValue: last.cubeValue,
+      type: own
+          ? appResultOf(last)?.type ?? app.GameResultType.single
+          : app.GameResultType.single,
+      cubeValue: own ? last.cubeValue : 1,
     );
     var coins = 0;
     Achievement? first;
